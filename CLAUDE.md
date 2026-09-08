@@ -44,7 +44,7 @@ Keep this chain visible in the module structure. Each link is a separate, separa
 These come from primary literature and are not up for redesign without discussion.
 
 **Uncertainty is a full covariance matrix, never a scalar.**
-Laser tracker uncertainty is strongly anisotropic — roughly 10:1 lateral to radial (about 40 µm lateral vs 4 µm along the beam at 2.5 m; Hughes et al. 2011). Schmitt et al.'s CIRP keynote states explicitly that distance uncertainty cannot be summarised by an `A + B·L` formula and that independence assumptions give a poor guide to measurement strategy capability. A scalar uncertainty makes the risk calculation wrong in a direction-dependent way. Never reduce to a magnitude before the characteristic layer.
+Laser tracker uncertainty is strongly anisotropic — the sensor noise model alone (§4a/4b) gives roughly 5:1 to 7:1 lateral-to-radial at 2.5 m, and the full observed scatter including atmospheric and nest effects (§4c) reaches roughly 10:1 unshielded. Schmitt et al.'s CIRP keynote states explicitly that distance uncertainty cannot be summarised by an `A + B·L` formula and that independence assumptions give a poor guide to measurement strategy capability. A scalar uncertainty makes the risk calculation wrong in a direction-dependent way. Never reduce to a magnitude before the characteristic layer.
 
 **Risk depends on direction.**
 A hole-position tolerance and a parallelism tolerance on the same feature, measured from the same station, carry different risk because they project the error ellipsoid differently. The characteristic layer must know what direction each tolerance constrains.
@@ -62,21 +62,68 @@ Each sensor reading involves one target, so the normal equations are block-diago
 
 ## 4. Reference numbers for validation
 
-Any of these that the testbed can reproduce is a passing test.
+**Read this section carefully. An earlier version of this file conflated two different kinds of quantity and produced an unachievable gate. The distinction below is the whole point.**
+
+### 4a. Model inputs — Hughes et al. 2011, Table 4
+
+A posteriori sensor noise standard deviations from the network fit on an API T3:
+
+| Sensor | Value (length) | Value (angle) |
+|---|---|---|
+| Distance | σ = 1.216 µm | (0.312 arcsec — see note) |
+| Azimuth | 2.351 µm at 1 m | σ = 0.485 arcsec |
+| Elevation | 3.365 µm at 1 m | σ = 0.694 arcsec |
+
+For both angular sensors the two columns are the *same quantity* expressed two ways: 0.485 arcsec subtends 2.351 µm at 1 m, and 0.694 arcsec subtends 3.365 µm at 1 m. Both check out exactly. Use the angular values and scale with range.
+
+Note: the distance row does not follow that pattern (0.312 arcsec would subtend 1.513 µm at 1 m, not 1.216 µm). This is unresolved. Use σ_d = 1.216 µm as a fixed length noise and do not use the 0.312 arcsec figure until someone works out what it means. `TODO(source)`.
+
+### 4b. What the model should therefore predict — this is the step 1 gate
+
+At 2.5 m range, propagating 4a through the spherical-to-Cartesian Jacobian:
+
+| Quantity | Expected 1σ |
+|---|---|
+| Lateral, azimuth-driven | ≈ 5.9 µm |
+| Lateral, elevation-driven | ≈ 8.4 µm |
+| Radial (along beam) | ≈ 1.2 µm |
+| **Anisotropy ratio** | **roughly 5:1 to 7:1** |
+
+**Gate:** lateral σ between about 5 and 9 µm, radial σ about 1.2 µm, ratio in the 5–7:1 band, with the long axes of the ellipsoid perpendicular to the beam. Do not tune the inputs to hit a target — the inputs are fixed by 4a and the ratio is an output.
+
+### 4c. Observed quantities requiring physics not yet in the model
+
+These are **live distribution widths** from Hughes et al. Section 8, not standard deviations, and they include effects the step 1 model does not contain. They are gates for *later* steps, not step 1.
+
+| Observation | Value | What it includes |
+|---|---|---|
+| Lateral width at 2.5 m, unshielded | 40 µm | Sensor noise **plus atmospheric beam bending** plus nest repeatability |
+| Same, with the air path shielded | 23 µm | Mostly sensor noise and nest repeatability |
+| Width along beam | 4 µm | Dominated by nest repeatability, not the interferometer |
+| SMR nest repeatability | ≈ 4 µm | — |
+
+The paper states the scatter is a mixture of atmospheric beam bending, angular sensor accuracy and target nest repeatability. Note that shielding drops the ratio from 10:1 to about 5.8:1, which lands squarely on the 5–7:1 the sensor model predicts. That agreement is the evidence the model is right; the unshielded 40 µm is what you get once turbulence is added.
+
+**Gate for the environmental step (later):** adding an atmospheric term should take the predicted lateral spread from the shielded regime to roughly the unshielded observation, not the other way round.
+
+### 4d. Other reference values
 
 | Quantity | Value | Source |
 |---|---|---|
-| Lateral vs radial spread at 2.5 m | ~40 µm vs ~4 µm | Hughes et al. 2011 |
-| Angular contribution to coordinate variance | ~80% | Hughes et al. 2011 |
-| SMR nest repeatability | ~4 µm | Hughes et al. 2011 |
-| Shielded air path reduces lateral spread | 40 µm → 23 µm | Hughes et al. 2011 |
+| Angular share of coordinate variance (1000 pts, 1–5 m) | ~80%, model parameters ~20% | Hughes et al. 2011 |
 | Leica AT901 MPE | 15 µm + 6 µm/m at 2σ | Francis et al. 2016 |
-| Uncertainty at 5 m against ±50 µm tolerance | 45 µm — consumes 90% of tolerance | Francis et al. 2016 |
+| Uncertainty at 5 m vs ±50 µm tolerance | 45 µm — consumes 90% of tolerance | Francis et al. 2016 |
 | Mean uncertainty vs station count (1→4) | 26.5 → 16.6 → 13.7 → 10.7 µm | Wang, Forbes & Maropoulos 2014 |
 | Thermal stabilisation error, first hours | 20–80 µm | Muñoz et al. 2016 |
 | Gravity contribution to a 22 µm gear tolerance | 8 µm | Schmitt et al. 2016 |
+| Network test scale | 15 targets, 5 stations, 126 obs, 55 min | Hughes et al. 2011 |
+| Target location uncertainty from that fit | 2.1–4.9 µm | Hughes et al. 2011 |
 
-**Instrument error model:** use the NPL 14-parameter model (Hughes et al. 2011) — range offset λ, scale μ, transit axis offset eₓ, beam offsets b_y0 and b_z0, transit and beam axis angles α and γ, plus first and second order Fourier terms on both encoders. It returns a variance matrix, not just values.
+**Instrument error model:** the NPL 14-parameter geometric model (Hughes et al. 2011, Table 1) — range offset λ, scale μ, transit axis offset eₓ, beam offsets b_y,0 and b_z,0, transit and beam axis angles α and γ, plus first and second order Fourier terms on each encoder. It returns a variance matrix V_h, not just values. The geometric parameters are a *step 3* concern; step 1 needs only the 4a noise values.
+
+### 4e. Rule
+
+If a computed result disagrees with 4b, the code is wrong. If it disagrees with 4c, check first whether the missing physics explains the gap — usually it does. **Never adjust an input in 4a to make an output match.** Inputs are measured; outputs are predictions; the whole value of the testbed is that the second follows from the first.
 
 ---
 

@@ -1,64 +1,62 @@
 """Tests for instruments.laser_tracker.
 
-The headline test, test_boresight_anisotropy_matches_hughes_reference, is
-the gate for build step 1 (CLAUDE.md §5): a point at 2.5 m must show
-~10:1 anisotropy, ~40 um transverse to the beam vs ~4 um along it, large
-axis perpendicular to the beam, small axis along it.
+The headline test, test_boresight_anisotropy_matches_hughes_table4_prediction,
+is the gate for build step 1 (CLAUDE.md §5, §4b): propagating the Hughes et
+al. (2011) Table 4 sensor noise (§4a) through the spherical-to-Cartesian
+Jacobian at 2.5 m must predict lateral sigma of about 5.9 um (azimuth) and
+8.4 um (elevation), radial sigma of about 1.2 um, and an anisotropy ratio
+of roughly 5:1 to 7:1 -- with the long axes of the ellipsoid perpendicular
+to the beam. These are the model's *inputs* (§4a) and its predicted
+*output* (§4b); per CLAUDE.md §4e, the inputs are not to be retuned to hit
+a target -- the ratio is a prediction that falls out of them.
 """
 import numpy as np
 import pytest
 
 from geometry.pose import InstrumentPose
 from geometry.scene import Scene
-from instruments.laser_tracker import ARCSEC_TO_RAD, LaserTracker, scene_point_covariances
+from instruments.laser_tracker import LaserTracker, scene_point_covariances
 
 
-def test_boresight_anisotropy_matches_hughes_reference():
-    tracker = LaserTracker()  # calibrated defaults -- see module docstring
+def test_boresight_anisotropy_matches_hughes_table4_prediction():
+    tracker = LaserTracker()  # Hughes et al. 2011 Table 4 values, CLAUDE.md §4a
     pose = InstrumentPose(position_m=np.zeros(3))
-    target = np.array([2.5, 0.0, 0.0])  # 2.5 m straight down the beam
+    target = np.array([2.5, 0.0, 0.0])  # 2.5 m straight down the beam (boresight)
 
     covariance = tracker.covariance_global(target, pose)
     eigenvalues, eigenvectors = np.linalg.eigh(covariance)  # ascending order
     stds_um = np.sqrt(eigenvalues) * 1e6
+    # At boresight (theta = phi = 0) the eigenvalues decouple exactly onto
+    # the beam axis (radial, sigma_d) and the two encoder axes (azimuth,
+    # elevation) -- see docs/step1_laser_tracker_physics.md. Ascending
+    # order is therefore radial, azimuth-lateral, elevation-lateral,
+    # since sigma_d < d*sigma_theta < d*sigma_phi for these inputs.
+    radial_std_um, azimuth_lateral_std_um, elevation_lateral_std_um = stds_um
 
-    radial_std_um, *lateral_stds_um = stds_um
-    assert radial_std_um == pytest.approx(4.0, rel=0.05)
-    for lateral_std_um in lateral_stds_um:
-        assert lateral_std_um == pytest.approx(40.0, rel=0.05)
+    # Exact analytic predictions, worked from CLAUDE.md §4a independently
+    # of the tracker under test: Table 4 reports azimuth/elevation noise as
+    # a lateral standard deviation *at 1 m* (2.351 um, 3.365 um), which
+    # scales linearly with range since it's an angular noise; sigma_d is a
+    # fixed length noise and does not scale with range at all. §4b quotes
+    # the 2.5 m values rounded to "~5.9", "~8.4", "~1.2" um.
+    assert radial_std_um == pytest.approx(1.216, rel=1e-6)
+    assert azimuth_lateral_std_um == pytest.approx(2.5 * 2.351, rel=1e-3)
+    assert elevation_lateral_std_um == pytest.approx(2.5 * 3.365, rel=1e-3)
 
-    ratio = np.mean(lateral_stds_um) / radial_std_um
-    assert 8.0 < ratio < 12.0
+    # CLAUDE.md §4b gate: lateral between about 5 and 9 um, radial about
+    # 1.2 um, ratio roughly 5:1 to 7:1.
+    assert 5.0 <= azimuth_lateral_std_um <= 9.0
+    assert 5.0 <= elevation_lateral_std_um <= 9.0
+    assert radial_std_um == pytest.approx(1.2, rel=0.05)
+    assert 4.5 <= azimuth_lateral_std_um / radial_std_um <= 7.5
+    assert 4.5 <= elevation_lateral_std_um / radial_std_um <= 7.5
 
-    # Large axis perpendicular to the beam, small axis along it.
+    # Large axes perpendicular to the beam, small axis along it.
     beam_direction = target / np.linalg.norm(target)
     small_axis = eigenvectors[:, 0]
     assert abs(np.dot(small_axis, beam_direction)) == pytest.approx(1.0, abs=1e-6)
     for axis in eigenvectors[:, 1:].T:
         assert abs(np.dot(axis, beam_direction)) < 1e-6
-
-
-def test_anisotropy_direction_is_robust_to_literal_headline_defaults():
-    """Sensitivity check, not a hard gate: even with Hughes et al.'s
-    headline a-priori figures (sigma_d ~ 1.2 um, angular sigma ~ 0.5
-    arcsec) rather than the calibrated defaults above, the ellipsoid is
-    still flattened along the beam -- the *direction* of the anisotropy
-    doesn't depend on the exact noise numbers, only its magnitude does.
-    See docs/step1_laser_tracker_physics.md for the gap between these
-    headline figures and the ~40/4 um a-posteriori numbers in CLAUDE.md §4.
-    """
-    tracker = LaserTracker(
-        sigma_d_m=1.2e-6,
-        sigma_theta_rad=0.5 * ARCSEC_TO_RAD,
-        sigma_phi_rad=0.5 * ARCSEC_TO_RAD,
-    )
-    pose = InstrumentPose(position_m=np.zeros(3))
-    target = np.array([2.5, 0.0, 0.0])
-
-    eigenvalues, _ = np.linalg.eigh(tracker.covariance_global(target, pose))
-    radial_variance, *lateral_variances = eigenvalues
-    for lateral_variance in lateral_variances:
-        assert lateral_variance > radial_variance
 
 
 def test_off_axis_point_radial_axis_still_exact():

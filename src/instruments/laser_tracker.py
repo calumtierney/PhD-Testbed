@@ -24,8 +24,10 @@ carries a position uncertainty that is roughly constant. Even fairly close
 in, the angular channel already dominates, because encoders are simply far
 noisier in relative terms than the interferometer. The measurement error
 ellipsoid is therefore a flattened disc (an oblate spheroid): thin along
-the beam, wide across it -- ~10:1 at a few metres' range, per Hughes et al.
-(2011) and consistent with Schmitt et al.'s point that a laser tracker's
+the beam, wide across it -- roughly 5:1 to 7:1 at 2.5 m from sensor noise
+alone (CLAUDE.md §4b), reaching further towards 10:1 once atmospheric and
+target-nest effects are included (§4c, not modelled here -- see below).
+This is consistent with Schmitt et al.'s point that a laser tracker's
 uncertainty cannot be summarised by a single `A + B*L` number, because that
 number would have to describe two physically different error mechanisms at
 once. This is exactly why CLAUDE.md §3 insists uncertainty is carried as a
@@ -35,8 +37,9 @@ characteristic layer.
 See docs/step1_laser_tracker_physics.md for the full derivation, the
 worked geometry of *why* the transverse directions come out mutually
 orthogonal and orthogonal to the beam (so the noise ellipsoid's principal
-axes are exactly range/azimuth/elevation), and an explicit note on the
-default noise values used here.
+axes are exactly range/azimuth/elevation), and the distinction between
+this sensor-noise-only model and the larger, environment-inclusive scatter
+Hughes et al. actually observed.
 """
 from dataclasses import dataclass
 
@@ -48,20 +51,23 @@ from geometry.spherical import cartesian_to_spherical, spherical_jacobian
 
 ARCSEC_TO_RAD = np.pi / (180.0 * 3600.0)
 
-# Calibrated so that, at the CLAUDE.md §4/§5 reference range of 2.5 m, the
-# transverse standard deviation d * sigma_theta comes out at 40 um and the
-# radial standard deviation sigma_d at 4 um -- reproducing the ~10:1
-# anisotropy Hughes et al. (2011) report. This is NOT a direct quote of
-# their headline a-priori figures (sigma_d ~ 1.2 um, angular sigma ~ 0.3 to
-# 0.7 arcsec); those figures, applied naively at 2.5 m, give a smaller
-# absolute spread (~5:1, a few um lateral). The discrepancy and the
-# reasoning behind this calibration are logged in
-# docs/step1_laser_tracker_physics.md -- TODO(source): confirm against the
-# primary paper's a posteriori table directly (not accessible from this
-# session; NPL's eprints host is blocked by the network egress policy here).
-DEFAULT_SIGMA_D_M = 4.0e-6
-DEFAULT_SIGMA_THETA_ARCSEC = 3.3
-DEFAULT_SIGMA_PHI_ARCSEC = 3.3
+# Hughes et al. (2011) Table 4: a posteriori sensor noise standard
+# deviations from a real network fit on an API T3 (CLAUDE.md §4a). These
+# are used exactly as reported -- do not retune them to hit a target
+# anisotropy; the ratio in §4b is a *prediction* that follows from these,
+# not an input to be matched.
+#
+# Distance and angle are NOT simply related for this instrument: the
+# paper's own distance-channel angle figure (0.312 arcsec) would subtend
+# 1.513 um at 1 m, not the 1.216 um quoted for length -- the two columns
+# don't check out for that row the way they do for azimuth and elevation.
+# This is flagged as unresolved in CLAUDE.md §4a. We therefore use sigma_d
+# as a fixed length noise (it does not need converting from an angle) and
+# do not use the 0.312 arcsec figure. TODO(source): resolve what the
+# distance-channel angle figure represents.
+DEFAULT_SIGMA_D_M = 1.216e-6
+DEFAULT_SIGMA_THETA_ARCSEC = 0.485  # azimuth
+DEFAULT_SIGMA_PHI_ARCSEC = 0.694  # elevation
 
 
 @dataclass(frozen=True)
