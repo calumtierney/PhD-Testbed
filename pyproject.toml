@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lvm-testbed"
+version = "0.1.0"
+description = "Goal-oriented measurement planning testbed for large-volume metrology"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy",
+    "scipy",
+    "matplotlib",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+# Repository layout puts packages directly under src/ (geometry/,
+# instruments/, ...) per CLAUDE.md §8, with no extra top-level package
+# wrapper. Adding src/ to the import path lets tests do
+# `from geometry.scene import Scene` etc. without an editable install.
+pythonpath = ["src"]
+testpaths = ["tests"]
