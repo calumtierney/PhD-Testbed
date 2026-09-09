@@ -50,8 +50,13 @@ comparison is the experiment the project exists to run — see `CLAUDE.md`
 
 Build proceeds one rung of the ladder in `CLAUDE.md` §5 at a time, each
 gated by a reproduced physics result before the next begins. Currently
-complete: **step 1** — single-tracker spherical error model, propagated to
-a per-point Cartesian covariance.
+complete:
+
+- **step 1** — single-tracker spherical error model, propagated to a
+  per-point Cartesian covariance (`docs/step1_laser_tracker_physics.md`).
+- **step 2** — visibility: range, incidence-angle and mesh-occlusion
+  checks for whether a target can be measured at all, before step 1's
+  error model ever runs (`docs/step2_visibility_physics.md`).
 
 ## Development
 
@@ -62,7 +67,7 @@ pytest
 
 ```
 src/
-  geometry/         scene, poses, spherical<->Cartesian, ray casting (step 2+)
+  geometry/         scene, poses, spherical<->Cartesian, meshes, ray casting, visibility
   instruments/       instrument error models (laser tracker first)
   network/           multi-station least-squares solve (step 3+)
   characteristics/    tolerances, datums, covariance projection (step 4+)
