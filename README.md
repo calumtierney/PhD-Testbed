@@ -57,6 +57,17 @@ complete:
 - **step 2** — visibility: range, incidence-angle and mesh-occlusion
   checks for whether a target can be measured at all, before step 1's
   error model ever runs (`docs/step2_visibility_physics.md`).
+- **step 3** — the multi-station network solve: target coordinates and
+  station poses estimated jointly by weighted nonlinear least squares,
+  returning the full covariance over every target coordinate
+  (`docs/step3_network_solve_physics.md`).
+
+**Visualization** (`src/visualization`, not one of the six steps — see
+its module docstring): matplotlib plotting for scenes, per-point error
+ellipsoids, visibility results and network-solve outcomes, so a
+metrology engineer can look at what the chain produced rather than read
+arrays. Static figures only (no new dependency, no GUI/web layer); see
+"Visualizing results" below.
 
 ## Development
 
@@ -69,12 +80,35 @@ pytest
 src/
   geometry/         scene, poses, spherical<->Cartesian, meshes, ray casting, visibility
   instruments/       instrument error models (laser tracker first)
-  network/           multi-station least-squares solve (step 3+)
+  network/           multi-station least-squares solve
   characteristics/    tolerances, datums, covariance projection (step 4+)
   risk/               JCGM 106 conformity risk (step 5+)
   planning/           optimiser wrapper, objectives (step 6)
+  visualization/       matplotlib plotting of scenes and results (not a ladder step)
 tests/               pytest, alongside the code it tests
 scenes/              test geometry (synthetic to start)
 docs/                literature notes, derivations
 results/             experiment outputs — never edited by hand
 ```
+
+## Visualizing results
+
+```python
+from geometry.pose import InstrumentPose
+from geometry.scene import Scene
+from instruments.laser_tracker import LaserTracker
+from visualization.plotting import plot_scene
+
+scene = Scene(target_points_m=my_points, instrument_pose=InstrumentPose(position_m=my_station))
+fig, ax = plot_scene(scene, tracker=LaserTracker(), title="my scene")
+fig.savefig("results/my_scene.png")  # or fig.show() in a notebook
+```
+
+`plot_scene` also takes `visibility_results` (from `geometry.visibility.
+scene_visibility`) to colour targets by why they can/can't be measured,
+and `network.solve` results plot with `visualization.plotting.
+plot_network_result` / `plot_uncertainty_vs_station_count`. See
+`src/visualization/plotting.py`'s module docstring for the exaggeration
+convention used for covariance ellipsoids (they're micrometre-scale next
+to a metre-scale scene, so are drawn scaled up and always labelled with
+the factor).
