@@ -1,4 +1,4 @@
 """Station-placement optimiser wrapper: uniform-weight vs risk-derived-weight objectives.
 
-Not yet built -- this is build step 6, the headline experiment (CLAUDE.md §5).
+See planning.experiment (CLAUDE.md §5, step 6 -- the headline experiment).
 """
