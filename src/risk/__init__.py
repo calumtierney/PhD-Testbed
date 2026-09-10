@@ -1,4 +1,4 @@
 """JCGM 106 conformity decision risk layer.
 
-Not yet built -- this is build step 5 (CLAUDE.md §5).
+See risk.jcgm106 (CLAUDE.md §5, step 5).
 """

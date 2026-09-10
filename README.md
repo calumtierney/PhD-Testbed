@@ -66,6 +66,11 @@ complete:
   direction they actually constrain, so the same measurement gives
   different tolerance types different uncertainties
   (`docs/step4_characteristic_layer_physics.md`).
+- **step 5** — the JCGM 106 conformity risk layer: global probability of
+  false acceptance/rejection from a characteristic's uncertainty, its
+  tolerance limits, and a process-capability prior held per
+  feature-cluster (not per characteristic — CLAUDE.md §3)
+  (`docs/step5_risk_layer_physics.md`).
 
 **Visualization** (`src/visualization`, not one of the six steps — see
 its module docstring): matplotlib plotting for scenes, per-point error
@@ -87,7 +92,7 @@ src/
   instruments/       instrument error models (laser tracker first)
   network/           multi-station least-squares solve
   characteristics/    tolerances, datums, covariance projection onto the tolerance direction
-  risk/               JCGM 106 conformity risk (step 5+)
+  risk/               JCGM 106 conformity risk: global PFA/PFR per characteristic
   planning/           optimiser wrapper, objectives (step 6)
   visualization/       matplotlib plotting of scenes and results (not a ladder step)
 tests/               pytest, alongside the code it tests
@@ -112,9 +117,13 @@ fig.savefig("results/my_scene.png")  # or fig.show() in a notebook
 `plot_scene` also takes `visibility_results` (from `geometry.visibility.
 scene_visibility`) to colour targets by why they can/can't be measured,
 `network.solve` results plot with `visualization.plotting.
-plot_network_result` / `plot_uncertainty_vs_station_count`, and
+plot_network_result` / `plot_uncertainty_vs_station_count`,
 characteristic comparisons (step 4 — several tolerance types on one
-point) plot with `plot_characteristic_comparison`. See
+point) plot with `plot_characteristic_comparison`, and conformity risk
+(step 5 — `risk.jcgm106`) plots with `plot_risk_vs_uncertainty` (risk
+against uncertainty, one line per process/cluster, log-scaled since a
+high-capability and a marginal process's risk typically differ by many
+orders of magnitude at the same uncertainty). See
 `src/visualization/plotting.py`'s module docstring for the exaggeration
 convention used for covariance ellipsoids (they're micrometre-scale next
 to a metre-scale scene, so are drawn scaled up and always labelled with

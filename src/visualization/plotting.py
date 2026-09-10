@@ -55,6 +55,7 @@ from geometry.pose import InstrumentPose
 from geometry.scene import Scene
 from geometry.visibility import VisibilityReason, VisibilityResult
 from network.solve import NetworkSolveResult
+from risk.jcgm106 import RiskResult
 
 _VISIBILITY_COLORS = {
     VisibilityReason.VISIBLE: "tab:green",
@@ -334,4 +335,51 @@ def plot_characteristic_comparison(
     ax.set_ylabel("characteristic uncertainty [µm]")
     ax.set_title(title)
     ax.grid(axis="y", alpha=0.3)
+    return fig, ax
+
+
+def plot_risk_vs_uncertainty(
+    uncertainties_m: Iterable[float],
+    results_by_case: Dict[str, List[RiskResult]],
+    ax=None,
+    title: str = "Global conformity risk vs measurement uncertainty",
+    log_scale: bool = True,
+):
+    """The step 5 gate, plotted (CLAUDE.md §5): total global risk
+    (PFA + PFR, from `risk.jcgm106.evaluate_conformity_risk`) against
+    measurement uncertainty, for one or more cases -- typically a
+    high-capability process next to a marginal one, so the qualitative
+    difference the gate describes ("near-zero... regardless of
+    uncertainty" vs "strongly sensitive to uncertainty") is visible
+    directly on a figure, not just asserted in a test.
+
+    `results_by_case` maps a case label to a list of `RiskResult`, one per
+    entry in `uncertainties_m`, in the same order (exactly what sweeping
+    `evaluate_conformity_risk` across a range of uncertainty values for a
+    fixed `ClusterAssignment`/`DecisionRule` produces).
+
+    A high-capability and a marginal process's risk at the same
+    uncertainty typically differ by many *orders of magnitude* (a
+    difference in kind, not degree -- see
+    `docs/step5_risk_layer_physics.md`), so the y-axis defaults to log
+    scale: on a linear axis the high-capability case would flatten
+    invisibly onto the x-axis next to the marginal one.
+    """
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(6.5, 4.5))
+    else:
+        fig = ax.figure
+
+    uncertainties_um = [u * 1e6 for u in uncertainties_m]
+    for label, results in results_by_case.items():
+        total_risk = [r.probability_false_acceptance + r.probability_false_rejection for r in results]
+        ax.plot(uncertainties_um, total_risk, "o-", label=label)
+
+    if log_scale:
+        ax.set_yscale("log")
+    ax.set_xlabel("measurement uncertainty [µm]")
+    ax.set_ylabel("global risk (PFA + PFR)")
+    ax.set_title(title)
+    ax.legend(fontsize=8)
+    ax.grid(alpha=0.3, which="both")
     return fig, ax

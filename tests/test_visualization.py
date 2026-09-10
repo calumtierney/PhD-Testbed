@@ -26,10 +26,12 @@ from network.solve import (
     simulate_observations,
     solve_network,
 )
+from risk.jcgm106 import ClusterAssignment, DecisionRule, FeatureCluster, ProcessPrior, evaluate_conformity_risk
 from visualization.plotting import (
     plot_characteristic_comparison,
     plot_error_ellipsoid,
     plot_network_result,
+    plot_risk_vs_uncertainty,
     plot_scene,
     plot_uncertainty_vs_station_count,
 )
@@ -134,3 +136,18 @@ def test_plot_characteristic_comparison():
     fig, ax = plot_characteristic_comparison(["position", "flatness"], results)
     assert fig is not None
     assert ax.get_ylabel().startswith("characteristic")
+
+
+def test_plot_risk_vs_uncertainty():
+    tolerance = DecisionRule.simple_acceptance(-50e-6, 50e-6)
+    uncertainties_m = [1e-6, 5e-6, 10e-6]
+    high_capability = ClusterAssignment("c1", FeatureCluster("A", ProcessPrior(0.0, 5e-6)))
+    marginal = ClusterAssignment("c2", FeatureCluster("B", ProcessPrior(40e-6, 6e-6)))
+
+    results_by_case = {
+        "high-capability": [evaluate_conformity_risk(high_capability, u, tolerance) for u in uncertainties_m],
+        "marginal": [evaluate_conformity_risk(marginal, u, tolerance) for u in uncertainties_m],
+    }
+    fig, ax = plot_risk_vs_uncertainty(uncertainties_m, results_by_case)
+    assert fig is not None
+    assert ax.get_yscale() == "log"
