@@ -26,11 +26,13 @@ from network.solve import (
     simulate_observations,
     solve_network,
 )
+from planning.experiment import run_headline_experiment
 from risk.jcgm106 import ClusterAssignment, DecisionRule, FeatureCluster, ProcessPrior, evaluate_conformity_risk
 from visualization.plotting import (
     plot_characteristic_comparison,
     plot_error_ellipsoid,
     plot_network_result,
+    plot_plan_comparison,
     plot_risk_vs_uncertainty,
     plot_scene,
     plot_uncertainty_vs_station_count,
@@ -151,3 +153,14 @@ def test_plot_risk_vs_uncertainty():
     fig, ax = plot_risk_vs_uncertainty(uncertainties_m, results_by_case)
     assert fig is not None
     assert ax.get_yscale() == "log"
+
+
+def test_plot_plan_comparison():
+    result = run_headline_experiment(azimuths_deg=[0, 120, 240], elevations_deg=[30], n_stations=2)
+    names = [c.name for c in result.scenario.characteristics]
+    u_a = [result.plan_a.per_characteristic_uncertainty_m[n] for n in names]
+    u_b = [result.plan_b.per_characteristic_uncertainty_m[n] for n in names]
+
+    fig, ax = plot_plan_comparison(names, u_a, u_b)
+    assert fig is not None
+    assert len(ax.patches) == 2 * len(names)

@@ -186,6 +186,35 @@ def simulate_observations(
     return observations
 
 
+def exact_observations(
+    target_points_m: np.ndarray, station_poses: List[InstrumentPose]
+) -> List[Observation]:
+    """Every station-target observation, computed exactly -- no noise --
+    at the given geometry: every station observes every target.
+
+    This is `simulate_observations`'s noiseless counterpart, for network
+    *design* questions ("how precise would this station arrangement be")
+    rather than fitting real or simulated data. Feeding these into
+    `solve_network` with the same geometry as the initial guess converges
+    immediately (every residual is already exactly zero) and returns the
+    design covariance -- to numerical precision, the same `(J^T J)^-1` a
+    real noisy solve at this geometry would converge to (see CLAUDE.md §5
+    step 6 / docs/step6_headline_experiment.md for the direct empirical
+    check), without paying for an actual noisy nonlinear fit. Used by
+    `planning` to score many candidate station arrangements cheaply and
+    deterministically -- no RNG needed during a search, so every
+    candidate is compared on equal footing.
+    """
+    observations = []
+    n_targets = target_points_m.shape[0]
+    for station_index, pose in enumerate(station_poses):
+        for target_index in range(n_targets):
+            point_local_m = pose.to_local(target_points_m[target_index])
+            d_m, theta_rad, phi_rad = cartesian_to_spherical(point_local_m)
+            observations.append(Observation(station_index, target_index, d_m, theta_rad, phi_rad))
+    return observations
+
+
 def perturbed_initial_guess(
     true_target_points_m: np.ndarray,
     true_station_poses: List[InstrumentPose],

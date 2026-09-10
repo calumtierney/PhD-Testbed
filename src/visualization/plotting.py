@@ -383,3 +383,36 @@ def plot_risk_vs_uncertainty(
     ax.legend(fontsize=8)
     ax.grid(alpha=0.3, which="both")
     return fig, ax
+
+
+def plot_plan_comparison(
+    labels: List[str],
+    uncertainty_a_m: List[float],
+    uncertainty_b_m: List[float],
+    label_a: str = "A (uniform)",
+    label_b: str = "B (risk-weighted)",
+    ax=None,
+    title: str = "Per-characteristic uncertainty: uniform vs risk-weighted plan",
+):
+    """The step 6 headline comparison, plotted (CLAUDE.md §5): grouped
+    bars of each characteristic's uncertainty under plan A (uniform
+    weights) next to plan B (risk-derived weights) -- so the
+    redistribution of measurement effort between characteristics (or the
+    absence of one) is visible directly, not just in a results table.
+    """
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(7.5, 4.5))
+    else:
+        fig = ax.figure
+
+    x = np.arange(len(labels))
+    width = 0.35
+    ax.bar(x - width / 2, [u * 1e6 for u in uncertainty_a_m], width, label=label_a, color="tab:blue")
+    ax.bar(x + width / 2, [u * 1e6 for u in uncertainty_b_m], width, label=label_b, color="tab:orange")
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=8)
+    ax.set_ylabel("characteristic uncertainty [µm]")
+    ax.set_title(title)
+    ax.legend(fontsize=8)
+    ax.grid(axis="y", alpha=0.3)
+    return fig, ax

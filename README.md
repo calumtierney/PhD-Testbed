@@ -71,6 +71,15 @@ complete:
   tolerance limits, and a process-capability prior held per
   feature-cluster (not per characteristic — CLAUDE.md §3)
   (`docs/step5_risk_layer_physics.md`).
+- **step 6 — the headline experiment** — a grid-search optimiser wrapper
+  compares uniform-weight (A-optimal) vs risk-derived-weight station
+  placement, everything else held identical. Result: the two plans
+  differ, in the direction the hypothesis predicts (effort pulled from a
+  high-capability cluster towards a marginal one; global risk down 1.9%
+  at the cost of 11.3% higher traditional "total uncertainty"), modestly
+  in this scene, for reasons the write-up explains
+  (`docs/step6_headline_experiment.md`). The full six-step chain is now
+  built end to end.
 
 **Visualization** (`src/visualization`, not one of the six steps — see
 its module docstring): matplotlib plotting for scenes, per-point error
@@ -93,7 +102,7 @@ src/
   network/           multi-station least-squares solve
   characteristics/    tolerances, datums, covariance projection onto the tolerance direction
   risk/               JCGM 106 conformity risk: global PFA/PFR per characteristic
-  planning/           optimiser wrapper, objectives (step 6)
+  planning/           grid-search station placement; uniform vs risk-derived-weight objectives
   visualization/       matplotlib plotting of scenes and results (not a ladder step)
 tests/               pytest, alongside the code it tests
 scenes/              test geometry (synthetic to start)
@@ -119,12 +128,13 @@ scene_visibility`) to colour targets by why they can/can't be measured,
 `network.solve` results plot with `visualization.plotting.
 plot_network_result` / `plot_uncertainty_vs_station_count`,
 characteristic comparisons (step 4 — several tolerance types on one
-point) plot with `plot_characteristic_comparison`, and conformity risk
+point) plot with `plot_characteristic_comparison`, conformity risk
 (step 5 — `risk.jcgm106`) plots with `plot_risk_vs_uncertainty` (risk
 against uncertainty, one line per process/cluster, log-scaled since a
 high-capability and a marginal process's risk typically differ by many
-orders of magnitude at the same uncertainty). See
-`src/visualization/plotting.py`'s module docstring for the exaggeration
-convention used for covariance ellipsoids (they're micrometre-scale next
-to a metre-scale scene, so are drawn scaled up and always labelled with
-the factor).
+orders of magnitude at the same uncertainty), and the step 6 headline
+comparison (uniform vs risk-weighted plans) plots with
+`plot_plan_comparison`. See `src/visualization/plotting.py`'s module
+docstring for the exaggeration convention used for covariance ellipsoids
+(they're micrometre-scale next to a metre-scale scene, so are drawn
+scaled up and always labelled with the factor).
