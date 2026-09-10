@@ -13,11 +13,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
+from characteristics.characteristic import Characteristic, evaluate_characteristic
+from characteristics.tolerances import FlatnessTolerance, PositionTolerance
 from geometry.mesh import load_stl
 from geometry.pose import InstrumentPose
 from geometry.scene import Scene
 from geometry.visibility import VisibilityLimits, scene_visibility
-from instruments.laser_tracker import LaserTracker
+from instruments.laser_tracker import LaserTracker, scene_point_covariances
 from network.solve import (
     mean_positional_uncertainty_m,
     perturbed_initial_guess,
@@ -25,6 +27,7 @@ from network.solve import (
     solve_network,
 )
 from visualization.plotting import (
+    plot_characteristic_comparison,
     plot_error_ellipsoid,
     plot_network_result,
     plot_scene,
@@ -111,3 +114,23 @@ def test_plot_functions_accept_existing_axes():
     returned_fig, returned_ax = plot_scene(scene, ax=ax)
     assert returned_fig is fig
     assert returned_ax is ax
+
+
+def test_plot_characteristic_comparison():
+    tracker = LaserTracker()
+    pose = InstrumentPose(position_m=np.zeros(3))
+    scene = Scene(target_points_m=np.array([[2.5, 0.0, 0.0]]), instrument_pose=pose)
+    covariances = scene_point_covariances(scene, tracker)
+
+    position = Characteristic("position", [0], PositionTolerance(zone_diameter_m=1e-4))
+    flatness = Characteristic(
+        "flatness", [0], FlatnessTolerance(zone_width_m=5e-5, surface_normal=np.array([0.0, 1.0, 0.0]))
+    )
+    results = [
+        evaluate_characteristic(position, covariances)[0],
+        evaluate_characteristic(flatness, covariances)[0],
+    ]
+
+    fig, ax = plot_characteristic_comparison(["position", "flatness"], results)
+    assert fig is not None
+    assert ax.get_ylabel().startswith("characteristic")

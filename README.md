@@ -61,6 +61,11 @@ complete:
   station poses estimated jointly by weighted nonlinear least squares,
   returning the full covariance over every target coordinate
   (`docs/step3_network_solve_physics.md`).
+- **step 4** — the characteristic layer: position, flatness and
+  parallelism tolerances each project a point's covariance onto the
+  direction they actually constrain, so the same measurement gives
+  different tolerance types different uncertainties
+  (`docs/step4_characteristic_layer_physics.md`).
 
 **Visualization** (`src/visualization`, not one of the six steps — see
 its module docstring): matplotlib plotting for scenes, per-point error
@@ -81,7 +86,7 @@ src/
   geometry/         scene, poses, spherical<->Cartesian, meshes, ray casting, visibility
   instruments/       instrument error models (laser tracker first)
   network/           multi-station least-squares solve
-  characteristics/    tolerances, datums, covariance projection (step 4+)
+  characteristics/    tolerances, datums, covariance projection onto the tolerance direction
   risk/               JCGM 106 conformity risk (step 5+)
   planning/           optimiser wrapper, objectives (step 6)
   visualization/       matplotlib plotting of scenes and results (not a ladder step)
@@ -106,8 +111,10 @@ fig.savefig("results/my_scene.png")  # or fig.show() in a notebook
 
 `plot_scene` also takes `visibility_results` (from `geometry.visibility.
 scene_visibility`) to colour targets by why they can/can't be measured,
-and `network.solve` results plot with `visualization.plotting.
-plot_network_result` / `plot_uncertainty_vs_station_count`. See
+`network.solve` results plot with `visualization.plotting.
+plot_network_result` / `plot_uncertainty_vs_station_count`, and
+characteristic comparisons (step 4 — several tolerance types on one
+point) plot with `plot_characteristic_comparison`. See
 `src/visualization/plotting.py`'s module docstring for the exaggeration
 convention used for covariance ellipsoids (they're micrometre-scale next
 to a metre-scale scene, so are drawn scaled up and always labelled with

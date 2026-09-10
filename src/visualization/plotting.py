@@ -49,6 +49,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
+from characteristics.characteristic import CharacteristicPointUncertainty
 from geometry.mesh import TriangleMesh
 from geometry.pose import InstrumentPose
 from geometry.scene import Scene
@@ -301,4 +302,36 @@ def plot_uncertainty_vs_station_count(
     ax.set_xticks(station_counts)
     ax.legend(fontsize=8)
     ax.grid(alpha=0.3)
+    return fig, ax
+
+
+def plot_characteristic_comparison(
+    labels: List[str],
+    results: List[CharacteristicPointUncertainty],
+    ax=None,
+    title: str = "Characteristic uncertainty by tolerance type",
+):
+    """Bar chart of `uncertainty_m` (see `characteristics.characteristic.
+    evaluate_characteristic`) across several characteristics -- the step 4
+    gate (CLAUDE.md §5), plotted: different tolerance types on the same
+    feature reading different uncertainties off the same covariance.
+
+    `labels` and `results` must be the same length and in the same order
+    (one label per `CharacteristicPointUncertainty`, e.g. from evaluating
+    a position, a flatness and a parallelism characteristic on one point).
+    This deliberately plots only the scalar `uncertainty_m` summary, not
+    each result's full `projected_covariance_m2` -- a bar chart has one
+    number per bar; see `docs/step4_characteristic_layer_physics.md` for
+    the full projected covariances behind each bar.
+    """
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(6, 4.5))
+    else:
+        fig = ax.figure
+
+    uncertainties_um = [r.uncertainty_m * 1e6 for r in results]
+    ax.bar(labels, uncertainties_um, color="tab:blue")
+    ax.set_ylabel("characteristic uncertainty [µm]")
+    ax.set_title(title)
+    ax.grid(axis="y", alpha=0.3)
     return fig, ax
