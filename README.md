@@ -35,16 +35,22 @@ under `src/`:
    covariance onto the direction a specific GD&T tolerance actually
    constrains. A position tolerance and a parallelism tolerance on the
    same feature see different uncertainties from the same measurement.
+   (One tolerance type here is named `ProfileTolerance`, not "flatness" —
+   it's one point's signed normal deviation, not true multi-point,
+   minimum-zone GD&T flatness; see `characteristics/tolerances.py`'s
+   naming note.)
 6. **Conformity decision risk** (`src/risk`) — JCGM 106: turn a
    characteristic's uncertainty, its tolerance limits and a process
    capability prior into a probability of false acceptance / false
    rejection.
 
 `src/planning` wraps a conventional optimiser around station placement and
-compares two objectives over that chain: minimise uncertainty (uniform
-weights) versus minimise decision risk (risk-derived weights). That
-comparison is the experiment the project exists to run — see `CLAUDE.md`
-§5, step 6.
+compares four objectives over that chain (CLAUDE.md §5, step 6 — the
+headline experiment): the field's actual A-optimal criterion (trace of
+the raw coordinate covariance), uniform weights on projected
+characteristic uncertainty, linearised risk-derived weights, and direct
+nonlinear risk minimisation. That comparison is the experiment the
+project exists to run.
 
 ## Status
 
@@ -61,7 +67,7 @@ complete:
   station poses estimated jointly by weighted nonlinear least squares,
   returning the full covariance over every target coordinate
   (`docs/step3_network_solve_physics.md`).
-- **step 4** — the characteristic layer: position, flatness and
+- **step 4** — the characteristic layer: position, profile and
   parallelism tolerances each project a point's covariance onto the
   direction they actually constrain, so the same measurement gives
   different tolerance types different uncertainties
@@ -72,14 +78,19 @@ complete:
   feature-cluster (not per characteristic — CLAUDE.md §3)
   (`docs/step5_risk_layer_physics.md`).
 - **step 6 — the headline experiment** — a grid-search optimiser wrapper
-  compares uniform-weight (A-optimal) vs risk-derived-weight station
-  placement, everything else held identical. Result: the two plans
-  differ, in the direction the hypothesis predicts (effort pulled from a
-  high-capability cluster towards a marginal one; global risk down 1.9%
-  at the cost of 11.3% higher traditional "total uncertainty"), modestly
-  in this scene, for reasons the write-up explains
-  (`docs/step6_headline_experiment.md`). The full six-step chain is now
-  built end to end.
+  compares four station-placement objectives (A0: trace of the raw
+  coordinate covariance, the field's actual criterion; A1: uniform
+  weights on projected characteristic uncertainty; B: linearised
+  risk-derived weights; C: direct nonlinear risk minimisation) with
+  everything else held identical. Result: the risk-based objectives
+  differ from A0/A1, in the direction the hypothesis predicts (effort
+  pulled from a high-capability cluster towards a marginal one; global
+  risk down, at the cost of higher traditional "summed uncertainty"),
+  modestly in this scene, for reasons the write-up explains, plus an
+  iso-risk comparison (risk-weighting reaches a given risk target with
+  fewer stations at some targets) and a guard against unbounded
+  degradation (`docs/step6_headline_experiment.md`). The full six-step
+  chain is now built end to end.
 
 **Visualization** (`src/visualization`, not one of the six steps — see
 its module docstring): matplotlib plotting for scenes, per-point error

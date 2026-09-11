@@ -87,9 +87,16 @@ def _set_equal_3d_aspect(ax, points_m: np.ndarray):
 
 
 def _label_exaggeration(ax, scale: float):
+    # Top-right, not bottom-left: a 3D Axes' tick labels and axis labels
+    # (x/y/z) routinely spill outside the nominal (0-1) transAxes box
+    # along the bottom and left edges, so a label placed near (0, 0)
+    # reliably lands on top of them. Top-right, with its own background
+    # patch, stays clear of the axis furniture and of the legend (which
+    # every caller of this function places top-left).
     ax.text2D(
-        0.02, 0.02, f"ellipsoids exaggerated {scale:.0f}x",
-        transform=ax.transAxes, fontsize=8, color="gray",
+        0.98, 0.98, f"ellipsoids exaggerated {scale:.0f}x",
+        transform=ax.transAxes, fontsize=8, color="dimgray", ha="right", va="top",
+        bbox=dict(facecolor="white", edgecolor="none", alpha=0.7, pad=2),
     )
 
 
@@ -319,7 +326,7 @@ def plot_characteristic_comparison(
 
     `labels` and `results` must be the same length and in the same order
     (one label per `CharacteristicPointUncertainty`, e.g. from evaluating
-    a position, a flatness and a parallelism characteristic on one point).
+    a position, a profile and a parallelism characteristic on one point).
     This deliberately plots only the scalar `uncertainty_m` summary, not
     each result's full `projected_covariance_m2` -- a bar chart has one
     number per bar; see `docs/step4_characteristic_layer_physics.md` for

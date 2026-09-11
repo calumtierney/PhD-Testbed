@@ -11,7 +11,7 @@ import numpy as np
 import pytest
 
 from characteristics.characteristic import Characteristic, evaluate_characteristic
-from characteristics.tolerances import FlatnessTolerance
+from characteristics.tolerances import ProfileTolerance
 from geometry.pose import InstrumentPose
 from geometry.scene import Scene
 from instruments.laser_tracker import LaserTracker, scene_point_covariances
@@ -74,7 +74,7 @@ def test_high_capability_process_shows_near_zero_risk_regardless_of_uncertainty(
     Cpk ~ 3.33, comfortably 'high-capability'. Across the whole realistic
     uncertainty range, total risk should stay tiny."""
     cluster = FeatureCluster("high-capability cluster", ProcessPrior(mean_m=0.0, std_m=5e-6))
-    assignment = ClusterAssignment("hole A flatness", cluster, confidence=0.9)
+    assignment = ClusterAssignment("hole A profile", cluster, confidence=0.9)
 
     for uncertainty_m in _UNCERTAINTIES_M:
         result = evaluate_conformity_risk(assignment, uncertainty_m, _TOLERANCE)
@@ -92,7 +92,7 @@ def test_marginal_process_risk_is_strongly_sensitive_to_uncertainty():
     -- not just detectably -- as uncertainty increases across the same
     realistic range."""
     cluster = FeatureCluster("marginal cluster", ProcessPrior(mean_m=40e-6, std_m=6e-6))
-    assignment = ClusterAssignment("hole B flatness", cluster, confidence=0.7)
+    assignment = ClusterAssignment("hole B profile", cluster, confidence=0.7)
 
     total_risks = []
     for uncertainty_m in _UNCERTAINTIES_M:
@@ -158,9 +158,9 @@ def test_evaluate_characteristic_risk_chains_onto_step4():
     covariances = scene_point_covariances(scene, tracker)
 
     characteristic = Characteristic(
-        name="flatness",
+        name="profile",
         target_indices=[0],
-        tolerance=FlatnessTolerance(zone_width_m=1e-4, surface_normal=np.array([0.0, 1.0, 0.0])),
+        tolerance=ProfileTolerance(zone_width_m=1e-4, surface_normal=np.array([0.0, 1.0, 0.0])),
     )
     point_uncertainty = evaluate_characteristic(characteristic, covariances)[0]
 

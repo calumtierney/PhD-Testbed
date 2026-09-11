@@ -1,42 +1,49 @@
-"""The two objectives compared in step 6, the headline experiment
-(CLAUDE.md §5, step 6):
+"""The objectives compared in step 6, the headline experiment (CLAUDE.md
+§5, step 6), and the ablation a supervisory review of the resulting paper
+required (see docs/step6_headline_experiment.md's "Ablation" section for
+the full reasoning; summarised here):
 
-  A. **Uniform weights** -- minimise the plain sum of characteristic
-     uncertainties. Applied at the characteristic level (post step 4's
-     projection) rather than the raw coordinate level, this is the
-     A-optimal criterion (CLAUDE.md §1: "minimising the trace of the
-     coordinate variance matrix") the field currently uses.
-  B. **Risk-derived weights** -- minimise a WEIGHTED sum of the same
-     uncertainties, where each characteristic's weight is the local
-     sensitivity of its own expected decision risk (global PFA + PFR,
-     step 5) to its own uncertainty.
+  A0. **Trace of the full 3D point covariance** -- the field's actual
+      A-optimal criterion (a sum of *variances*): Schmitt et al. 2016
+      literally minimise this trace; Cai 2013 and Wang, Forbes &
+      Maropoulos 2014 minimise closely related sums of point standard
+      uncertainties. Ignores tolerance direction entirely.
+  A1. **Uniform weights on projected characteristic uncertainty** --
+      what this codebase calls "Plan A". This is *already* a
+      goal-oriented criterion (it uses step 4's tolerance-direction
+      projection), just an unweighted one -- not literally A0, though it
+      behaves similarly when, as here, every characteristic happens to
+      share one projected direction and one tolerance.
+  B.  **Risk-derived weights** on the same projected uncertainties --
+      "Plan B": each characteristic's weight is the *linearised*
+      sensitivity of its own expected decision risk to its own
+      uncertainty, computed once before the search (a fixed reference
+      point), not recomputed per candidate.
+  C.  **Direct nonlinear risk minimisation** -- no linearised weight
+      proxy at all: score each candidate by its actual, achieved global
+      risk, recomputed exactly for that candidate's own uncertainty.
 
-Both objectives are evaluated over *exactly* the same pipeline --
-`evaluate_plan` below runs the same network solve, the same per-
-characteristic projection, the same risk model -- for either. Only the
-weight vector multiplying the per-characteristic uncertainties before
-summing differs (CLAUDE.md §1: "replacing the objective function, not the
-optimiser"). See docs/step6_headline_experiment.md for the full picture.
+All four share *exactly* the same `evaluate_plan` (one network solve, one
+step 4 projection per characteristic) -- CLAUDE.md §1's "replacing the
+objective function, not the optimiser" is implemented literally: one
+evaluation, four interchangeable scoring functions (`ObjectiveFn` below),
+picked as a plain argument to `planning.search.grid_search_station_placement`.
 
-**Why a sensitivity weight, not the risk itself.** The natural first idea
--- weight each characteristic by its own risk -- doesn't quite make
-sense as an *optimisation* weight: risk is what the search is trying to
-reduce, and a station arrangement changes *uncertainty*, not risk
-directly (risk is a function of uncertainty, via the step 5 integral).
-The quantity that actually says "how much would reducing this
-characteristic's uncertainty by a little help" is the local slope,
-`d(risk)/d(uncertainty)`, evaluated at a realistic operating uncertainty
--- exactly what CLAUDE.md §5 step 6 asks for: weight each characteristic
-"by the sensitivity of expected decision cost to its uncertainty". A
-characteristic on the flat part of its risk curve (a high-capability
-process -- step 5's gate) has a near-zero slope: driving its uncertainty
-down barely moves its risk, so it should barely influence where stations
-go. A characteristic on the steep part (a marginal process) has a large
-slope: small uncertainty improvements there move risk substantially, so
-it should pull disproportionately on the plan.
+**Why B exists at all, next to C.** With the exact-observations shortcut
+(`evaluate_plan`'s docstring) a single evaluation costs ~10 ms, so C is
+computationally free to use directly -- there is no *runtime* reason to
+prefer B's linearised weight. B's reason to exist is a *deployment* one:
+CLAUDE.md's own "weighting substitution" framing is that a precomputed
+weight can be dropped into an *existing* weighted-sum planning tool
+(e.g. the Wang-Forbes-Maropoulos optimiser) without that tool ever
+needing to know about JCGM 106 risk at all -- only ever having to accept
+a per-characteristic weight, exactly as it already does for uniform
+weights. C needs the full risk model inside the search loop; B needs it
+only once, beforehand. Both are reported so a reader can see whether the
+linearisation costs anything in this scene (docs/step6_headline_experiment.md).
 """
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Callable, Dict, List, Optional
 
 import numpy as np
 
@@ -76,7 +83,7 @@ class PlanningScenario:
 
 
 def uniform_weights(scenario: PlanningScenario) -> np.ndarray:
-    """Objective A's weights: 1 for every characteristic."""
+    """Objective A1's weights: 1 for every characteristic."""
     return np.ones(len(scenario.characteristics))
 
 
@@ -99,14 +106,15 @@ def risk_derived_weights(
     candidate plan is currently being scored. Using the candidate's own
     achieved uncertainty would make the weights change *during* the
     search (a moving target: the objective a candidate is scored against
-    would depend on that candidate's own result), which would make A and
+    would depend on that candidate's own result), which would make A1 and
     B no longer comparable as "the same optimiser, different objective"
     (CLAUDE.md §3) -- the weights have to be fixed before the search
     starts, exactly as CLAUDE.md §5 step 6 describes them ("compute those
     weights from the risk layer", as a preprocessing step, not inside the
-    search loop).
+    search loop). Objective C below sidesteps this entirely by not
+    linearising at all.
 
-    Normalising to mean 1 puts B on the same total scale as A (which
+    Normalising to mean 1 puts B on the same total scale as A1 (which
     implicitly weights everything at 1): the comparison this way isolates
     *how the same total weight gets redistributed* between
     characteristics, rather than conflating that with an arbitrary
@@ -135,30 +143,36 @@ def risk_derived_weights(
 
 @dataclass(frozen=True)
 class PlanEvaluation:
-    """The outcome of scoring one candidate set of station poses.
+    """The raw outcome of evaluating one candidate set of station poses --
+    not yet reduced to a single objective value. Every `ObjectiveFn` below
+    is computed FROM this, so every objective sees exactly the same
+    physics (CLAUDE.md §1: "replacing the objective function, not the
+    optimiser").
 
     Attributes
     ----------
     station_poses : the additional (non-anchor) stations that were scored.
-    weighted_objective : sum(weight_i * uncertainty_m_i) -- what the
-        search minimises.
-    per_characteristic_uncertainty_m : characteristic name -> uncertainty,
-        unweighted -- for reporting (CLAUDE.md §5 step 6 asks for this
-        explicitly), independent of which objective produced this plan.
+    per_characteristic_uncertainty_m : characteristic name -> projected
+        (tolerance-direction) uncertainty -- step 4's output. Independent
+        of which objective produced this plan; CLAUDE.md §5 step 6 asks
+        for this to be reported regardless.
     network_solve : the full NetworkSolveResult this was computed from
-        (design covariance -- see `evaluate_plan`'s docstring).
+        (design covariance -- see `evaluate_plan`'s docstring), giving
+        access to each target's full 3x3 covariance for objectives that
+        need the raw coordinate covariance rather than a projection
+        (`objective_a0_trace_covariance` below).
     """
 
     station_poses: List[InstrumentPose]
-    weighted_objective: float
     per_characteristic_uncertainty_m: Dict[str, float]
     network_solve: NetworkSolveResult
 
 
-def evaluate_plan(
-    station_poses: List[InstrumentPose], scenario: PlanningScenario, weights: np.ndarray
-) -> PlanEvaluation:
-    """Score one candidate set of (non-anchor) station poses under `weights`.
+def evaluate_plan(station_poses: List[InstrumentPose], scenario: PlanningScenario) -> PlanEvaluation:
+    """Compute the raw ingredients (network solve, per-characteristic
+    uncertainty) for one candidate set of station poses -- deliberately
+    *not* reduced to a single score here; pass the result to whichever
+    `ObjectiveFn` the search is using.
 
     Solves the network from *exact* (noiseless) observations at the true
     scene geometry (`network.solve.exact_observations`) rather than
@@ -177,16 +191,119 @@ def evaluate_plan(
         observations, scenario.target_points_m.copy(), all_poses, scenario.tracker, anchor_index=0
     )
 
-    per_characteristic_uncertainty_m = {}
-    weighted_objective = 0.0
-    for characteristic, weight in zip(scenario.characteristics, weights):
-        uncertainty_m = evaluate_characteristic(characteristic, network_solve)[0].uncertainty_m
-        per_characteristic_uncertainty_m[characteristic.name] = uncertainty_m
-        weighted_objective += weight * uncertainty_m
-
+    per_characteristic_uncertainty_m = {
+        characteristic.name: evaluate_characteristic(characteristic, network_solve)[0].uncertainty_m
+        for characteristic in scenario.characteristics
+    }
     return PlanEvaluation(
         station_poses=list(station_poses),
-        weighted_objective=weighted_objective,
         per_characteristic_uncertainty_m=per_characteristic_uncertainty_m,
         network_solve=network_solve,
     )
+
+
+# An ObjectiveFn takes one evaluation (plus the scenario it was computed
+# under, for anything an objective needs beyond the evaluation itself --
+# e.g. C needs each characteristic's ClusterAssignment/DecisionRule to
+# compute risk) and returns a single value the search minimises.
+ObjectiveFn = Callable[[PlanEvaluation, PlanningScenario], float]
+
+
+def make_weighted_uncertainty_objective(weights: np.ndarray) -> ObjectiveFn:
+    """Objectives A1 (`weights=uniform_weights(...)`) and B
+    (`weights=risk_derived_weights(...)`): `sum(weight_i * uncertainty_i)`
+    over projected characteristic uncertainties.
+    """
+
+    def objective(evaluation: PlanEvaluation, scenario: PlanningScenario) -> float:
+        return float(
+            sum(
+                w * evaluation.per_characteristic_uncertainty_m[c.name]
+                for w, c in zip(weights, scenario.characteristics)
+            )
+        )
+
+    return objective
+
+
+def objective_a0_trace_covariance(evaluation: PlanEvaluation, scenario: PlanningScenario) -> float:
+    """Objective A0: the field's actual criterion -- the trace of the
+    full 3D coordinate covariance (a sum of *variances*, not the
+    projected, tolerance-direction uncertainties A1 and B use), summed
+    over every target point a characteristic in this scenario involves.
+
+    This is genuinely different from A1: A1 already incorporates step 4's
+    tolerance-direction projection (a goal-oriented criterion on a linear
+    quantity of interest), whereas A0 is blind to tolerance direction
+    entirely -- the literal trace-of-covariance criterion Schmitt et al.
+    (2016) use, and the quantity Cai (2013) and Wang, Forbes & Maropoulos
+    (2014)'s summed-uncertainty criteria approximate. Including A0
+    alongside A1 in the ablation makes explicit that "Plan A" was never
+    literally the field's own criterion (see
+    docs/step6_headline_experiment.md's ablation section).
+    """
+    target_indices = sorted({index for c in scenario.characteristics for index in c.target_indices})
+    return float(
+        sum(np.trace(evaluation.network_solve.target_point_covariance(i)) for i in target_indices)
+    )
+
+
+def objective_c_direct_risk(evaluation: PlanEvaluation, scenario: PlanningScenario) -> float:
+    """Objective C: direct minimisation of total expected decision risk,
+    with no linearised weight proxy. Each candidate's score is the sum,
+    over every characteristic, of that characteristic's *actual* global
+    risk (PFA + PFR) computed from its own achieved uncertainty for this
+    exact candidate -- not a fixed-reference-point slope (contrast with
+    B, `make_weighted_uncertainty_objective(risk_derived_weights(...))`).
+
+    Cost-symmetric (implicitly K_FA = K_FR = 1, i.e. this minimises total
+    error *probability*, not total error *cost*): asymmetric consequence
+    costs (aerospace's K_FA >> K_FR, say) would multiply each term before
+    summing, but eliciting real cost figures is a data-gathering exercise
+    (CLAUDE.md never invents a reference number it doesn't have) rather
+    than a modelling one, so it is not built into this function --
+    a caller with real K_FA/K_FR figures can weight the two probabilities
+    before combining, in a variant of this function or a per-cluster
+    extension of `risk.jcgm106.RiskResult`.
+    """
+    total = 0.0
+    for characteristic in scenario.characteristics:
+        assignment = scenario.assignments[characteristic.name]
+        decision_rule = scenario.decision_rules[characteristic.name]
+        uncertainty_m = evaluation.per_characteristic_uncertainty_m[characteristic.name]
+        risk = evaluate_conformity_risk(assignment, uncertainty_m, decision_rule)
+        total += risk.probability_false_acceptance + risk.probability_false_rejection
+    return total
+
+
+def constrained_objective(
+    objective_fn: ObjectiveFn, max_uncertainty_m: Optional[float]
+) -> ObjectiveFn:
+    """Wrap any `ObjectiveFn` with a hard cap: a candidate where *any*
+    characteristic's projected uncertainty exceeds `max_uncertainty_m` is
+    disqualified (scored `+inf`) regardless of how well it does on the
+    objective itself.
+
+    Exists because a linearised risk weight (objective B) has no natural
+    floor: once a characteristic's weight is driven low enough (a
+    high-capability process on the flat part of its risk curve -- step
+    5), nothing in the objective stops that characteristic's own
+    uncertainty from growing without bound in exchange for an
+    arbitrarily small gain elsewhere, right up to where the small-
+    perturbation linearisation the weight was computed under stops being
+    a good approximation at all. A cap -- e.g. a minimum test uncertainty
+    ratio (TUR) or an absolute uncertainty ceiling a quality system
+    requires regardless of computed risk -- keeps every candidate the
+    search can choose within a regime a metrologist would actually
+    accept. `max_uncertainty_m=None` (the default via `grid_search_station_placement`)
+    applies no cap, reproducing the unconstrained objective exactly.
+    """
+    if max_uncertainty_m is None:
+        return objective_fn
+
+    def wrapped(evaluation: PlanEvaluation, scenario: PlanningScenario) -> float:
+        if any(u > max_uncertainty_m for u in evaluation.per_characteristic_uncertainty_m.values()):
+            return float("inf")
+        return objective_fn(evaluation, scenario)
+
+    return wrapped

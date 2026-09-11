@@ -15,15 +15,17 @@ This is only tractable because `n_stations` is small (the whole point of
 `candidates.py`'s reduction to a 2-DOF-per-station search space): the
 number of combinations is `C(n_candidates, n_stations)`, and every one of
 them costs one `objectives.evaluate_plan` call (one network solve, cheap
-because it's the noiseless/design-covariance shortcut, plus one
-projection and weighted sum per characteristic).
+because it's the noiseless/design-covariance shortcut) plus one call to
+whichever `objectives.ObjectiveFn` is being searched under -- A0, A1, B or
+C (`objectives.py`'s module docstring), or any of those wrapped in
+`objectives.constrained_objective` for a hard uncertainty cap.
 """
 import itertools
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 
 from geometry.pose import InstrumentPose
-from planning.objectives import PlanEvaluation, PlanningScenario, evaluate_plan
+from planning.objectives import ObjectiveFn, PlanEvaluation, PlanningScenario, evaluate_plan
 
 
 @dataclass(frozen=True)
@@ -32,14 +34,19 @@ class GridSearchResult:
 
     Attributes
     ----------
-    best : the lowest-weighted-objective PlanEvaluation found.
+    best : the lowest-objective-value PlanEvaluation found, or None if
+        every candidate was disqualified (e.g. by a `constrained_objective`
+        cap that nothing in the candidate set satisfies).
+    best_objective_value : the objective value `best` achieved (for
+        reporting/comparison across searches); None alongside `best=None`.
     all_evaluations : every candidate combination's PlanEvaluation, in the
         order evaluated -- kept for reporting/plotting (e.g. a
         distribution of achieved objective values across the candidate
         set), not just the single winner.
     """
 
-    best: PlanEvaluation
+    best: Optional[PlanEvaluation]
+    best_objective_value: Optional[float]
     all_evaluations: List[PlanEvaluation]
 
 
@@ -47,16 +54,24 @@ def grid_search_station_placement(
     candidate_poses: List[InstrumentPose],
     n_stations: int,
     scenario: PlanningScenario,
-    weights,
+    objective_fn: ObjectiveFn,
 ) -> GridSearchResult:
     """Exhaustively score every `n_stations`-combination of
-    `candidate_poses` under `weights`, returning the best and every
+    `candidate_poses` under `objective_fn`, returning the best and every
     evaluation.
 
     Combinations, not permutations: which candidate pose is "station 1"
     vs "station 2" doesn't affect a plan's quality (the network solve is
     symmetric in station order beyond the fixed anchor -- CLAUDE.md §5
     step 3), so there's no reason to pay for evaluating both orderings.
+
+    `objective_fn` is any `objectives.ObjectiveFn` -- e.g.
+    `objectives.make_weighted_uncertainty_objective(objectives.uniform_weights(scenario))`
+    for A1, the same with `risk_derived_weights(...)` for B,
+    `objectives.objective_a0_trace_covariance` for A0, or
+    `objectives.objective_c_direct_risk` for C -- optionally wrapped in
+    `objectives.constrained_objective` for a hard per-characteristic
+    uncertainty cap.
     """
     if n_stations > len(candidate_poses):
         raise ValueError(
@@ -64,9 +79,19 @@ def grid_search_station_placement(
         )
 
     all_evaluations = []
+    scored = []
     for combo_indices in itertools.combinations(range(len(candidate_poses)), n_stations):
         station_poses = [candidate_poses[i] for i in combo_indices]
-        all_evaluations.append(evaluate_plan(station_poses, scenario, weights))
+        evaluation = evaluate_plan(station_poses, scenario)
+        all_evaluations.append(evaluation)
+        value = objective_fn(evaluation, scenario)
+        if value < float("inf"):
+            scored.append((value, evaluation))
 
-    best = min(all_evaluations, key=lambda evaluation: evaluation.weighted_objective)
-    return GridSearchResult(best=best, all_evaluations=all_evaluations)
+    if not scored:
+        return GridSearchResult(best=None, best_objective_value=None, all_evaluations=all_evaluations)
+
+    best_value, best_evaluation = min(scored, key=lambda pair: pair[0])
+    return GridSearchResult(
+        best=best_evaluation, best_objective_value=best_value, all_evaluations=all_evaluations
+    )

@@ -73,7 +73,7 @@ gate, so it isn't built (CLAUDE.md §9).
 **Scope: one-dimensional tolerances only, for now.** The risk integral
 above is a classical 1D bilateral-tolerance calculation: a scalar `Y`
 against a scalar `[lower, upper]` interval. That maps directly onto a
-step 4 `FlatnessTolerance` or `ParallelismTolerance` characteristic (a
+step 4 `ProfileTolerance` or `ParallelismTolerance` characteristic (a
 single projected direction, `uncertainty_m` is exactly that direction's
 standard deviation). It does *not* map exactly onto a step 4
 `PositionTolerance` with more than one constrained direction: a spherical
@@ -198,7 +198,7 @@ class DecisionRule:
     def from_zone_width(cls, zone_width_m: float) -> "DecisionRule":
         """A symmetric bilateral tolerance of total width `zone_width_m`
         about the nominal target -- the natural reading of a step 4
-        `FlatnessTolerance`/`ParallelismTolerance`'s `zone_width_m`."""
+        `ProfileTolerance`/`ParallelismTolerance`'s `zone_width_m`."""
         half_width_m = zone_width_m / 2.0
         return cls.simple_acceptance(-half_width_m, half_width_m)
 

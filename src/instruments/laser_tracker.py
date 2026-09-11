@@ -41,7 +41,7 @@ axes are exactly range/azimuth/elevation), and the distinction between
 this sensor-noise-only model and the larger, environment-inclusive scatter
 Hughes et al. actually observed.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import numpy as np
 
@@ -79,11 +79,33 @@ class LaserTracker:
     sigma_d_m : range_m standard deviation (interferometer / ADM noise).
     sigma_theta_rad : azimuth_rad standard deviation (encoder noise).
     sigma_phi_rad : elevation_rad standard deviation (encoder noise).
+    systematic_std_m : an additional, ISOTROPIC standard uncertainty
+        (default 0.0 -- off unless a caller opts in) representing effects
+        this model otherwise omits entirely: calibration-parameter
+        uncertainty in the NPL 14-parameter geometric model (CLAUDE.md
+        §4d), thermal drift, atmospheric refraction, SMR/nest
+        repeatability, gravity sag and fixturing. None of these shrink
+        when a station is moved to a better spot -- they are *irreducible
+        by placement*, unlike sigma_d/theta/phi's beam-geometry-dependent
+        contribution above. Folding them into one isotropic number is a
+        deliberately crude placeholder, not a certified budget: real
+        systematic effects have their own directional and cross-station
+        correlation structure (e.g. thermal expansion scales a whole
+        network coherently; refraction varies along the specific beam
+        path) that an isotropic, per-point, independent term cannot
+        capture. It exists so a planning experiment can ask "what
+        fraction of my total uncertainty is even reallocatable by
+        placement" (see `network.solve.NetworkSolveResult` callers doing
+        that split) rather than silently pretending sensor noise is the
+        whole budget. Replacing it with a real multi-term budget is
+        exactly the next elaboration CLAUDE.md §6's "optimise/refine
+        later, once tests pass" points at -- not done here.
     """
 
     sigma_d_m: float = DEFAULT_SIGMA_D_M
     sigma_theta_rad: float = DEFAULT_SIGMA_THETA_ARCSEC * ARCSEC_TO_RAD
     sigma_phi_rad: float = DEFAULT_SIGMA_PHI_ARCSEC * ARCSEC_TO_RAD
+    systematic_std_m: float = 0.0
 
     def covariance_local(self, point_local_m: np.ndarray) -> np.ndarray:
         """3x3 Cartesian covariance of a measured point, in the instrument's
@@ -94,14 +116,21 @@ class LaserTracker:
         Cartesian Jacobian: Sigma_xyz = J @ Sigma_spherical @ J.T. This is
         first-order (linearised) error propagation, valid as long as the
         angular noise is small compared to one radian -- true here by
-        several orders of magnitude.
+        several orders of magnitude. `systematic_std_m`, if nonzero, is
+        added afterwards as an isotropic `systematic_std_m**2 * I` term
+        (see the class docstring) -- it does not go through the Jacobian,
+        since it is not modelled as arising from spherical-coordinate
+        noise in the first place.
         """
         d, theta, phi = cartesian_to_spherical(point_local_m)
         jacobian = spherical_jacobian(d, theta, phi)
         sigma_spherical = np.diag(
             [self.sigma_d_m**2, self.sigma_theta_rad**2, self.sigma_phi_rad**2]
         )
-        return jacobian @ sigma_spherical @ jacobian.T
+        covariance = jacobian @ sigma_spherical @ jacobian.T
+        if self.systematic_std_m > 0.0:
+            covariance = covariance + (self.systematic_std_m**2) * np.eye(3)
+        return covariance
 
     def covariance_global(self, point_global_m: np.ndarray, pose: InstrumentPose) -> np.ndarray:
         """3x3 Cartesian covariance of a measured point, in the global (scene) frame."""
@@ -129,3 +158,25 @@ def scene_point_covariances(scene: Scene, tracker: LaserTracker) -> np.ndarray:
             scene.target_points_m[i], scene.instrument_pose
         )
     return covariances
+
+
+def reallocatable_fraction(tracker: LaserTracker, point_local_m: np.ndarray) -> float:
+    """What share of this tracker's total variance at this point is
+    reallocatable by station placement, vs pinned by `systematic_std_m`
+    (see that field's docstring for what it does and doesn't model).
+
+    `trace(geometric-only covariance) / trace(total covariance)` --
+    1.0 if `systematic_std_m == 0` (nothing but placement matters, this
+    codebase's behaviour before this field existed); falls towards 0 as
+    the systematic term comes to dominate, meaning no amount of station
+    placement can improve matters further. A planning result quoting an
+    uncertainty *change* between two placements should be read alongside
+    this fraction: a placement effect can only ever move the
+    reallocatable share, never the rest.
+    """
+    total_variance = float(np.trace(tracker.covariance_local(point_local_m)))
+    geometric_only = replace(tracker, systematic_std_m=0.0)
+    geometric_variance = float(np.trace(geometric_only.covariance_local(point_local_m)))
+    if total_variance == 0.0:
+        return 1.0
+    return geometric_variance / total_variance
