@@ -15,13 +15,18 @@ draw that region differently:
   direction counts equally.
 - **Position with an axis** (a hole toleranced only in cross-section): a
   cylinder. Two directions count; the third (along the hole) doesn't.
-- **Flatness**: two parallel planes, oriented however the *measured
-  surface itself* best fits. One direction counts (perpendicular to those
-  planes); the other two (within the planes) don't.
+- **Profile** (one point's normal deviation — `ProfileTolerance` in code;
+  see its docstring for why this is deliberately *not* called "flatness":
+  real GD&T flatness is unilateral and evaluated from many points by a
+  minimum-zone fit, a genuinely different, harder thing than one point's
+  signed deviation): two parallel planes, oriented to the *measured
+  surface's own* nominal orientation at that point. One direction counts
+  (perpendicular to those planes); the other two (within the planes)
+  don't.
 - **Parallelism**: also two parallel planes, one direction — but that
   direction comes from an *external datum*, not from the surface being
   measured. A surface can be flat and still not parallel to something
-  else, so this direction can genuinely differ from flatness's.
+  else, so this direction can genuinely differ from a profile callout's.
 
 None of this is about how precisely the point was measured. It's about
 which part of "how precisely" a given tolerance is even asking about.
@@ -37,7 +42,7 @@ which slice of it gets to matter.
 
 ## The operation: projection
 
-For a tolerance that cares about one direction `d` (flatness,
+For a tolerance that cares about one direction `d` (profile,
 parallelism), the quantity that actually gets compared to the tolerance
 limit is the point's displacement *along* `d`: a single scalar,
 `d . (measured - true)`. That scalar is a linear combination of a
@@ -84,7 +89,7 @@ same covariance:
 | Tolerance | Constraint direction(s) | Projected variance | uncertainty_m |
 |---|---|---|---|
 | Parallelism, datum normal = x (along the beam) | `[1,0,0]` | `1.216^2` | **1.22 µm** |
-| Flatness, surface normal = y | `[0,1,0]` | `5.878^2` | **5.88 µm** |
+| Profile, surface normal = y | `[0,1,0]` | `5.878^2` | **5.88 µm** |
 | Position, spherical (no axis) | `[1,0,0],[0,1,0],[0,0,1]` | `1.216^2+5.878^2+8.413^2` | **10.33 µm** |
 
 The parallelism callout, by pure geometric luck of its datum pointing
@@ -99,14 +104,21 @@ ellipsoid each tolerance is asking about.
 This is CLAUDE.md §3's claim ("a hole-position tolerance and a
 parallelism tolerance on the same feature... carry different risk
 because they project the error ellipsoid differently") made numeric.
-It's also the reason existing tools' A-optimal planning (minimise the
-trace, i.e. effectively always answering the *position*-shaped question)
-can misallocate measurement effort: a plan optimised to minimise
-`trace(Cov)` is implicitly optimising for the spherical-position case,
-even for characteristics that are actually flatness or parallelism
-callouts reading a much smaller (or, in principle, larger) slice of that
-same covariance. Step 6, the headline experiment, is where this gets
-tested against an actual planning comparison.
+It's also the reason planning by an aggregate-uncertainty criterion can
+misallocate measurement effort: literal A-optimality (minimising
+`trace(Cov)`, the full 3D point covariance, no projection at all) is
+implicitly answering the *position*-shaped, all-directions-count
+question for every characteristic, even ones that are actually profile
+or parallelism callouts reading a much smaller (or, in principle, larger)
+slice of that same covariance. This point needs stating carefully: a
+uniform-weighted sum of *projected* characteristic uncertainties (step
+6's "A1") is already a step better than that -- it does use each
+tolerance's own direction -- so the real gap literal A-optimality (step
+6's "A0") leaves isn't projection itself, it's that *every* characteristic,
+projected or not, still gets the same weight regardless of how much its
+own risk actually depends on its own uncertainty. Step 6, the headline
+experiment, runs the full ablation (A0, A1, and the risk-weighted
+objectives) to make this precise rather than asserted.
 
 ## Why the rotation-invariance test matters
 
@@ -124,16 +136,19 @@ of any physical claim about the scene.
 
 ## What step 4 deliberately doesn't do yet
 
-A `Characteristic` can hold several target points (for a flatness callout
-spanning multiple measured points on one surface), and
-`evaluate_characteristic` will happily project each of them — but it
-returns a *per-point* breakdown, not a single combined number. Real GD&T
-flatness is usually evaluated as the range (max minus min) of several
-points' deviation from a best-fit plane, and the uncertainty of a range
-statistic over *correlated* Gaussian variables (the points share network
-solve history, so their projected deviations are not independent) is a
-genuinely harder problem — order statistics, not a direct projection.
-That's a plausible next elaboration, not something this build step's gate
-needs (CLAUDE.md §9): the gate is that different tolerance types project
-one point's covariance differently, which the worked example above shows
-directly.
+A `Characteristic` can hold several target points (e.g. several measured
+points on one surface), and `evaluate_characteristic` will happily
+project each of them — but it returns a *per-point* breakdown, not a
+single combined number. This is exactly why `ProfileTolerance` is named
+what it is rather than "flatness": real GD&T flatness is evaluated from
+*many* points as the range (max minus min) of their deviation from a
+best-fit plane, and the uncertainty of a range statistic over
+*correlated* Gaussian variables (the points share network solve history,
+so their projected deviations are not independent) is a genuinely harder
+problem — order statistics, not a direct projection, and not Gaussian or
+zero-mean the way a single point's signed deviation is. Building that is
+a plausible next elaboration, not something this build step's gate needs
+(CLAUDE.md §9): the gate is that different tolerance types project one
+point's covariance differently, which the worked example above shows
+directly, using the honest single-point characteristic this module
+actually implements.

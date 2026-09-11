@@ -14,7 +14,7 @@ import numpy as np
 import pytest
 
 from characteristics.characteristic import Characteristic, evaluate_characteristic
-from characteristics.tolerances import FlatnessTolerance, PositionTolerance
+from characteristics.tolerances import ProfileTolerance, PositionTolerance
 from geometry.mesh import load_stl
 from geometry.pose import InstrumentPose
 from geometry.scene import Scene
@@ -127,15 +127,15 @@ def test_plot_characteristic_comparison():
     covariances = scene_point_covariances(scene, tracker)
 
     position = Characteristic("position", [0], PositionTolerance(zone_diameter_m=1e-4))
-    flatness = Characteristic(
-        "flatness", [0], FlatnessTolerance(zone_width_m=5e-5, surface_normal=np.array([0.0, 1.0, 0.0]))
+    profile = Characteristic(
+        "profile", [0], ProfileTolerance(zone_width_m=5e-5, surface_normal=np.array([0.0, 1.0, 0.0]))
     )
     results = [
         evaluate_characteristic(position, covariances)[0],
-        evaluate_characteristic(flatness, covariances)[0],
+        evaluate_characteristic(profile, covariances)[0],
     ]
 
-    fig, ax = plot_characteristic_comparison(["position", "flatness"], results)
+    fig, ax = plot_characteristic_comparison(["position", "profile"], results)
     assert fig is not None
     assert ax.get_ylabel().startswith("characteristic")
 
@@ -158,7 +158,7 @@ def test_plot_risk_vs_uncertainty():
 def test_plot_plan_comparison():
     result = run_headline_experiment(azimuths_deg=[0, 120, 240], elevations_deg=[30], n_stations=2)
     names = [c.name for c in result.scenario.characteristics]
-    u_a = [result.plan_a.per_characteristic_uncertainty_m[n] for n in names]
+    u_a = [result.plan_a1.per_characteristic_uncertainty_m[n] for n in names]
     u_b = [result.plan_b.per_characteristic_uncertainty_m[n] for n in names]
 
     fig, ax = plot_plan_comparison(names, u_a, u_b)

@@ -32,6 +32,18 @@ target points, or solving the full gauge-free system and removing the
 freedom afterwards with a Helmert transform -- fixing one station is the
 simplest to implement and explain, and is what's used here.)
 
+This makes the resulting covariance genuinely *datum-dependent*: which
+station gets fixed is a real modelling choice, not an interchangeable
+convention, and picking a different one legitimately changes the
+covariance (a different datum, not a bug) -- exactly what the geodetic
+network-design literature this laser-tracker-network setting descends
+from predicts (Baarda's S-transformations; inner-constraint/free-network
+solutions). See `planning.experiment` (CLAUDE.md §5 step 6) for where
+this matters in practice: every candidate a search compares must share
+the *same* fixed anchor, or the comparison is confounded by an
+uncontrolled choice of datum, not by genuine differences in placement
+quality.
+
 **Weighting.** Every residual is a spherical-coordinate difference
 (observed minus predicted range/azimuth/elevation), divided by that
 sensor's own sigma_d / sigma_theta / sigma_phi (`instruments.

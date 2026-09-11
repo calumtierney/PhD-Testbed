@@ -4,7 +4,7 @@ import pytest
 
 from characteristics.datum import Datum
 from characteristics.tolerances import (
-    FlatnessTolerance,
+    ProfileTolerance,
     ParallelismTolerance,
     PositionTolerance,
     _orthonormal_basis_perpendicular_to,
@@ -19,6 +19,16 @@ def test_datum_normalizes_its_normal():
 def test_datum_rejects_zero_normal():
     with pytest.raises(ValueError):
         Datum(name="A", normal=np.zeros(3))
+
+
+def test_datum_establishment_uncertainty_defaults_to_zero():
+    datum = Datum(name="A", normal=np.array([1.0, 0, 0]))
+    assert datum.establishment_uncertainty_m == 0.0
+
+
+def test_datum_rejects_negative_establishment_uncertainty():
+    with pytest.raises(ValueError):
+        Datum(name="A", normal=np.array([1.0, 0, 0]), establishment_uncertainty_m=-1e-6)
 
 
 def test_orthonormal_basis_perpendicular_to_axis():
@@ -49,8 +59,8 @@ def test_position_tolerance_cylindrical_with_axis():
     assert np.allclose(directions[:, 0], 0.0)
 
 
-def test_flatness_tolerance_uses_surface_normal():
-    tolerance = FlatnessTolerance(zone_width_m=5e-5, surface_normal=np.array([0, 0, 3.0]))
+def test_profile_tolerance_uses_surface_normal():
+    tolerance = ProfileTolerance(zone_width_m=5e-5, surface_normal=np.array([0, 0, 3.0]))
     directions = tolerance.constraint_directions()
     assert directions.shape == (1, 3)
     assert np.allclose(directions[0], [0, 0, 1.0])
@@ -67,3 +77,28 @@ def test_parallelism_tolerance_requires_a_datum():
     tolerance = ParallelismTolerance(zone_width_m=5e-5)
     with pytest.raises(ValueError):
         tolerance.constraint_directions(None)
+
+
+def test_parallelism_additional_variance_is_zero_for_an_exact_datum():
+    datum = Datum(name="A", normal=np.array([1.0, 0, 0]))  # establishment_uncertainty_m=0.0 default
+    tolerance = ParallelismTolerance(zone_width_m=5e-5)
+    assert tolerance.additional_variance_m2(datum) == 0.0
+
+
+def test_parallelism_additional_variance_reflects_datum_establishment_uncertainty():
+    datum = Datum(name="A", normal=np.array([1.0, 0, 0]), establishment_uncertainty_m=3e-6)
+    tolerance = ParallelismTolerance(zone_width_m=5e-5)
+    assert tolerance.additional_variance_m2(datum) == pytest.approx((3e-6) ** 2)
+
+
+def test_parallelism_additional_variance_requires_a_datum():
+    tolerance = ParallelismTolerance(zone_width_m=5e-5)
+    with pytest.raises(ValueError):
+        tolerance.additional_variance_m2(None)
+
+
+def test_position_and_profile_additional_variance_is_always_zero():
+    position = PositionTolerance(zone_diameter_m=1e-4)
+    profile = ProfileTolerance(zone_width_m=5e-5, surface_normal=np.array([0, 0, 1.0]))
+    assert position.additional_variance_m2() == 0.0
+    assert profile.additional_variance_m2() == 0.0

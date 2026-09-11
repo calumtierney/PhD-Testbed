@@ -326,7 +326,7 @@ def plot_characteristic_comparison(
 
     `labels` and `results` must be the same length and in the same order
     (one label per `CharacteristicPointUncertainty`, e.g. from evaluating
-    a position, a flatness and a parallelism characteristic on one point).
+    a position, a profile and a parallelism characteristic on one point).
     This deliberately plots only the scalar `uncertainty_m` summary, not
     each result's full `projected_covariance_m2` -- a bar chart has one
     number per bar; see `docs/step4_characteristic_layer_physics.md` for

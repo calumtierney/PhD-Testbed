@@ -15,7 +15,7 @@ import pytest
 
 from geometry.pose import InstrumentPose
 from geometry.scene import Scene
-from instruments.laser_tracker import LaserTracker, scene_point_covariances
+from instruments.laser_tracker import LaserTracker, reallocatable_fraction, scene_point_covariances
 
 
 def test_boresight_anisotropy_matches_hughes_table4_prediction():
@@ -111,3 +111,43 @@ def test_covariance_at_the_instrument_origin_raises():
     pose = InstrumentPose(position_m=np.zeros(3))
     with pytest.raises(ValueError):
         tracker.covariance_global(np.zeros(3), pose)
+
+
+def test_systematic_std_defaults_to_zero_and_changes_nothing():
+    """CLAUDE.md referee note M6's fix must not disturb any of steps
+    1-5's existing, validated sensor-noise-only behaviour."""
+    tracker_default = LaserTracker()
+    tracker_explicit_zero = LaserTracker(systematic_std_m=0.0)
+    point_local = np.array([2.5, 0.0, 0.0])
+    assert np.array_equal(
+        tracker_default.covariance_local(point_local), tracker_explicit_zero.covariance_local(point_local)
+    )
+
+
+def test_systematic_std_adds_isotropic_variance():
+    point_local = np.array([2.5, 0.0, 0.0])
+    baseline = LaserTracker()
+    with_systematic = LaserTracker(systematic_std_m=10e-6)
+
+    covariance_baseline = baseline.covariance_local(point_local)
+    covariance_with_systematic = with_systematic.covariance_local(point_local)
+
+    assert np.allclose(covariance_with_systematic, covariance_baseline + (10e-6**2) * np.eye(3))
+
+
+def test_reallocatable_fraction_is_one_without_a_systematic_term():
+    tracker = LaserTracker()
+    point_local = np.array([2.5, 0.0, 0.0])
+    assert reallocatable_fraction(tracker, point_local) == pytest.approx(1.0)
+
+
+def test_reallocatable_fraction_drops_as_systematic_term_dominates():
+    point_local = np.array([2.5, 0.0, 0.0])
+    modest_systematic = LaserTracker(systematic_std_m=1e-6)
+    dominant_systematic = LaserTracker(systematic_std_m=1e-3)  # 1 mm, swamps sensor noise
+
+    fraction_modest = reallocatable_fraction(modest_systematic, point_local)
+    fraction_dominant = reallocatable_fraction(dominant_systematic, point_local)
+
+    assert 0.0 < fraction_dominant < fraction_modest < 1.0
+    assert fraction_dominant == pytest.approx(0.0, abs=1e-3)
