@@ -14,6 +14,7 @@ from geometry.scene import Scene
 from instruments.laser_tracker import LaserTracker, scene_point_covariances
 from network.solve import (
     Observation,
+    exact_observations,
     mean_positional_uncertainty_m,
     perturbed_initial_guess,
     simulate_observations,
@@ -98,14 +99,22 @@ def test_mean_uncertainty_falls_and_flattens_with_station_count():
     )
 
 
-def test_single_station_network_solve_matches_step1_covariance():
+@pytest.mark.parametrize("systematic_std_m", [0.0, 10e-6])
+def test_single_station_network_solve_matches_step1_covariance(systematic_std_m):
     """With one station and no redundancy (3 unknowns per target, exactly
     3 observations), the network solve should reduce to step 1's direct
     per-point covariance -- the same physics, just reached by a nonlinear
     solve instead of a closed-form Jacobian propagation. This ties step 3
-    back to step 1 rather than treating them as unrelated code paths."""
+    back to step 1 rather than treating them as unrelated code paths.
+
+    Parametrized over `systematic_std_m` (instruments.laser_tracker.
+    LaserTracker's placement-irreducible isotropic term): step 1's
+    `covariance_local`/`covariance_global` already adds this term, so a
+    correct network solve must reduce to *that* -- including the added
+    term -- in the one-station limit too, not just the sensor-noise-only
+    case."""
     rng = np.random.default_rng(1)
-    tracker = LaserTracker()
+    tracker = LaserTracker(systematic_std_m=systematic_std_m)
     true_targets_m = np.array([[2.5, 0.0, 0.0], [3.0, 1.0, 0.5]])
     anchor_pose = InstrumentPose(position_m=np.zeros(3))
 
@@ -125,6 +134,98 @@ def test_single_station_network_solve_matches_step1_covariance():
     # Fully determined (3 unknowns, 3 observations per target): the
     # solve should hit the noisy observation exactly, zero residual.
     assert result.residual_rms == pytest.approx(0.0, abs=1e-6)
+
+
+def test_systematic_std_survives_a_multi_station_network_solve():
+    """Regression test for a real bug: `LaserTracker.systematic_std_m`
+    was added only to the single-station `covariance_local`/
+    `covariance_global` path; `solve_network` never applied it, so a
+    `planning.PlanningScenario` built with a nonzero-systematic tracker
+    silently changed nothing about a multi-station plan's covariance.
+
+    Uses `exact_observations` (noiseless, at the true geometry) so the
+    only difference between the two solves is the tracker's
+    `systematic_std_m` -- the extra per-target variance must come out as
+    exactly the isotropic term the tracker declares, on every target,
+    with no cross-target leakage (the term is modelled as independent per
+    point, not shared -- see `LaserTracker.systematic_std_m`'s
+    docstring)."""
+    target_points_m = np.array([[3.0, 0.0, 1.0], [3.0, 1.0, 0.5]])
+    station_poses = [
+        InstrumentPose(position_m=np.array([0.0, 0.0, 1.0])),
+        InstrumentPose(position_m=np.array([0.0, 3.0, 1.0])),
+        InstrumentPose(position_m=np.array([0.0, -3.0, 1.0])),
+    ]
+    geometric_only = LaserTracker()
+    with_systematic = LaserTracker(systematic_std_m=10e-6)
+
+    result_geometric = solve_network(
+        exact_observations(target_points_m, station_poses),
+        target_points_m.copy(),
+        station_poses,
+        geometric_only,
+        anchor_index=0,
+    )
+    result_systematic = solve_network(
+        exact_observations(target_points_m, station_poses),
+        target_points_m.copy(),
+        station_poses,
+        with_systematic,
+        anchor_index=0,
+    )
+
+    expected_extra_variance_m2 = with_systematic.systematic_std_m**2
+    n_targets = target_points_m.shape[0]
+    for i in range(n_targets):
+        extra = result_systematic.target_point_covariance(i) - result_geometric.target_point_covariance(i)
+        assert np.allclose(extra, expected_extra_variance_m2 * np.eye(3), atol=1e-20)
+
+    # No cross-target leakage: the off-diagonal (target 0, target 1) block
+    # should be identical whether or not the systematic term is present,
+    # since it's added once per target, not shared between targets.
+    cross_geometric = result_geometric.target_covariance_m2[0:3, 3:6]
+    cross_systematic = result_systematic.target_covariance_m2[0:3, 3:6]
+    assert np.allclose(cross_geometric, cross_systematic)
+
+
+def test_systematic_std_does_not_shrink_with_more_stations():
+    """`systematic_std_m` is *irreducible by placement* (the field's own
+    docstring): adding a station reduces the sensor-noise-driven part of
+    the covariance, but must never reduce this term below its own value,
+    since no amount of redundancy corrects a per-point floor that isn't
+    modelled as arising from range/angle noise in the first place."""
+    target_points_m = np.array([[3.0, 0.0, 1.0]])
+    tracker = LaserTracker(systematic_std_m=10e-6)
+    two_stations = [
+        InstrumentPose(position_m=np.array([0.0, 0.0, 1.0])),
+        InstrumentPose(position_m=np.array([0.0, 3.0, 1.0])),
+    ]
+    three_stations = two_stations + [InstrumentPose(position_m=np.array([0.0, -3.0, 1.0]))]
+
+    result_two = solve_network(
+        exact_observations(target_points_m, two_stations),
+        target_points_m.copy(),
+        two_stations,
+        tracker,
+        anchor_index=0,
+    )
+    result_three = solve_network(
+        exact_observations(target_points_m, three_stations),
+        target_points_m.copy(),
+        three_stations,
+        tracker,
+        anchor_index=0,
+    )
+
+    # Adding a station should not increase the covariance's trace...
+    assert np.trace(result_three.target_point_covariance(0)) <= np.trace(
+        result_two.target_point_covariance(0)
+    ) + 1e-20
+    # ...but it can never fall below the systematic floor alone (3 axes,
+    # each carrying at least systematic_std_m**2), however many stations
+    # are added.
+    systematic_floor_m2 = 3 * tracker.systematic_std_m**2
+    assert np.trace(result_three.target_point_covariance(0)) >= systematic_floor_m2 - 1e-20
 
 
 def test_anchor_pose_is_held_fixed_not_solved_for():

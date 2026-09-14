@@ -279,11 +279,11 @@ station moves to a better spot. Reporting a placement effect without
 saying what fraction of the total budget placement can even influence
 overstates what station optimisation alone can achieve.
 
-**The fix (partial -- flagged as such).** `LaserTracker.systematic_std_m`
-adds an isotropic, placement-independent variance term (default 0.0,
-so every existing result above is unaffected), and
-`instruments.laser_tracker.reallocatable_fraction` reports what share of
-the total variance placement can actually move:
+**The fix.** `LaserTracker.systematic_std_m` adds an isotropic,
+placement-independent variance term (default 0.0, so every existing
+result above is unaffected), and `instruments.laser_tracker.
+reallocatable_fraction` reports what share of the total variance
+placement can actually move:
 
 | Systematic std | Total RSS uncertainty | Reallocatable fraction |
 |---|---|---|
@@ -292,19 +292,55 @@ the total variance placement can actually move:
 | 10 µm (nest + a share of thermal/refraction) | 20.17 µm | 26% |
 | 15 µm | 27.96 µm | 14% |
 
-At a plausible combined systematic term of ~10 µm, only about a quarter
-of the total uncertainty budget is reallocatable by placement at all --
-meaning the headline percentages above, computed at 0% systematic
-contribution, are an upper bound on what placement alone can achieve, not
-a realistic shop-floor prediction. Re-running the full four-objective
-ablation with a nonzero systematic term is the natural next step; not
-done in this revision (it does not change which candidate any objective
-picks in a way this document has verified, only how much of the resulting
-number is real) -- flagged honestly as future work rather than silently
-assumed away. The isotropic form of the term is itself a simplification
-(real systematic effects have their own directional and cross-station
-correlation structure a single per-point isotropic number cannot
-capture) -- see `LaserTracker.systematic_std_m`'s docstring.
+**A bug this fix initially had, since corrected.** The table above comes
+from `LaserTracker.covariance_local`/`covariance_global` -- the
+single-station model -- and was, and still is, correct on its own. But
+`network.solve.solve_network`, which every `planning` search actually
+calls, weights its residuals purely by `sigma_d`/`sigma_theta`/
+`sigma_phi` (spherical sensor noise) and originally never added
+`systematic_std_m` to the fitted covariance at all. The consequence: a
+`PlanningScenario` built with a nonzero-systematic tracker
+(`default_two_cluster_scenario(tracker=...)`) changed *nothing* about a
+multi-station plan's result -- the term was silently dropped the moment
+more than one station was involved, exactly the case this section exists
+to talk about. It was caught (not by the original supervisory review)
+after this document had already been written and described as "not yet
+re-run" below; the actual bug was worse than "not yet re-run" -- it was
+"would have shown no effect if it had been". Fixed by adding the same
+isotropic term, once per target, to `solve_network`'s fitted covariance
+(see that function's comment for why once-per-target rather than
+once-per-observation: it is modelled as a per-point floor, not a
+spherical-observation noise source, so it never belongs in the
+residual weighting). `tests/test_network_solve.py`'s
+`test_systematic_std_survives_a_multi_station_network_solve` and
+`test_systematic_std_does_not_shrink_with_more_stations` are the
+regression tests.
+
+**The full ablation, re-run with a nonzero systematic term.** At the
+plausible combined value of 10 µm (nest + a share of thermal/refraction),
+running the identical four-objective comparison from the "Results"
+section above through this scenario's tracker:
+
+| | A0 = A1 | B = C | effort change | risk change |
+|---|---|---|---|---|
+| systematic = 0 µm (as above) | summed 44.320 µm, total risk 0.198953 | summed 46.597 µm, total risk 0.192605 | +5.14% | -3.19% |
+| systematic = 10 µm | summed 74.644 µm, total risk 0.522947 | summed 76.055 µm, total risk 0.520279 | +1.89% | -0.51% |
+
+Both objectives pick the *same* station arrangements as the
+systematic-free case (A0/A1 and B/C each land on the identical pair of
+candidates) -- the systematic term shifts every candidate's uncertainty
+by the same fixed amount, so it does not change *which* arrangement wins,
+only how much of the resulting number reallocation can take credit for.
+That's the qualitative confirmation the reallocatable-fraction framing
+predicts: at 10 µm systematic, `reallocatable_fraction` says only ~26%
+of the total variance is placement's to move, and the risk-weighting
+benefit shrinks correspondingly (-3.19% -> -0.51%) rather than
+disappearing outright or growing -- station placement is doing the same
+job, just on a smaller share of a larger total. The isotropic form of
+the systematic term is itself a simplification (real systematic effects
+have their own directional and cross-station correlation structure a
+single per-point isotropic number cannot capture) -- see
+`LaserTracker.systematic_std_m`'s docstring.
 
 ## Datum dependence is expected, not a defect (M7)
 
