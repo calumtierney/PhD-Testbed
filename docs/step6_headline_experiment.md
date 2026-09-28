@@ -342,6 +342,18 @@ have their own directional and cross-station correlation structure a
 single per-point isotropic number cannot capture) -- see
 `LaserTracker.systematic_std_m`'s docstring.
 
+`results/panel6a_stations_systematic10um.png` and `results/
+panel6b_comparison_systematic10um.png` show this 10 µm-systematic run in
+the same station-layout / per-characteristic-bar form as the zero-
+systematic figures referenced above, with a shared ellipsoid exaggeration
+scale across both objective groups so the two panels stay visually
+comparable. `results/panel7_sensitivity_systematic10um.png` overlays the
+achieved-uncertainty band from each run (0 µm and 10 µm systematic) onto
+the flat-vs-steep risk-vs-uncertainty curves: the local risk-sensitivity
+ratio at the fixed 8 µm reference is unaffected (~62,000:1, same as
+before) -- what moves is where the achieved uncertainty sits, and how
+much of it is reallocatable.
+
 ## Datum dependence is expected, not a defect (M7)
 
 **What was wrong (in framing, not in the fix itself).** An earlier
