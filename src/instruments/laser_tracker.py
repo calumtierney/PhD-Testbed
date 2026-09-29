@@ -95,11 +95,17 @@ class LaserTracker:
         path) that an isotropic, per-point, independent term cannot
         capture. It exists so a planning experiment can ask "what
         fraction of my total uncertainty is even reallocatable by
-        placement" (see `network.solve.NetworkSolveResult` callers doing
-        that split) rather than silently pretending sensor noise is the
-        whole budget. Replacing it with a real multi-term budget is
-        exactly the next elaboration CLAUDE.md §6's "optimise/refine
-        later, once tests pass" points at -- not done here.
+        placement" -- `reallocatable_fraction` below answers that for a
+        single station; `network.solve.solve_network` applies this same
+        per-target floor to a multi-station network solve's covariance
+        too (added once per target, after the fit, exactly as it's added
+        here after the spherical->Cartesian Jacobian -- never through
+        `_residuals`' spherical-observation weighting, for the same
+        reason), so a `PlanningScenario` built with a nonzero-systematic
+        tracker actually sees it, regardless of station count. Replacing
+        it with a real multi-term budget is exactly the next elaboration
+        CLAUDE.md §6's "optimise/refine later, once tests pass" points at
+        -- not done here.
     """
 
     sigma_d_m: float = DEFAULT_SIGMA_D_M

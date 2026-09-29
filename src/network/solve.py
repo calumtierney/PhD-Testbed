@@ -53,6 +53,18 @@ sensor standard deviation", per CLAUDE.md §5. All stations here share one
 straightforward extension (give each `Observation` its own sigmas) but
 isn't needed for this step's gate, so it isn't built.
 
+`LaserTracker.systematic_std_m` -- an isotropic, placement-irreducible
+variance term the tracker can carry alongside sigma_d/theta/phi (see that
+field's docstring) -- deliberately never enters this spherical-residual
+weighting: it isn't modelled as range/angle noise. `solve_network` adds
+it separately, once per target, straight onto the diagonal of the fitted
+target covariance, the same way `LaserTracker.covariance_local` adds it
+after its own Jacobian propagation rather than before. Skipping this step
+would silently discard the term the moment a scenario has more than one
+station -- a real bug an earlier revision had (a `PlanningScenario` built
+with a nonzero-systematic tracker changed nothing about a multi-station
+plan's covariance).
+
 **Exploiting the block-diagonal structure.** Each observation involves
 exactly one target and one station -- never two targets, never two
 stations. So in the Jacobian of the whole residual vector with respect to
@@ -135,7 +147,12 @@ class NetworkSolveResult:
         CLAUDE.md §3: never reduce this to a scalar before the
         characteristic layer; use `target_point_covariance` for one
         target's 3x3 block, not a diagonal or a trace, when precision
-        matters downstream.
+        matters downstream. If the tracker carries a nonzero
+        `systematic_std_m`, each target's own 3x3 diagonal block also
+        includes that placement-irreducible isotropic term (added by
+        `solve_network`, once per target -- see the module docstring's
+        "Weighting" section); the cross-target blocks do not, since that
+        term is modelled as independent per point, not shared.
     residual_rms : float -- RMS of the final whitened residuals (each
         already divided by its sensor sigma); should be of order 1 if the
         noise model matches the data, as a rough sanity check.
@@ -416,7 +433,37 @@ def solve_network(
     else:
         normal_matrix = jac.T @ jac
     full_covariance = np.linalg.pinv(normal_matrix)
-    target_covariance_m2 = full_covariance[: 3 * n_targets, : 3 * n_targets]
+    target_covariance_m2 = full_covariance[: 3 * n_targets, : 3 * n_targets].copy()
+
+    # tracker.systematic_std_m (instruments.laser_tracker.LaserTracker) is
+    # not a spherical-observation noise term -- it never entered
+    # `_residuals`' weighting above, on purpose, for the same reason
+    # `LaserTracker.covariance_local` adds it *after* the spherical->
+    # Cartesian Jacobian rather than folding it into sigma_d/theta/phi: it
+    # isn't modelled as arising from range/angle noise in the first place
+    # (calibration-parameter uncertainty, thermal drift, refraction, SMR/
+    # nest repeatability -- see that field's docstring). It has to be
+    # added here too, once per target, in exactly the same isotropic
+    # Cartesian form, or it silently vanishes the moment a scenario has
+    # more than one station: a caller building a `PlanningScenario` with a
+    # nonzero-systematic_std_m tracker (CLAUDE.md referee note M6) would
+    # see no change at all in a multi-station plan's covariance, even
+    # though `LaserTracker.covariance_local` alone would show one -- the
+    # network solve would be silently throwing away a term the instrument
+    # model reports having. Adding it once per target, independent of how
+    # many stations observed it, is exactly "irreducible by placement": no
+    # station arrangement can make this term smaller, so it should not get
+    # smaller just because a network solve, rather than a single shot, was
+    # used to reach this target's coordinate. This also keeps
+    # `test_single_station_network_solve_matches_step1_covariance` true
+    # for a nonzero systematic term: with one station, this is exactly
+    # what `LaserTracker.covariance_global` already does, so the network
+    # solve continues to reduce to step 1's answer in that limit.
+    if tracker.systematic_std_m > 0.0:
+        systematic_variance_m2 = tracker.systematic_std_m**2
+        for i in range(n_targets):
+            block = slice(3 * i, 3 * i + 3)
+            target_covariance_m2[block, block] += systematic_variance_m2 * np.eye(3)
 
     return NetworkSolveResult(
         target_points_m=target_points_m,
