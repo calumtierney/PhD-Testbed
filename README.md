@@ -106,6 +106,28 @@ pip install -e ".[dev]"
 pytest
 ```
 
+`pytest` (well under a minute) is the fast, deterministic check on every
+physics gate in `CLAUDE.md` §5 steps 1-5, RNG-seeded so it reproduces
+identically run to run.
+
+To independently reproduce the step 6 headline-experiment numbers and
+figures (`docs/step6_headline_experiment.md`'s tables, and the PNGs
+committed under `results/`) rather than just trusting them:
+
+```bash
+python scripts/reproduce_headline_experiment.py
+```
+
+Takes 2-3 minutes (objective C's per-candidate risk integration
+dominates — see `planning.experiment.run_headline_experiment`'s
+docstring). It prints the same summary table `docs/
+step6_headline_experiment.md` reports and rewrites the three
+`results/*_systematic10um.png` figures in place; `evaluate_plan` solves
+from noiseless `exact_observations` at the true geometry rather than
+simulating and fitting random noise, so there is no RNG in this path —
+the output should match the committed files exactly, not just
+approximately (`git diff results/` after running it should be empty).
+
 ```
 src/
   geometry/         scene, poses, spherical<->Cartesian, meshes, ray casting, visibility
