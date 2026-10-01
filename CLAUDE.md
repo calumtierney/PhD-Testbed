@@ -44,7 +44,7 @@ Keep this chain visible in the module structure. Each link is a separate, separa
 These come from primary literature and are not up for redesign without discussion.
 
 **Uncertainty is a full covariance matrix, never a scalar.**
-Laser tracker uncertainty is strongly anisotropic — the sensor noise model alone (§4a/4b) gives roughly 5:1 to 7:1 lateral-to-radial at 2.5 m, and the full observed scatter including atmospheric and nest effects (§4c) reaches roughly 10:1 unshielded. Schmitt et al.'s CIRP keynote states explicitly that distance uncertainty cannot be summarised by an `A + B·L` formula and that independence assumptions give a poor guide to measurement strategy capability. A scalar uncertainty makes the risk calculation wrong in a direction-dependent way. Never reduce to a magnitude before the characteristic layer.
+Laser tracker uncertainty is strongly anisotropic — roughly 10:1 lateral to radial (about 40 µm lateral vs 4 µm along the beam at 2.5 m; Hughes et al. 2011). Schmitt et al.'s CIRP keynote states explicitly that distance uncertainty cannot be summarised by an `A + B·L` formula and that independence assumptions give a poor guide to measurement strategy capability. A scalar uncertainty makes the risk calculation wrong in a direction-dependent way. Never reduce to a magnitude before the characteristic layer.
 
 **Risk depends on direction.**
 A hole-position tolerance and a parallelism tolerance on the same feature, measured from the same station, carry different risk because they project the error ellipsoid differently. The characteristic layer must know what direction each tolerance constrains.
@@ -180,7 +180,26 @@ Build the whole chain thin before making any link thick. Each step must pass its
 
 ---
 
-## 8. Repository layout
+## 8. Visualisation
+
+Figures are a validation instrument, not decoration. A numerical test confirms the anisotropy *ratio*; only a picture confirms the ellipsoid is *oriented* correctly. Several classes of bug — a rotated covariance, a sign error in a Jacobian, a transposed frame — pass scalar tests and are obvious on sight.
+
+**Separation.** `viz/` imports from `src/`. Never the reverse. No plotting code inside solvers, no matplotlib import in a physics module.
+
+**Three tiers, different purposes:**
+- **Static figures** written to `results/`, generated from code, version-controlled. Every gate emits one. These become thesis figures.
+- **Streamlit app** (`app.py`) for interactive exploration — moving the instrument and watching what happens. A thin layer over `src/`; if the app needs a calculation that does not exist, add it to `src/` with tests rather than inline.
+- **PyVista / trimesh** only once mesh geometry makes matplotlib's 3D unworkable. Not before.
+
+**The exaggeration rule.** Uncertainty ellipsoids are micrometres across in scenes metres wide, so they must be drawn exaggerated. The exaggeration factor is always a named parameter and is always printed on the figure. A figure showing scaled geometry without saying so is misleading, and this is dimensional metrology — that matters more here than most places.
+
+**Figure conventions:** units on every axis and colour bar; no reliance on colour alone to convey meaning; vector output for anything destined for the thesis; station positions and instrument poses always marked.
+
+**The target view.** The figure the project is working towards is a plan view carrying two heat maps over the same candidate station positions — one coloured by the A-optimal criterion, one by expected decision cost. If the minima fall in different places, the contribution is visible in a single image. If they coincide, that must be stated on the figure, not buried. A null result is displayed as prominently as a positive one.
+
+---
+
+## 9. Repository layout
 
 ```
 src/
@@ -190,6 +209,8 @@ src/
   characteristics/ tolerances, datums, projection onto tolerance direction
   risk/           JCGM 106 conformity risk
   planning/       optimiser wrapper, objectives (uniform vs risk-weighted)
+viz/              figures and rendering; imports from src, never the reverse
+app.py            Streamlit explorer, thin layer over src
 tests/
 scenes/           test geometry, starting synthetic
 docs/             literature notes, derivations
@@ -198,7 +219,7 @@ results/          experiment outputs, never edited by hand
 
 ---
 
-## 9. Working style
+## 10. Working style
 
 - Small commits, each one leaving the tests passing.
 - When a design decision has more than one reasonable answer, state the options and the tradeoff rather than silently picking one.
