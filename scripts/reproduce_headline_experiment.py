@@ -206,14 +206,25 @@ def _reproduce_sensitivity_figure(plan_a1_10um, plan_b_10um):
     r_high_ref = evaluate_conformity_risk(assignment_high, reference_uncertainty_m, decision_rule)
     r_marginal_ref = evaluate_conformity_risk(assignment_marginal, reference_uncertainty_m, decision_rule)
 
-    band_10um = (
+    # These bands mark where the step 6 experiment's *achieved*
+    # uncertainty actually lands on the x-axis -- not the systematic
+    # term's own value (which would be a single point, not a range, and
+    # is 0 or 10 um respectively). "with_systematic"/"sensor_noise_only"
+    # names which of the two LaserTracker.systematic_std_m settings
+    # produced the achieved-uncertainty range, since even with the
+    # systematic term off, sensor noise alone still gives a nonzero
+    # achieved uncertainty (6.7-9.2 um here) -- a band labelled "0 um"
+    # sitting well away from x=0 is exactly the confusing part a reader
+    # flagged, hence this naming.
+    band_with_systematic_um = (
         min(plan_a1_10um.per_characteristic_uncertainty_m.values()) * 1e6,
         max(plan_b_10um.per_characteristic_uncertainty_m.values()) * 1e6,
     )
-    # Doc-reported systematic=0 band (docs/step6_headline_experiment.md's
-    # "Results" section) -- pass --with-zero-systematic to this script to
-    # recompute it live instead of using this fixed reference.
-    band_0um = (6.690814087350281, 9.156836281823471)
+    # Doc-reported sensor-noise-only band (docs/step6_headline_experiment.
+    # md's "Results" section) -- rerun reproduce_numbers()'s
+    # systematic=0 branch to recompute this live instead of using this
+    # fixed reference.
+    band_sensor_noise_only_um = (6.690814087350281, 9.156836281823471)
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5.4))
     plot_risk_vs_uncertainty(
@@ -224,8 +235,8 @@ def _reproduce_sensitivity_figure(plan_a1_10um, plan_b_10um):
         },
         ax=ax1, title="Overview (log scale)", log_scale=True,
     )
-    ax1.axvspan(*band_0um, color="tab:green", alpha=0.15)
-    ax1.axvspan(*band_10um, color="tab:red", alpha=0.15)
+    ax1.axvspan(*band_sensor_noise_only_um, color="tab:green", alpha=0.15)
+    ax1.axvspan(*band_with_systematic_um, color="tab:red", alpha=0.15)
 
     plot_risk_vs_uncertainty(
         uncertainties_m_zoom,
@@ -235,15 +246,16 @@ def _reproduce_sensitivity_figure(plan_a1_10um, plan_b_10um):
         },
         ax=ax2, title="Zoom near achieved uncertainty (linear scale)", log_scale=False,
     )
-    ax2.axvspan(*band_0um, color="tab:green", alpha=0.15, label="achieved, 0 µm systematic")
-    ax2.axvspan(*band_10um, color="tab:red", alpha=0.15, label="achieved, 10 µm systematic")
+    ax2.axvspan(*band_sensor_noise_only_um, color="tab:green", alpha=0.15, label="achieved uncertainty: sensor noise only")
+    ax2.axvspan(*band_with_systematic_um, color="tab:red", alpha=0.15, label="achieved uncertainty: +10 µm systematic")
     ax2.axvline(reference_uncertainty_m * 1e6, color="gray", linestyle="--", linewidth=1, label="B's weight reference (8 µm)")
     ax2.legend(loc="upper left", fontsize=8)
 
     fig.suptitle(
         f"Local risk sensitivity at the fixed 8 µm reference stays ~{ratio:.0f}:1 (marginal vs high-capability)\n"
-        "regardless of the systematic term -- but only ~26% of the achieved 10 µm-band uncertainty is\n"
-        "reallocatable by placement, so the weighting has proportionally less to work with, not a smaller ratio",
+        "regardless of the systematic term -- the bands below are NOT the systematic term's own value, they are\n"
+        "where the experiment's achieved uncertainty actually lands; ~26% of the +10 µm-systematic band is\n"
+        "reallocatable by placement, so the weighting has proportionally less of that band to work with",
         fontsize=11,
     )
     fig.tight_layout(rect=[0, 0, 1, 0.86])
