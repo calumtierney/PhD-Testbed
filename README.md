@@ -1,5 +1,16 @@
 # LVM Measurement Planning Testbed
 
+## Running this
+
+```bash
+pip install -r requirements.txt && pip install -e .
+pytest
+python -m viz.make_figures
+```
+
+(Full step-by-step VS Code / Windows setup, the interactive `streamlit run
+app.py` explorer, and a troubleshooting table: [`SETUP.md`](SETUP.md).)
+
 Simulation testbed for goal-oriented measurement planning in large-volume
 metrology (LVM). Full project context, technical decisions, reference
 numbers and the build order live in [`CLAUDE.md`](CLAUDE.md) — read that
@@ -110,23 +121,24 @@ pytest
 physics gate in `CLAUDE.md` §5 steps 1-5, RNG-seeded so it reproduces
 identically run to run.
 
-To independently reproduce the step 6 headline-experiment numbers and
-figures (`docs/step6_headline_experiment.md`'s tables, and the PNGs
-committed under `results/`) rather than just trusting them:
+To independently reproduce every figure under `results/` — including the
+step 6 headline-experiment numbers `docs/step6_headline_experiment.md`
+reports — rather than just trusting them:
 
 ```bash
-python scripts/reproduce_headline_experiment.py
+python -m viz.make_figures
 ```
 
 Takes 2-3 minutes (objective C's per-candidate risk integration
-dominates — see `planning.experiment.run_headline_experiment`'s
-docstring). It prints the same summary table `docs/
-step6_headline_experiment.md` reports and rewrites the three
-`results/*_systematic10um.png` figures in place; `evaluate_plan` solves
-from noiseless `exact_observations` at the true geometry rather than
-simulating and fitting random noise, so there is no RNG in this path —
-the output should match the committed files exactly, not just
-approximately (`git diff results/` after running it should be empty).
+dominates the two `run_headline_experiment` calls — see
+`planning.experiment.run_headline_experiment`'s own docstring). It
+prints what it wrote and rewrites every `results/panel*.png` file in
+place; steps 1-5's panels use fixed RNG seeds, and the step 6 panels
+solve from noiseless `exact_observations` at the true geometry rather
+than simulating and fitting random noise, so there is no RNG anywhere in
+this command — the output should match the committed files exactly, not
+just approximately (`git diff results/` after running it should be
+empty).
 
 ```
 src/
