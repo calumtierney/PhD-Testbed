@@ -1,0 +1,14 @@
+# Pinned to versions verified to work together (CLAUDE.md §6: numpy,
+# scipy, matplotlib, pytest -- streamlit added for the interactive
+# explorer, app.py, per SETUP.md). Newer compatible releases are very
+# likely fine too; these are a known-good baseline, not a hard ceiling.
+#
+# Installed by SETUP.md step 6 (`pip install -r requirements.txt`);
+# step 7 (`pip install -e .`) then installs this project itself, editable,
+# on top -- that second step is what makes `import instruments`,
+# `import geometry` etc. resolve, per pyproject.toml's packages.find.
+numpy==2.4.6
+scipy==1.17.1
+matplotlib==3.11.1
+pytest==9.1.1
+streamlit==1.65.0
