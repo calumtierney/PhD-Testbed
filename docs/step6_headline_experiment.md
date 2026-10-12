@@ -67,22 +67,49 @@ placeholder.
 
 The two feature clusters (`planning.experiment.default_two_cluster_scenario`)
 are still one high-capability, one marginal, spatially separated group of
-three profile characteristics each -- but the marginal cluster's process
-parameters changed.
+three profile characteristics each -- but both clusters' process
+parameters have now been changed, in two separate corrections.
 
-**What was wrong.** The original marginal cluster (mean 40 µm, std 6 µm
-against a ±50 µm tolerance) has Cpk ≈ 0.56 -- roughly 4.6% baseline
-nonconformance *before any measurement uncertainty is even considered*.
-SAE AS13006 requires a minimum Cpk of 1.33 for a key characteristic in
-production. At Cpk 0.56, the risk this experiment reports is mostly "this
-process already makes bad parts", not "this process's risk is unusually
-*sensitive to measurement uncertainty*" -- which is the actual
-mechanism the experiment exists to demonstrate.
+**What was wrong (marginal cluster).** The original marginal cluster
+(mean 40 µm, std 6 µm against a ±50 µm tolerance) has Cpk ≈ 0.56 --
+roughly 4.6% baseline nonconformance *before any measurement uncertainty
+is even considered*. SAE AS13006 requires a minimum Cpk of 1.33 for a key
+characteristic in production. At Cpk 0.56, the risk this experiment
+reports is mostly "this process already makes bad parts", not "this
+process's risk is unusually *sensitive to measurement uncertainty*" --
+which is the actual mechanism the experiment exists to demonstrate.
 
 **The fix.** Marginal cluster: mean 38 µm, std 3 µm -- `Cpu = (50-38)/(3×3)
 = 1.333`, exactly the AS13006 floor. "Marginal" now means *closer to its
-limit at a still-legal capability*, not *out of control*. High-capability
-cluster is unchanged (mean 0, std 5 µm, Cpk ≈ 3.33).
+limit at a still-legal capability*, not *out of control*.
+
+**What was wrong (high-capability cluster, a second, separate
+correction).** The original fix above left the high-capability cluster at
+mean 0, std 5 µm, Cpk ≈ 3.33 -- unchanged from the very first draft, and
+unsourced: "comfortably clears the AS13006 floor" is true but doesn't say
+*how far* above 1.33 is actually representative of anything, and CLAUDE.md
+§6 ("never fabricate a reference number") applies to this input exactly as
+much as to any physics constant. GKN Aerospace -- this project's named
+industrial partner (CLAUDE.md §1) -- publishes two capability tiers: a
+minimum Cpk of 1.33 for standard manufacturing and quality requirements,
+and Cpk 2.0 (their "zero-defect" standard) for critical or
+high-performance programme requirements. The marginal cluster already
+sits exactly on GKN's own standard-process floor; the high-capability
+cluster had no equivalent anchor at all.
+
+**The fix.** High-capability cluster: mean 0, std 8.33 µm -- `Cpu =
+50/(3×8.33) = 2.0`, GKN's own critical/high-performance programme target,
+replacing the unsourced 3.33. Both clusters are now anchored to a real,
+citable GKN capability tier rather than one sourced value next to one
+arbitrary one.
+
+**This changed the headline weight ratio substantially -- see "The
+weights" below.** The two process-capability fixes affect the results
+table differently: every *uncertainty* number in "The result" is
+unchanged (uncertainty depends only on measurement geometry, which
+neither fix touches), but the *risk* numbers and the risk-derived weight
+ratio both move, because both depend on exactly how tight the process
+prior is assumed to be.
 
 ## The candidate envelope: floor-reachable, not full-hemisphere
 
@@ -130,8 +157,16 @@ linearisation):
 | Cluster 2 (marginal) sum | 22.16 µm | 22.16 µm | 21.88 µm | 21.88 µm |
 | Global PFA | 0.0000 | 0.0000 | 0.0000 | 0.0000 |
 | Global PFR | 0.1989 | 0.1989 | 0.1926 | 0.1926 |
-| **Global risk (PFA+PFR)** | **0.1990** | **0.1990** | **0.1926** | **0.1926** |
-| Bounded part-level risk `1-∏(1-r_c)` | 0.1863 | 0.1863 | 0.1807 | 0.1807 |
+| **Global risk (PFA+PFR)** | **0.1990** | **0.1990** | **0.1927** | **0.1927** |
+| Bounded part-level risk `1-∏(1-r_c)` | 0.1863 | 0.1863 | 0.1808 | 0.1808 |
+
+(Station positions and every uncertainty number are unchanged from the
+unsourced-Cpk version of this table -- they depend only on measurement
+geometry. Global risk moved slightly, in the fourth decimal place: at
+Cpk 2.0 the high-capability cluster carries a little more risk than it
+did at the old, unsourced Cpk 3.33, still utterly negligible next to the
+marginal cluster's contribution -- see "The weights" below for the one
+number that *did* move substantially.)
 
 Two things worth stating plainly rather than glossing over:
 
@@ -159,7 +194,7 @@ correctly**: risk-based weighting (B/C) moves effort from the
 high-capability cluster (+11.6%, 22.16 → 24.72 µm) to the marginal one
 (-1.3%, 22.16 → 21.88 µm), at a cost of +5.1% traditional "summed
 uncertainty" (44.32 → 46.60 µm) but a gain of -3.2% global risk (0.1990 →
-0.1926). Smaller in magnitude than the pre-revision numbers (which used
+0.1927). Smaller in magnitude than the pre-revision numbers (which used
 the unrealistic Cpk 0.56 cluster and a coarser accounting) but the same
 direction, for the reason already documented below (headroom and scene
 symmetry) plus the new one above (a milder, more realistic marginal
@@ -186,7 +221,7 @@ maximum is 9.16 µm):
 |---|---|---|
 | Max per-characteristic uncertainty | 9.16 µm | 8.39 µm |
 | Summed uncertainty | 46.60 µm | 44.55 µm |
-| Global risk | 0.1926 | 0.1983 |
+| Global risk | 0.1927 | 0.1984 |
 
 The cap pulls B back towards A1's station arrangement and most of A1's
 risk level -- exactly the intended trade: a quality system's own
@@ -252,21 +287,56 @@ uncertainty) -- reported as an upper-bound-style summary, not an exact
 joint part-level risk. An exact version needs the joint distribution over
 every characteristic's decision, not built here.
 
-## The weights, and why the ratio didn't get much smaller
+## The weights, and why the ratio changed by 50x when the Cpk source did
 
-At the corrected Cpk (marginal 1.33, high-capability 3.33), the risk-
-derived weight ratio is still roughly **62,000:1** -- barely smaller than
-the pre-revision figure computed from the unrealistic Cpk 0.56 cluster.
-This is worth understanding, not just noting: the weight is a *local
-slope* (`d(risk)/d(uncertainty)` at the reference point), not the
-absolute risk level. A tighter, more capable process (std 3 µm vs the
-old 6 µm) sitting the same relative distance from its limit transitions
-*more sharply* as uncertainty grows past the point where it starts to
-matter -- a smaller distribution "sees" the limit more suddenly than a
-wider, smeared-out one does. So fixing the unrealistic *baseline risk*
-(M9's and minor issue 14's complaint) did not, and should not have been
-expected to, fix the weight ratio's extremity on its own; the guard
-constraint above is the mechanism that actually bounds its consequence.
+With the marginal cluster at AS13006's floor (Cpk 1.33) and the
+high-capability cluster at the old, *unsourced* Cpk 3.33, the risk-
+derived weight ratio was roughly **62,000:1** -- barely smaller than the
+pre-revision figure computed from the unrealistic Cpk 0.56 marginal
+cluster. With the high-capability cluster corrected to GKN's own cited
+Cpk 2.0 (critical/high-performance programme target -- "The scene" above),
+the same calculation gives roughly **1,239:1** instead -- a **50x drop**,
+from one single-input correction.
+
+This is worth understanding precisely, not just noting the new number. A
+weight here is a *local slope*, `d(risk)/d(uncertainty)` evaluated at the
+shared 8 µm reference point -- not the absolute risk level, and not the
+process's own Cpk directly. Computing that slope for each cluster in
+isolation:
+
+| Cluster | Cpk | std | Slope at 8 µm |
+|---|---|---|---|
+| Marginal (unchanged) | 1.33 | 3 µm | 22,851 |
+| High-capability, old (unsourced) | 3.33 | 5 µm | 0.37 |
+| High-capability, new (GKN critical target) | 2.0 | 8.33 µm | 18.4 |
+
+The marginal cluster's own slope never moved -- only the high-capability
+cluster's did, by roughly 50x, which is exactly where the ratio's 50x
+drop comes from (the marginal slope is the numerator in both ratios, so
+it cancels). The old Cpk 3.33 process was so tight (std 5 µm against a 50
+µm tolerance -- essentially all of its probability mass sits more than
+three tolerance-widths from the limit) that an 8 µm measurement
+uncertainty barely reaches any of it: the risk curve is close to flat
+all the way out past 8 µm, so its local slope there is close to zero
+almost by construction. GKN's real Cpk 2.0 process (std 8.33 µm) is still
+comfortably, legally capable, but it has enough more spread that a
+noticeably larger share of its probability mass sits within reach of an
+8 µm measurement uncertainty -- so its risk curve has already started
+climbing by that point, and its slope there is correspondingly larger.
+
+The pre-revision fix (Cpk 0.56 → 1.33 for the *marginal* cluster, the
+first "What was wrong" above) barely moved this ratio, because it never
+touched the number actually driving the extremity -- the high-capability
+cluster's own, unsourced tightness. That the ratio dropped 50x the moment
+a *real, cited* number replaced the unsourced one is itself the
+illustration of why CLAUDE.md §6 ("never fabricate a reference number")
+matters beyond the physics constants in §4: an invented input was
+silently inflating a headline comparison figure by more than an order of
+magnitude, and the inflation wasn't visible from the code or the maths --
+only from checking where each number actually came from. The guard
+constraint above remains the mechanism that bounds what a large ratio can
+*do* to a candidate's own uncertainty, regardless of how large the ratio
+itself turns out to be.
 
 ## The uncertainty budget: how much is even reallocatable (M6)
 
@@ -323,8 +393,15 @@ section above through this scenario's tracker:
 
 | | A0 = A1 | B = C | effort change | risk change |
 |---|---|---|---|---|
-| systematic = 0 µm (as above) | summed 44.320 µm, total risk 0.198953 | summed 46.597 µm, total risk 0.192605 | +5.14% | -3.19% |
-| systematic = 10 µm | summed 74.644 µm, total risk 0.522947 | summed 76.055 µm, total risk 0.520279 | +1.89% | -0.51% |
+| systematic = 0 µm (as above) | summed 44.320 µm, total risk 0.198980 | summed 46.597 µm, total risk 0.192680 | +5.14% | -3.17% |
+| systematic = 10 µm | summed 74.644 µm, total risk 0.524915 | summed 76.055 µm, total risk 0.522890 | +1.89% | -0.39% |
+
+(Both rows use the GKN-sourced high-capability cluster -- "The scene"
+above -- not the earlier unsourced-Cpk numbers; every uncertainty figure
+is identical to the unsourced-Cpk version of this table since uncertainty
+depends only on geometry, and every risk figure moved by less than a
+percentage point, since the high-capability cluster's own contribution to
+total risk stays negligible at either Cpk.)
 
 Both objectives pick the *same* station arrangements as the
 systematic-free case (A0/A1 and B/C each land on the identical pair of
@@ -334,7 +411,7 @@ only how much of the resulting number reallocation can take credit for.
 That's the qualitative confirmation the reallocatable-fraction framing
 predicts: at 10 µm systematic, `reallocatable_fraction` says only ~26%
 of the total variance is placement's to move, and the risk-weighting
-benefit shrinks correspondingly (-3.19% -> -0.51%) rather than
+benefit shrinks correspondingly (-3.17% -> -0.39%) rather than
 disappearing outright or growing -- station placement is doing the same
 job, just on a smaller share of a larger total. The isotropic form of
 the systematic term is itself a simplification (real systematic effects
@@ -351,11 +428,14 @@ comparable. `results/panel7_sensitivity_systematic10um.png` overlays two
 bands onto the flat-vs-steep risk-vs-uncertainty curves: where this
 experiment's *achieved* uncertainty actually lands with the systematic
 term off (sensor noise only, 6.7-9.2 µm -- not 0 µm; sensor noise alone
-is never zero) and with it on (+10 µm systematic, 12-13.6 µm). The local
-risk-sensitivity ratio at the fixed 8 µm reference is unaffected
-(~62,000:1, same as before) -- what moves is where the achieved
-uncertainty sits on the curve, and how much of that band is
-reallocatable by placement.
+is never zero) and with it on (+10 µm systematic, 12.1-13.6 µm). The
+local risk-sensitivity ratio at the fixed 8 µm reference is unaffected by
+the systematic term (~1,239:1 at the now GKN-sourced Cpk 2.0 -- see "The
+weights" above for why this is 50x smaller than the figure computed at
+the old, unsourced Cpk 3.33, a separate and much larger effect than
+anything the systematic term does here) -- what the systematic term moves
+is where the achieved uncertainty sits on the curve, and how much of that
+band is reallocatable by placement.
 
 ## Datum dependence is expected, not a defect (M7)
 

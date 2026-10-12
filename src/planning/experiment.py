@@ -40,19 +40,31 @@ from planning.objectives import (
 from planning.search import GridSearchResult, grid_search_station_placement
 from risk.jcgm106 import ClusterAssignment, DecisionRule, FeatureCluster, ProcessPrior, RiskResult, evaluate_conformity_risk
 
-# The two feature clusters. Process parameters chosen so BOTH are
-# aerospace-plausible per SAE AS13006 ("a minimum capability index Cpk of
-# 1.33"), not just the high-capability one -- an earlier draft's marginal
-# cluster (Cpk ~ 0.56, ~4.6% baseline nonconformance) was pointed out in
-# supervisory review as unrealistically incapable for a key characteristic
-# in production: at that Cpk, the risk shown is mostly "this process makes
+# The two feature clusters, calibrated to GKN Aerospace's own two
+# published capability tiers (CLAUDE.md §1: GKN is this project's named
+# industrial partner) rather than an arbitrary pair of numbers: a
+# minimum Cpk of 1.33 for standard manufacturing and quality
+# requirements, and Cpk 2.0 (their "zero-defect" standard) for critical
+# or high-performance programme requirements. An earlier revision set
+# MARGINAL_CLUSTER at the 1.33 floor already (for the reason below) but
+# left HIGH_CAPABILITY_CLUSTER at an unsourced std (5 um, Cpk ~ 3.33) --
+# "comfortably above the floor" with no citation for *how far* above.
+# CLAUDE.md §6 ("never fabricate a reference number") applies here just
+# as much as to a physics constant: 2.0 is GKN's own real target for
+# exactly the kind of critical characteristic this cluster represents,
+# so it replaces the unsourced 3.33 rather than sitting alongside it.
+#
+# Marginal cluster: an earlier draft used mean 40 um, std 6 um (Cpk ~
+# 0.56, ~4.6% baseline nonconformance) -- pointed out in supervisory
+# review as unrealistically incapable for a key characteristic in
+# production: at that Cpk, the risk shown is mostly "this process makes
 # bad parts regardless of how well they're measured", not "uncertainty
 # matters more here because the process sits close to its limit" -- the
-# actual point this experiment exists to make. Both clusters now clear the
-# AS13006 floor; "marginal" means *closer to its limit*, at a still-legal
-# capability, not *out of control*.
-HIGH_CAPABILITY_CLUSTER = FeatureCluster("high-capability", ProcessPrior(mean_m=0.0, std_m=5e-6))
-# Cpu = (50 - 38) / (3*3) = 1.333 -- exactly the AS13006 minimum.
+# actual point this experiment exists to make. Fixed to sit exactly on
+# GKN's own standard-process floor instead: Cpu = (50-38)/(3*3) = 1.333.
+# "Marginal" means *closer to its limit, at a still-legal capability*,
+# not *out of control*.
+HIGH_CAPABILITY_CLUSTER = FeatureCluster("high-capability", ProcessPrior(mean_m=0.0, std_m=50e-6 / (3 * 2.0)))
 MARGINAL_CLUSTER = FeatureCluster("marginal", ProcessPrior(mean_m=38e-6, std_m=3e-6))
 TOLERANCE_ZONE_WIDTH_M = 1e-4  # +-50 um, CLAUDE.md §4d's own reference scale
 
