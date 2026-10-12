@@ -15,7 +15,12 @@ import pytest
 from geometry.pose import InstrumentPose
 from network.solve import simulate_observations, solve_network
 from planning.candidates import hemisphere_candidate_poses
-from planning.experiment import default_two_cluster_scenario, iso_risk_station_counts, run_headline_experiment
+from planning.experiment import (
+    default_two_cluster_scenario,
+    iso_risk_station_counts,
+    mixed_tolerance_two_cluster_scenario,
+    run_headline_experiment,
+)
 from planning.objectives import (
     constrained_objective,
     evaluate_plan,
@@ -256,6 +261,60 @@ def test_headline_experiment_each_plan_wins_its_own_objective():
         for _, other_plan in objectives_and_plans:
             other_evaluation = evaluate_plan(other_plan.station_poses, scenario)
             assert own_value <= objective_fn(other_evaluation, scenario) + 1e-9
+
+
+def test_mixed_tolerance_scenario_can_separate_a0_from_a1():
+    """`default_two_cluster_scenario`'s A0 (trace) and A1 (uniform-
+    projected) land on the *identical* plan -- documented in
+    docs/step6_headline_experiment.md as a property of that scene's
+    symmetry (all six characteristics share one tolerance type, one
+    projected direction), not a general equivalence, with "a scene with
+    mixed tolerance types" named there as the natural next check.
+
+    This is that check. `mixed_tolerance_two_cluster_scenario` gives each
+    cluster one `PositionTolerance` (spherical -- A1 sees the whole
+    covariance here, same as A0 always does), one `ProfileTolerance`
+    (one direction, the surface normal), and one `ParallelismTolerance`
+    (one direction, an external datum unrelated to the surface normal) --
+    CLAUDE.md §3's own position-vs-parallelism example, built directly
+    into one scene. A0 stays blind to all of this (it only ever sees each
+    point's full trace); A1 does not (each tolerance type keeps only the
+    slice of the covariance its own direction(s) constrain) -- so A0 and
+    A1 now have a genuine reason to rank candidates differently, not just
+    a hypothetical one.
+
+    At this scene's full candidate resolution (the default 24-candidate,
+    12 azimuth x 2 elevation grid `run_headline_experiment` uses) A0 and
+    A1 still happen to land on the same plan -- not every mixed scene
+    separates them, and that's reported honestly in docs/
+    step6_headline_experiment.md alongside this result, not hidden. At a
+    coarser candidate grid (fewer alternatives for a close-but-different
+    ranking to lose to) they do separate, which is what this test checks:
+    a concrete, reproducible scene and resolution where A0 != A1 is no
+    longer just a theoretical possibility."""
+    scenario = mixed_tolerance_two_cluster_scenario()
+    result = run_headline_experiment(
+        scenario, azimuths_deg=[0, 90, 180, 270], elevations_deg=[0, 30], n_stations=2
+    )
+
+    def same_station_poses(plan_x, plan_y):
+        return all(
+            np.allclose(pose_x.position_m, pose_y.position_m)
+            for pose_x, pose_y in zip(plan_x.station_poses, plan_y.station_poses)
+        )
+
+    assert not same_station_poses(result.plan_a0, result.plan_a1), (
+        "expected mixed tolerance types to give A0 and A1 a genuine reason to "
+        "disagree at this candidate resolution -- if this now fails, either "
+        "the scene or the candidate grid changed in a way that restored the "
+        "coincidence, which is itself worth noting in docs/"
+        "step6_headline_experiment.md, not silently accepting"
+    )
+    # B and C can still legitimately agree or disagree independently of
+    # A0/A1 -- not asserted either way here, since (per the module
+    # docstring) whether the linearised weight (B) matches the direct
+    # nonlinear objective (C) is itself the open empirical question the
+    # ablation exists to answer, not something this test should presume.
 
 
 def test_headline_experiment_reports_required_fields():

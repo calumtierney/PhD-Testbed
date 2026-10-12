@@ -486,6 +486,84 @@ roughly three orders of magnitude cheaper per evaluation than a full
 noisy nonlinear fit, since the solver converges in a single function
 evaluation (it starts exactly at its own answer).
 
+## Mixed tolerance types: the check "A0 = A1, B = C" invited
+
+**Why this check exists.** "The result" above found A0 identical to A1,
+and B identical to C, and said plainly that this was a property of that
+scene's symmetry -- every one of the six characteristics is a
+`ProfileTolerance` against the same surface normal -- not a general
+equivalence, and that "a scene with mixed tolerance types (position,
+parallelism, profile together) would be the natural next check." This
+section is that check, not a hypothetical anymore.
+
+**The scene.** `planning.experiment.mixed_tolerance_two_cluster_scenario`
+keeps the same two clusters, the same six target points, the same
+process priors -- only the *tolerances* change. Each cluster now gets one
+of each type on CLAUDE.md §3's own example pairing: a `PositionTolerance`
+(spherical -- A1 sees the *whole* covariance here, the one point where it
+should agree with A0 most closely), a `ProfileTolerance` (one direction,
+the surface's own normal, z), and a `ParallelismTolerance` (one
+direction, an *external* datum normal, x -- unrelated to the surface and
+unrelated to the profile point's own direction).
+
+**At the default 24-candidate grid, A0 = A1 and B = C still hold.**
+
+| | A0 (trace) | A1 (uniform, projected) | B (linearised risk) | C (direct risk) |
+|---|---|---|---|---|
+| Stations | (4.88, 3.26, 2.37), (4.88, -3.26, 2.37) | *same as A0* | (3.00, -4.00, 1.00), (4.88, -3.26, 2.37) | *same as B* |
+| Summed uncertainty | 37.88 µm | 37.88 µm | 39.69 µm | 39.69 µm |
+| Global risk (PFA+PFR) | 0.1741 | 0.1741 | 0.1687 | 0.1687 |
+
+Effort +4.8%, risk -3.1% -- the same direction, similar magnitude, to the
+single-tolerance-type scene's +5.1%/-3.2% (`results/
+panel6a_stations_mixedtol.png`, `results/panel6b_comparison_mixedtol.png`).
+Mixing tolerance types *alone*, at this grid, was not enough to separate
+either pair. Worth understanding why, not just reporting it: within one
+cluster, the three points sit 0.2-0.4 m apart -- close enough that
+whichever station pair is best for the cluster overall (mainly a function
+of range and viewing angle to the *cluster*, not to any one point) is
+close to best for every point in it, regardless of which single direction
+that point's own tolerance happens to keep. The `ParallelismTolerance`
+point's own projected uncertainty is also small in absolute terms (~2.4
+µm vs ~8 µm for position/profile), so even where it *does* prefer a
+different station, it isn't large enough to outvote the other two points
+in A1's unweighted sum. Both effects point the same way: this scene's
+raw geometry (how close three tightly-clustered points are to a
+candidate), not tolerance direction, is still the dominant signal at this
+resolution.
+
+**At a coarser candidate grid, A0 and A1 do separate.** Reducing to 4
+azimuths x 2 elevations (8 candidates instead of 24 -- the same reduction
+`tests/test_planning.py::test_mixed_tolerance_scenario_can_separate_a0_from_a1`
+uses, and `results/panel8c_mixedtol_divergence.png`):
+
+| | A0 (trace) | A1 (uniform, projected) | B = C (risk-based) |
+|---|---|---|---|
+| Stations | (3.00, 3.46, 3.00), (3.00, -4.00, 1.00) | (3.00, 3.46, 3.00), (3.00, -3.46, 3.00) | (3.00, -4.00, 1.00), (3.00, -3.46, 3.00) |
+| Summed uncertainty | 38.51 µm | 38.39 µm | 38.81 µm |
+| Global risk (PFA+PFR) | 0.1919 | 0.1761 | 0.1708 |
+
+A0 and A1 now pick genuinely different candidates -- not a numerical
+rounding difference; their global risk differs by nearly 9% relative
+(0.1919 vs 0.1761). With fewer alternatives on the table, a
+close-but-not-identical ranking (position's direction-blind trace vs the
+mixed scene's direction-aware projections) has fewer competing candidates
+to lose to before it actually changes the winner. B and C still coincide
+at this resolution too -- not asserted to hold in general, simply what
+was observed here; `tests/test_planning.py`'s own test deliberately
+doesn't assert either way on that pair, only on A0 != A1.
+
+**The honest takeaway.** "A0 = A1" and "B = C" were never claimed as
+general equivalences (§4e's own standard: never adjust an input to force
+an output, and never claim more than what was actually checked) -- they
+were reported as a property of one symmetric scene, with the prediction
+that breaking the symmetry was the test of that claim. Breaking it one
+way (mixed tolerance types, same resolution) didn't move the needle; a
+second, independent change (coarser candidate grid) did. That both
+matters -- resolution and tolerance diversity interacting, not either
+alone -- is itself the finding this check was built to surface, not a
+single headline number.
+
 ## What step 6 still deliberately doesn't do
 
 Per CLAUDE.md §3 ("do not invent an optimiser") and §9 ("if a requested
@@ -499,11 +577,11 @@ feature would take the project outside the ladder, say so"):
   introducing a new search algorithm).
 - No occlusion (step 2) in the search itself -- the scene here has no
   obstacles, so every station sees every target.
-- Only one instrument type, one tolerance type (profile) across every
-  characteristic in the demonstration scene -- both are
-  `PlanningScenario` fields a caller can vary; nothing in `planning`
-  assumes either is fixed. A scene mixing tolerance types is the natural
-  next check for whether A0 and A1 keep agreeing (see "The result" above).
+- Only one instrument type across the demonstration scene -- a
+  `PlanningScenario` field a caller can vary; nothing in `planning`
+  assumes it's fixed, not done here. (Tolerance type *is* now varied --
+  see "Mixed tolerance types" below, the check this bullet used to flag
+  as outstanding.)
 - No heuristic baselines (1/Cpk weights, a practitioner's plan) in the
   ablation -- flagged, not filled with an invented placeholder.
 - No fast, closed-form replacement for objective C's `scipy.integrate.quad`

@@ -22,7 +22,8 @@ from typing import Dict, List, Optional, Sequence
 import numpy as np
 
 from characteristics.characteristic import Characteristic
-from characteristics.tolerances import ProfileTolerance
+from characteristics.datum import Datum
+from characteristics.tolerances import ParallelismTolerance, PositionTolerance, ProfileTolerance
 from geometry.pose import InstrumentPose
 from instruments.laser_tracker import LaserTracker
 from planning.candidates import hemisphere_candidate_poses
@@ -156,6 +157,108 @@ def default_two_cluster_scenario(
         # constraint; docs/step6_headline_experiment.md's "datum
         # dependence" section on why this choice is a real modelling
         # decision, not an arbitrary one).
+        anchor_position_m = np.array([0.0, 0.0, 1.0])
+    anchor_pose = InstrumentPose(position_m=np.asarray(anchor_position_m, dtype=float))
+
+    return PlanningScenario(
+        target_points_m=target_points_m,
+        tracker=tracker if tracker is not None else LaserTracker(),
+        characteristics=characteristics,
+        assignments=assignments,
+        decision_rules=decision_rules,
+        anchor_pose=anchor_pose,
+    )
+
+
+def mixed_tolerance_two_cluster_scenario(
+    anchor_position_m: np.ndarray = None, tracker: Optional[LaserTracker] = None
+) -> PlanningScenario:
+    """The same two clusters, same six target points, same process
+    priors as `default_two_cluster_scenario` -- but each cluster now
+    carries one of each tolerance type (CLAUDE.md §3's own example: "A
+    hole-position tolerance and a parallelism tolerance on the same
+    feature... carry different risk because they project the error
+    ellipsoid differently") instead of six identical profile callouts.
+
+    This is the check `docs/step6_headline_experiment.md`'s "What step 6
+    still deliberately doesn't do" flagged as the natural next one: A0
+    and A1 (and, separately, B and C) landed on the *identical* plan in
+    `default_two_cluster_scenario` -- documented there as a property of
+    that scene's symmetry (every characteristic shares one projected
+    direction, one tolerance type), not a general equivalence. Breaking
+    that symmetry is the direct test of whether they actually can
+    diverge, per CLAUDE.md §4b/§4e's own insistence that a prediction is
+    only meaningful if there's a way for it to come out wrong.
+
+    Per cluster, the three points get:
+
+      - point 0: `PositionTolerance` (spherical) -- constrains all three
+        directions at once, so A1's projected uncertainty for this point
+        sees the *whole* covariance, same as A0's raw trace does. This
+        point is where A0 and A1 should agree most closely.
+      - point 1: `ProfileTolerance`, surface normal = z (vertical) -- the
+        single direction every characteristic used in the symmetric
+        scene; kept as a baseline reference inside the mixed scene too.
+      - point 2: `ParallelismTolerance`, datum normal = x (horizontal,
+        along the nominal line of sight to the scene) -- a direction
+        that has nothing to do with the point's own surface, and nothing
+        to do with point 1's z-normal either, per `ParallelismTolerance`'s
+        own docstring on why its direction is externally supplied, not
+        derived from the measured surface.
+
+    A1 can now legitimately diverge from A0 (it sees three different
+    slices of each point's covariance, weighted equally, where A0 always
+    sees the whole thing); B and C get the chance to diverge too, since
+    a mixed scene's candidates no longer have to trade off identically
+    between two interchangeable-by-symmetry clusters.
+    """
+    cluster1_points_m = np.array(
+        [[3.0, 2.0, 1.0], [3.2, 2.3, 1.2], [2.8, 1.8, 0.8]]
+    )  # high-capability
+    cluster2_points_m = np.array(
+        [[3.0, -2.0, 1.0], [3.2, -2.3, 1.2], [2.8, -1.8, 0.8]]
+    )  # marginal
+    target_points_m = np.vstack([cluster1_points_m, cluster2_points_m])
+
+    surface_normal = np.array([0.0, 0.0, 1.0])  # z: same as the symmetric scene's profile points
+    datum = Datum(name="D (mounting face)", normal=np.array([1.0, 0.0, 0.0]))  # x: unrelated to z
+
+    def _tolerances_for_cluster(point_offset: int) -> List[Characteristic]:
+        return [
+            Characteristic(
+                name=f"cluster{point_offset // 3 + 1}_position",
+                target_indices=[point_offset],
+                tolerance=PositionTolerance(zone_diameter_m=TOLERANCE_ZONE_WIDTH_M),
+            ),
+            Characteristic(
+                name=f"cluster{point_offset // 3 + 1}_profile",
+                target_indices=[point_offset + 1],
+                tolerance=ProfileTolerance(zone_width_m=TOLERANCE_ZONE_WIDTH_M, surface_normal=surface_normal),
+            ),
+            Characteristic(
+                name=f"cluster{point_offset // 3 + 1}_parallelism",
+                target_indices=[point_offset + 2],
+                tolerance=ParallelismTolerance(zone_width_m=TOLERANCE_ZONE_WIDTH_M),
+                datum=datum,
+            ),
+        ]
+
+    characteristics = _tolerances_for_cluster(0) + _tolerances_for_cluster(3)
+
+    assignments = {}
+    for characteristic in characteristics[:3]:
+        assignments[characteristic.name] = ClusterAssignment(
+            characteristic.name, HIGH_CAPABILITY_CLUSTER, confidence=0.9
+        )
+    for characteristic in characteristics[3:]:
+        assignments[characteristic.name] = ClusterAssignment(characteristic.name, MARGINAL_CLUSTER, confidence=0.9)
+
+    decision_rules = {
+        characteristic.name: DecisionRule.from_zone_width(TOLERANCE_ZONE_WIDTH_M)
+        for characteristic in characteristics
+    }
+
+    if anchor_position_m is None:
         anchor_position_m = np.array([0.0, 0.0, 1.0])
     anchor_pose = InstrumentPose(position_m=np.asarray(anchor_position_m, dtype=float))
 

@@ -100,8 +100,13 @@ complete:
   modestly in this scene, for reasons the write-up explains, plus an
   iso-risk comparison (risk-weighting reaches a given risk target with
   fewer stations at some targets) and a guard against unbounded
-  degradation (`docs/step6_headline_experiment.md`). The full six-step
-  chain is now built end to end.
+  degradation (`docs/step6_headline_experiment.md`). A second scenario
+  (`planning.experiment.mixed_tolerance_two_cluster_scenario`) checks
+  whether A0/A1 and B/C's coincidence in the main scene was a general
+  equivalence or just that scene's symmetry, by mixing position,
+  profile and parallelism tolerances together — the answer depends on
+  candidate-grid resolution as well as the tolerance mix (same doc).
+  The full six-step chain is now built end to end.
 
 **Visualization** (`src/visualization`, not one of the six steps — see
 its module docstring): matplotlib plotting for scenes, per-point error

@@ -46,6 +46,7 @@ from planning.experiment import (
     MARGINAL_CLUSTER,
     TOLERANCE_ZONE_WIDTH_M,
     default_two_cluster_scenario,
+    mixed_tolerance_two_cluster_scenario,
     run_headline_experiment,
 )
 from risk.jcgm106 import ClusterAssignment, DecisionRule, evaluate_conformity_risk
@@ -269,11 +270,18 @@ def _summary_row(result):
     return plan_a1, plan_b, effort_change_pct, risk_change_pct
 
 
-def _make_station_and_bar_panels(result, suffix: str, subtitle: str = None):
+def _make_station_and_bar_panels(result, suffix: str, subtitle: str = None, bar_title_suffix: str = ""):
     """panel6a_stations{suffix}.png and panel6b_comparison{suffix}.png
-    for one `HeadlineExperimentResult` -- used for both the baseline
-    (systematic_std_m=0, suffix="") and the 10 µm-systematic run
-    (suffix="_systematic10um")."""
+    for one `HeadlineExperimentResult` -- used for the baseline
+    (systematic_std_m=0, suffix=""), the 10 µm-systematic run
+    (suffix="_systematic10um"), and the mixed-tolerance scene
+    (suffix="_mixedtol"). `bar_title_suffix` is appended to the bar
+    chart's own title text (e.g. ", 10 µm systematic term") -- kept
+    separate from `subtitle` (which only ever labels the station-layout
+    figure) so a caller can supply one without the other; conflating
+    the two previously mislabelled the mixed-tolerance scene's bar
+    chart as a systematic-term run just because it also passed a
+    subtitle."""
     scenario = result.scenario
     true_targets_m = scenario.target_points_m
     net_a = result.search_a1.best.network_solve
@@ -303,9 +311,7 @@ def _make_station_and_bar_panels(result, suffix: str, subtitle: str = None):
     uncertainty_a = [plan_a1.per_characteristic_uncertainty_m[l] for l in labels]
     uncertainty_b = [plan_b.per_characteristic_uncertainty_m[l] for l in labels]
 
-    title_prefix = "Step 6: per-characteristic uncertainty"
-    if subtitle:
-        title_prefix += ", 10 µm systematic term"
+    title_prefix = "Step 6: per-characteristic uncertainty" + bar_title_suffix
     fig2, ax = plt.subplots(figsize=(8, 5))
     plot_plan_comparison(
         labels, uncertainty_a, uncertainty_b,
@@ -424,7 +430,9 @@ def make_panel6_and_7():
 
     plan_a1_0, plan_b_0 = _make_station_and_bar_panels(result_0, suffix="")
     plan_a1_10, plan_b_10 = _make_station_and_bar_panels(
-        result_10, suffix="_systematic10um", subtitle="With a 10 µm placement-irreducible systematic term",
+        result_10, suffix="_systematic10um",
+        subtitle="With a 10 µm placement-irreducible systematic term",
+        bar_title_suffix=", 10 µm systematic term",
     )
 
     band_sensor_noise_only_um = (
@@ -439,6 +447,82 @@ def make_panel6_and_7():
     _make_sensitivity_panel(band_sensor_noise_only_um, band_with_systematic_um)
 
 
+def make_panel8_mixed_tolerance():
+    """`mixed_tolerance_two_cluster_scenario` -- the "natural next check"
+    docs/step6_headline_experiment.md flagged: does mixing tolerance
+    types (position, profile, parallelism) break A0=A1/B=C's coincidence
+    in the symmetric, single-tolerance-type scene?
+
+    Two figures, two resolutions, because the answer depends on both:
+
+    - panel8a/8b, the *same* 24-candidate grid `make_panel6_and_7` uses:
+      A0=A1 and B=C still coincide here (reported honestly, not hidden --
+      CLAUDE.md §8's "if they coincide, that must be stated on the
+      figure, not buried"), so this reuses `_make_station_and_bar_panels`
+      exactly as the symmetric-scene figures do.
+    - panel8c, a coarser 8-candidate grid (fewer alternatives for a
+      close-but-different ranking to lose to -- same grid
+      `tests/test_planning.py::test_mixed_tolerance_scenario_can_separate_a0_from_a1`
+      uses): A0 and A1 *do* separate here, so this is a three-way
+      comparison (A0, A1, B=C each get their own panel) rather than the
+      two-way A0=A1-vs-B=C layout the other figures use.
+    """
+    scenario = mixed_tolerance_two_cluster_scenario()
+
+    print("Running mixed-tolerance headline experiment, full 24-candidate grid ...")
+    t0 = time.time()
+    result_full = run_headline_experiment(scenario)
+    print(f"  ({time.time() - t0:.0f}s)")
+    _make_station_and_bar_panels(
+        result_full, suffix="_mixedtol",
+        subtitle="Mixed tolerance types (position / profile / parallelism) -- A0=A1, B=C still coincide at this resolution",
+    )
+
+    print("Running mixed-tolerance headline experiment, reduced 8-candidate grid ...")
+    t0 = time.time()
+    result_small = run_headline_experiment(scenario, azimuths_deg=[0, 90, 180, 270], elevations_deg=[0, 30])
+    print(f"  ({time.time() - t0:.0f}s)")
+
+    true_targets_m = scenario.target_points_m
+    net_a0 = result_small.search_a0.best.network_solve
+    net_a1 = result_small.search_a1.best.network_solve
+    net_b = result_small.search_b.best.network_solve
+
+    def scale_for(net_result):
+        points_m = net_result.target_points_m
+        station_positions_m = np.array([p.position_m for p in net_result.station_poses])
+        all_points_m = np.vstack([points_m, station_positions_m, true_targets_m])
+        centre_m = all_points_m.mean(axis=0)
+        scene_radius_m = max(float(np.max(np.linalg.norm(all_points_m - centre_m, axis=1))), 1e-6)
+        max_semi_axis_m = max(
+            (np.sqrt(np.linalg.eigvalsh(net_result.target_point_covariance(i)).max()) for i in range(len(points_m))),
+            default=0.0,
+        )
+        return _auto_ellipsoid_scale(max_semi_axis_m, scene_radius_m)
+
+    shared_scale = min(scale_for(net_a0), scale_for(net_a1), scale_for(net_b))
+
+    fig = plt.figure(figsize=(18, 6))
+    titles = [
+        ("A0: trace of full covariance\n(tolerance-blind)", net_a0),
+        ("A1: uniform weights on\nprojected uncertainty", net_a1),
+        ("B = C: risk-based\n(linearised / direct)", net_b),
+    ]
+    for i, (title, net_result) in enumerate(titles, start=1):
+        ax = fig.add_subplot(1, 3, i, projection="3d")
+        plot_network_result(
+            net_result, ax=ax, ellipsoid_scale=shared_scale, true_target_points_m=true_targets_m, title=title,
+        )
+    fig.suptitle(
+        "Mixed tolerance types, coarser 8-candidate grid: A0 and A1 now pick different stations",
+        fontsize=11, y=1.03,
+    )
+    fig.tight_layout()
+    fig.savefig(RESULTS_DIR / "panel8c_mixedtol_divergence.png", dpi=130, bbox_inches="tight")
+    plt.close(fig)
+    print(f"wrote {RESULTS_DIR / 'panel8c_mixedtol_divergence.png'}")
+
+
 def main():
     RESULTS_DIR.mkdir(exist_ok=True)
     make_panel1_scene()
@@ -447,6 +531,7 @@ def main():
     make_panel4_characteristics()
     make_panel5_risk()
     make_panel6_and_7()
+    make_panel8_mixed_tolerance()
 
 
 if __name__ == "__main__":
