@@ -244,6 +244,7 @@ def genetic_algorithm_station_placement(
     bounds_m: Sequence[Tuple[float, float]],
     aim_point_m: Optional[np.ndarray] = None,
     seed: Optional[int] = 0,
+    seed_station_positions_m: Optional[Sequence[Sequence[np.ndarray]]] = None,
     **differential_evolution_kwargs,
 ) -> GASearchResult:
     """Search `n_stations` continuous (x, y, z) station positions with
@@ -306,6 +307,29 @@ def genetic_algorithm_station_placement(
     only tracked in the serial (`workers=1`, the default) case -- see
     that field's own docstring for why a live count can't survive
     `workers != 1`.
+
+    **Seeding the initial population (`seed_station_positions_m`).**
+    Confirmed directly on this codebase's own wing scenario: even a
+    34000-evaluation budget left one objective's own search stuck in a
+    clearly worse region than another objective's search found, judged
+    by the stuck objective's *own* metric (`objectives.
+    make_weighted_uncertainty_objective`'s risk-derived weights can span
+    three orders of magnitude across characteristics -- `risk_derived_
+    weights`'s own docstring -- which makes for a landscape DE can
+    struggle to explore blind over a box spanning tens of metres). Pass
+    known-good station arrangements here -- e.g. another objective's own
+    `result.best.station_poses` from a search over the *same*
+    `bounds_m`/`aim_point_m` -- as `[[pos0, pos1, ...], ...]`, one inner
+    list per seed arrangement, each exactly `n_stations` positions long.
+    Each is flattened into one member of DE's initial population
+    (`differential_evolution`'s own `init=` array argument); the rest of
+    the population is filled out by a Latin hypercube sample over
+    `bounds_m`, exactly as when no seeds are given, so DE still explores
+    freely from there -- a seed is a starting point to refine from, not a
+    constraint on where the search can end up. Raises `ValueError` if
+    more seeds are given than `popsize * n_stations * 3` (the population
+    size `differential_evolution` would otherwise use), rather than
+    silently dropping some.
     """
     if aim_point_m is None:
         aim_point_m = scenario.target_points_m.mean(axis=0)
@@ -316,6 +340,32 @@ def genetic_algorithm_station_placement(
 
     full_bounds = bounds_m * n_stations
     cost = _StationPlacementCost(scenario, objective_fn, aim_point_m, n_stations)
+    ndim = 3 * n_stations
+
+    if seed_station_positions_m is not None:
+        if "init" in differential_evolution_kwargs:
+            raise ValueError("pass either seed_station_positions_m or init=..., not both")
+        requested_popsize = differential_evolution_kwargs.get("popsize", 15)
+        total_population = requested_popsize * ndim
+        seed_rows = [np.asarray(positions, dtype=float).reshape(-1) for positions in seed_station_positions_m]
+        for row in seed_rows:
+            if row.shape != (ndim,):
+                raise ValueError(
+                    f"each seed_station_positions_m entry must contain exactly n_stations={n_stations} "
+                    f"(x, y, z) positions ({ndim} values total), got shape {row.shape}"
+                )
+        if len(seed_rows) > total_population:
+            raise ValueError(
+                f"{len(seed_rows)} seed_station_positions_m entries given, but the population "
+                f"size (popsize * n_stations * 3 = {total_population}) can only hold that many -- "
+                "raise popsize or pass fewer seeds"
+            )
+        rng = np.random.default_rng(seed)
+        low = np.array([b[0] for b in full_bounds])
+        high = np.array([b[1] for b in full_bounds])
+        n_random = total_population - len(seed_rows)
+        random_rows = rng.uniform(low, high, size=(n_random, ndim))
+        differential_evolution_kwargs["init"] = np.vstack([np.array(seed_rows), random_rows])
 
     workers = differential_evolution_kwargs.get("workers", 1)
     if workers != 1:

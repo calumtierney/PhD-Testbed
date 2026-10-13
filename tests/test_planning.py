@@ -616,6 +616,38 @@ def test_ga_search_disqualifies_out_of_range_positions():
     assert result.n_infeasible_evals == result.n_function_evals
 
 
+def test_ga_search_seeded_population_finds_the_seeded_optimum():
+    """Seeding with the true optimum (found by a prior, cheap grid search)
+    should let the GA immediately report that same value even with a
+    tiny budget that would otherwise have no realistic chance of finding
+    it blind -- the direct test that seeding actually biases the search
+    rather than being silently ignored."""
+    scenario = default_two_cluster_scenario()
+    centre_m = scenario.target_points_m.mean(axis=0)
+    candidates = hemisphere_candidate_poses(centre_m, radius_m=4.0, azimuths_deg=[0, 90, 180, 270], elevations_deg=[0, 30])
+    grid_result = grid_search_station_placement(candidates, 2, scenario, objective_a0_trace_covariance)
+    seed_positions = [p.position_m for p in grid_result.best.station_poses]
+
+    result = genetic_algorithm_station_placement(
+        scenario, n_stations=2, objective_fn=objective_a0_trace_covariance,
+        bounds_m=[(-50.0, 50.0), (-50.0, 50.0), (-50.0, 50.0)],  # huge box a blind search has little hope in
+        seed=0, maxiter=1, popsize=4, tol=1e-2,
+        seed_station_positions_m=[seed_positions],
+    )
+    assert result.best_objective_value <= grid_result.best_objective_value * 1.01
+
+
+def test_ga_search_rejects_too_many_seeds():
+    scenario = default_two_cluster_scenario()
+    too_many_seeds = [[np.array([0.0, 0.0, 1.0]), np.array([1.0, 0.0, 1.0])] for _ in range(1000)]
+    with pytest.raises(ValueError):
+        genetic_algorithm_station_placement(
+            scenario, n_stations=2, objective_fn=objective_a0_trace_covariance,
+            bounds_m=[(-2.0, 8.0), (-6.0, 6.0), (0.0, 6.0)],
+            popsize=4, maxiter=1, seed_station_positions_m=too_many_seeds,
+        )
+
+
 def test_weighted_and_constrained_objectives_survive_a_pickle_round_trip():
     """genetic_algorithm_station_placement's workers != 1 path sends the
     whole ObjectiveFn to a multiprocessing worker process via pickle --
