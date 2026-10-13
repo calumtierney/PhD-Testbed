@@ -107,6 +107,24 @@ complete:
   profile and parallelism tolerances together — the answer depends on
   candidate-grid resolution as well as the tolerance mix (same doc).
   The full six-step chain is now built end to end.
+- **towards a more realistic headline experiment** — three extensions so
+  far: (1) step 2's occlusion/visibility layer is now wired into
+  planning itself (`PlanningScenario.obstacles`/`visibility_limits`,
+  `objectives.evaluate_plan`), so a candidate plan that leaves a target
+  unseen, or a station unable to see enough of the scene to pin its own
+  pose, is correctly disqualified rather than silently solved; (2)
+  `planning.candidates.floor_grid_candidate_poses` generalises station
+  placement beyond a fixed-radius ring to a real (x, y, height) grid, and
+  `planning.search.genetic_algorithm_station_placement` adds the
+  standard-GA search CLAUDE.md §3 names as the fallback once that grid's
+  combinatorics stop being grid-search-tractable (`scipy.optimize.
+  differential_evolution`, no new dependency); (3)
+  `planning.experiment.wing_four_point_scenario` puts all of this
+  together on a single ~30 m wing (CLAUDE.md §1's own upper range bound)
+  with four named fittings and a support-tower occluder under mid-span.
+  A full A0/A1/B/C comparison on this scene, written up the way
+  `docs/step6_headline_experiment.md` covers the original scene, is in
+  progress.
 
 **Visualization** (`src/visualization`, not one of the six steps — see
 its module docstring): matplotlib plotting for scenes, per-point error
