@@ -151,6 +151,51 @@ INFEASIBLE_PENALTY = 1e6
 
 
 @dataclass(frozen=True)
+class _StationPlacementCost:
+    """Picklable (module-level, no closure) per-candidate cost evaluator
+    for `genetic_algorithm_station_placement`.
+
+    Why this has to be a plain class rather than the nested function an
+    earlier revision used: `scipy.optimize.differential_evolution`'s
+    `workers` parameter (anything other than the default `1`) hands the
+    cost function to a `multiprocessing.Pool`, which sends it to worker
+    processes via the standard library's `pickle` -- and `pickle` cannot
+    serialise a function defined inside another function (a closure),
+    only a module-level name. `objective_fn` itself has to be picklable
+    too for the same reason, which is why `objectives.
+    make_weighted_uncertainty_objective`/`constrained_objective` return
+    plain callable classes rather than closures as well.
+
+    Deliberately stateless: `multiprocessing` gives each worker its own
+    pickled copy, so a live "how many infeasible so far" counter could
+    not be kept accurate across worker processes even if this held one
+    -- see `genetic_algorithm_station_placement`'s own handling of
+    `n_infeasible_evals` for the serial (`workers=1`, the default) case,
+    where a counter *is* kept, precisely because it doesn't cross a
+    process boundary there.
+    """
+
+    scenario: PlanningScenario
+    objective_fn: ObjectiveFn
+    aim_point_m: np.ndarray
+    n_stations: int
+
+    def station_poses(self, flat_params: np.ndarray) -> List[InstrumentPose]:
+        positions_m = np.asarray(flat_params).reshape(self.n_stations, 3)
+        return [
+            InstrumentPose(position_m=position_m, orientation=look_at_orientation(position_m, self.aim_point_m))
+            for position_m in positions_m
+        ]
+
+    def __call__(self, flat_params: np.ndarray) -> float:
+        evaluation = evaluate_plan(self.station_poses(flat_params), self.scenario)
+        if evaluation is None:
+            return INFEASIBLE_PENALTY
+        value = self.objective_fn(evaluation, self.scenario)
+        return value if value < float("inf") else INFEASIBLE_PENALTY
+
+
+@dataclass(frozen=True)
 class GASearchResult:
     """The outcome of a differential-evolution station-placement search --
     the GA-search analogue of `GridSearchResult`.
@@ -175,7 +220,13 @@ class GASearchResult:
         scored at `INFEASIBLE_PENALTY` instead of their real objective
         value -- CLAUDE.md §8's "report a null/negative result
         prominently" applied to the GA path the same way
-        `GridSearchResult.n_infeasible` applies it to the grid path.
+        `GridSearchResult.n_infeasible` applies it to the grid path. Only
+        tracked when the search ran serially (`workers=1`, the default);
+        0 whenever `workers != 1` was passed, since a live count cannot
+        survive being split across `multiprocessing` worker processes
+        (see `genetic_algorithm_station_placement`'s own docstring on
+        `workers`) -- this is a reporting gap in the parallel path, not a
+        claim that nothing was infeasible.
     """
 
     best: Optional[PlanEvaluation]
@@ -231,11 +282,30 @@ def genetic_algorithm_station_placement(
 
     `**differential_evolution_kwargs` passes straight through to
     `scipy.optimize.differential_evolution` (e.g. `popsize`, `maxiter`,
-    `tol`, `workers` for parallel evaluation) -- tune these against
-    `objective_fn`'s own cost per call (objective C's risk integration is
-    roughly two orders of magnitude slower per call than A0/A1/B, per
-    `planning.experiment`'s own runtime note) rather than this function
-    hard-coding a one-size-fits-all budget.
+    `tol`) -- tune these against `objective_fn`'s own cost per call
+    (objective C's risk integration is roughly two orders of magnitude
+    slower per call than A0/A1/B, per `planning.experiment`'s own runtime
+    note) rather than this function hard-coding a one-size-fits-all
+    budget.
+
+    **Parallel evaluation (`workers`).** Pass `workers=N` (or `-1` for
+    `os.cpu_count()`) to evaluate a generation's population across
+    `multiprocessing` worker processes instead of one at a time --
+    `_StationPlacementCost` above exists specifically so this works
+    (a closure could not survive being pickled to a worker). Measured on
+    this codebase's own wing scenario (4 cores): `workers=-1` gave a
+    ~3.5x speedup over `workers=1`, but *only* after pinning every BLAS
+    library to one thread per process first (`OMP_NUM_THREADS=1`,
+    `OPENBLAS_NUM_THREADS=1`, `MKL_NUM_THREADS=1`, `NUMEXPR_NUM_THREADS=1`
+    as environment variables, set before the Python process starts --
+    numpy/scipy's linear algebra reads these once at import time, not
+    per call). Without pinning them, each worker process's own
+    multi-threaded BLAS calls oversubscribe the machine's cores against
+    each other and the parallel run can come out *slower* than serial --
+    confirmed directly, not a theoretical caveat. `n_infeasible_evals` is
+    only tracked in the serial (`workers=1`, the default) case -- see
+    that field's own docstring for why a live count can't survive
+    `workers != 1`.
     """
     if aim_point_m is None:
         aim_point_m = scenario.target_points_m.mean(axis=0)
@@ -245,27 +315,34 @@ def genetic_algorithm_station_placement(
         raise ValueError(f"bounds_m must have exactly 3 (min, max) pairs (x, y, z), got {len(bounds_m)}")
 
     full_bounds = bounds_m * n_stations
-    infeasible_evals = 0
+    cost = _StationPlacementCost(scenario, objective_fn, aim_point_m, n_stations)
 
-    def _station_poses(flat_params: np.ndarray) -> List[InstrumentPose]:
-        positions_m = np.asarray(flat_params).reshape(n_stations, 3)
-        return [
-            InstrumentPose(position_m=position_m, orientation=look_at_orientation(position_m, aim_point_m))
-            for position_m in positions_m
-        ]
+    workers = differential_evolution_kwargs.get("workers", 1)
+    if workers != 1:
+        # scipy requires (and silently forces, with a warning, if not told)
+        # updating="deferred" whenever workers != 1 -- a whole generation
+        # evaluated at once, rather than each member updating the
+        # population immediately as it's scored, is what makes handing
+        # the generation to a worker pool meaningful in the first place.
+        # Setting it explicitly avoids the warning and makes the
+        # requirement visible here rather than left to scipy's default.
+        differential_evolution_kwargs.setdefault("updating", "deferred")
+    if workers == 1:
+        infeasible_evals = 0
 
-    def cost(flat_params: np.ndarray) -> float:
-        nonlocal infeasible_evals
-        evaluation = evaluate_plan(_station_poses(flat_params), scenario)
-        if evaluation is None:
-            infeasible_evals += 1
-            return INFEASIBLE_PENALTY
-        value = objective_fn(evaluation, scenario)
-        return value if value < float("inf") else INFEASIBLE_PENALTY
+        def counted_cost(flat_params: np.ndarray) -> float:
+            nonlocal infeasible_evals
+            value = cost(flat_params)
+            if value >= INFEASIBLE_PENALTY:
+                infeasible_evals += 1
+            return value
 
-    de_result = differential_evolution(cost, full_bounds, seed=seed, **differential_evolution_kwargs)
+        de_result = differential_evolution(counted_cost, full_bounds, seed=seed, **differential_evolution_kwargs)
+    else:
+        infeasible_evals = 0  # not tracked across worker processes -- see the docstring above
+        de_result = differential_evolution(cost, full_bounds, seed=seed, **differential_evolution_kwargs)
 
-    best_evaluation = evaluate_plan(_station_poses(de_result.x), scenario)
+    best_evaluation = evaluate_plan(cost.station_poses(de_result.x), scenario)
     best_value = (
         None if best_evaluation is None else objective_fn(best_evaluation, scenario)
     )

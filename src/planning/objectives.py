@@ -336,21 +336,40 @@ def evaluate_plan(
 ObjectiveFn = Callable[[PlanEvaluation, PlanningScenario], float]
 
 
-def make_weighted_uncertainty_objective(weights: np.ndarray) -> ObjectiveFn:
-    """Objectives A1 (`weights=uniform_weights(...)`) and B
-    (`weights=risk_derived_weights(...)`): `sum(weight_i * uncertainty_i)`
-    over projected characteristic uncertainties.
+@dataclass(frozen=True)
+class WeightedUncertaintyObjective:
+    """Objectives A1/B's scoring rule: `sum(weight_i * uncertainty_i)` over
+    projected characteristic uncertainties -- a plain callable class
+    rather than the closure an earlier revision returned from
+    `make_weighted_uncertainty_objective` below, so it can be pickled.
+    `planning.search.genetic_algorithm_station_placement`'s parallel path
+    (`scipy.optimize.differential_evolution`'s `workers` parameter, backed
+    by `multiprocessing`) has to send the whole `ObjectiveFn` to each
+    worker process; the standard library's `pickle` cannot pickle a
+    function defined inside another function (exactly what a closure is),
+    only a module-level class instance like this one.
     """
 
-    def objective(evaluation: PlanEvaluation, scenario: PlanningScenario) -> float:
+    weights: np.ndarray
+
+    def __call__(self, evaluation: PlanEvaluation, scenario: PlanningScenario) -> float:
         return float(
             sum(
                 w * evaluation.per_characteristic_uncertainty_m[c.name]
-                for w, c in zip(weights, scenario.characteristics)
+                for w, c in zip(self.weights, scenario.characteristics)
             )
         )
 
-    return objective
+
+def make_weighted_uncertainty_objective(weights: np.ndarray) -> ObjectiveFn:
+    """Objectives A1 (`weights=uniform_weights(...)`) and B
+    (`weights=risk_derived_weights(...)`): `sum(weight_i * uncertainty_i)`
+    over projected characteristic uncertainties. Returns a
+    `WeightedUncertaintyObjective` (see its own docstring for why it isn't
+    a plain closure); callers use the result exactly the same way either
+    way -- `objective_fn(evaluation, scenario)`.
+    """
+    return WeightedUncertaintyObjective(np.asarray(weights))
 
 
 def objective_a0_trace_covariance(evaluation: PlanEvaluation, scenario: PlanningScenario) -> float:
@@ -424,13 +443,27 @@ def constrained_objective(
     search can choose within a regime a metrologist would actually
     accept. `max_uncertainty_m=None` (the default via `grid_search_station_placement`)
     applies no cap, reproducing the unconstrained objective exactly.
+
+    Returns a `_ConstrainedObjective` (a plain callable class, not a
+    closure -- see its own docstring for why).
     """
     if max_uncertainty_m is None:
         return objective_fn
+    return _ConstrainedObjective(objective_fn, max_uncertainty_m)
 
-    def wrapped(evaluation: PlanEvaluation, scenario: PlanningScenario) -> float:
-        if any(u > max_uncertainty_m for u in evaluation.per_characteristic_uncertainty_m.values()):
+
+@dataclass(frozen=True)
+class _ConstrainedObjective:
+    """`constrained_objective`'s wrapped callable -- a plain callable
+    class, not a closure, for the same pickling reason
+    `WeightedUncertaintyObjective` above isn't one: it has to survive
+    being sent to a worker process when `genetic_algorithm_station_placement`
+    is run with `workers != 1`."""
+
+    objective_fn: ObjectiveFn
+    max_uncertainty_m: float
+
+    def __call__(self, evaluation: PlanEvaluation, scenario: PlanningScenario) -> float:
+        if any(u > self.max_uncertainty_m for u in evaluation.per_characteristic_uncertainty_m.values()):
             return float("inf")
-        return objective_fn(evaluation, scenario)
-
-    return wrapped
+        return self.objective_fn(evaluation, scenario)

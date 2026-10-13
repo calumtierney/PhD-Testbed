@@ -8,6 +8,7 @@ in docs/step6_headline_experiment.md -- these tests are not where that
 claim is made.
 """
 import itertools
+import pickle
 from dataclasses import replace
 
 import numpy as np
@@ -613,6 +614,47 @@ def test_ga_search_disqualifies_out_of_range_positions():
     assert result.best is None
     assert result.best_objective_value is None
     assert result.n_infeasible_evals == result.n_function_evals
+
+
+def test_weighted_and_constrained_objectives_survive_a_pickle_round_trip():
+    """genetic_algorithm_station_placement's workers != 1 path sends the
+    whole ObjectiveFn to a multiprocessing worker process via pickle --
+    a plain closure cannot survive that (pickle has no way to name a
+    function defined inside another function), which is exactly why
+    make_weighted_uncertainty_objective and constrained_objective return
+    plain callable classes instead. This test is the cheap, deterministic
+    way to check that contract without actually spinning up a worker
+    pool (test_ga_search_runs_in_parallel_and_reports_zero_infeasible_count
+    below does that, once, as an integration check)."""
+    scenario = default_two_cluster_scenario()
+    weighted = make_weighted_uncertainty_objective(uniform_weights(scenario))
+    capped = constrained_objective(weighted, max_uncertainty_m=5e-5)
+
+    restored_weighted = pickle.loads(pickle.dumps(weighted))
+    restored_capped = pickle.loads(pickle.dumps(capped))
+
+    station_poses = [InstrumentPose(position_m=np.array([0.0, 4.0, 3.0]))]
+    evaluation = evaluate_plan(station_poses, scenario)
+    assert restored_weighted(evaluation, scenario) == pytest.approx(weighted(evaluation, scenario))
+    assert restored_capped(evaluation, scenario) == pytest.approx(capped(evaluation, scenario))
+
+
+def test_ga_search_runs_in_parallel_and_reports_zero_infeasible_count():
+    """workers=2 must run to completion (the real integration check that
+    the previous test's pickling guarantee is actually sufficient for
+    scipy.optimize.differential_evolution's own multiprocessing path),
+    and n_infeasible_evals must read 0 -- not a claim nothing was
+    infeasible, but the documented, honest limitation that a live count
+    cannot be kept accurate once evaluations are split across worker
+    processes (GASearchResult.n_infeasible_evals's own docstring)."""
+    scenario = default_two_cluster_scenario()
+    result = genetic_algorithm_station_placement(
+        scenario, n_stations=1, objective_fn=objective_a0_trace_covariance,
+        bounds_m=[(-2.0, 8.0), (-6.0, 6.0), (0.0, 6.0)],
+        seed=0, maxiter=3, popsize=4, tol=1e-2, workers=2,
+    )
+    assert result.best is not None
+    assert result.n_infeasible_evals == 0
 
 
 def test_ga_search_boresights_every_station_at_the_aim_point():
