@@ -8,11 +8,17 @@ in docs/step6_headline_experiment.md -- these tests are not where that
 claim is made.
 """
 import itertools
+from dataclasses import replace
 
 import numpy as np
 import pytest
 
+from characteristics.characteristic import Characteristic
+from characteristics.tolerances import ProfileTolerance
+from geometry.mesh import TriangleMesh
 from geometry.pose import InstrumentPose
+from geometry.visibility import VisibilityLimits
+from instruments.laser_tracker import LaserTracker
 from network.solve import simulate_observations, solve_network
 from planning.candidates import hemisphere_candidate_poses
 from planning.experiment import (
@@ -22,6 +28,7 @@ from planning.experiment import (
     run_headline_experiment,
 )
 from planning.objectives import (
+    PlanningScenario,
     constrained_objective,
     evaluate_plan,
     make_weighted_uncertainty_objective,
@@ -31,6 +38,7 @@ from planning.objectives import (
     uniform_weights,
 )
 from planning.search import grid_search_station_placement
+from risk.jcgm106 import ClusterAssignment, DecisionRule, FeatureCluster, ProcessPrior
 
 
 def test_hemisphere_pose_at_zero_elevation_is_level_with_centre():
@@ -116,6 +124,159 @@ def test_evaluate_plan_design_covariance_matches_a_noisy_solve():
     assert np.allclose(
         evaluation.network_solve.target_covariance_m2, noisy_result.target_covariance_m2, rtol=0.05
     )
+
+
+def test_visibility_disabled_scenario_is_unaffected_by_the_new_fields():
+    """`PlanningScenario.visibility_enabled` is False whenever a scenario is
+    built the way every scenario before this field existed was built
+    (`obstacles=None`, `target_normals_m=None`) -- the fast path
+    `evaluate_plan` always took. This is the backward-compatibility
+    contract the rest of the occlusion wiring depends on."""
+    scenario = default_two_cluster_scenario()
+    assert not scenario.visibility_enabled
+    assert scenario.obstacles is None
+    assert scenario.visibility_limits is None
+
+
+def test_visibility_limits_out_of_range_disqualifies_the_whole_plan():
+    """A `visibility_limits.max_range_m` tighter than the distance to
+    every target (no mesh needed) leaves every station -- including the
+    anchor -- seeing nothing. `evaluate_plan` must refuse to solve this
+    rather than hand back a covariance computed from zero observations
+    (see `_visible_observations`'s docstring on why `np.linalg.pinv`
+    would otherwise silently report a *perfect*, not infinite,
+    uncertainty for a target nothing actually measured)."""
+    scenario = replace(
+        default_two_cluster_scenario(),
+        visibility_limits=VisibilityLimits(max_range_m=0.5, max_incidence_angle_rad=np.pi / 2),
+    )
+    station_poses = [InstrumentPose(position_m=np.array([0.0, 4.0, 3.0]))]
+    assert evaluate_plan(station_poses, scenario) is None
+
+
+def test_visibility_limits_permissive_matches_the_no_visibility_fast_path():
+    """Switching the visibility layer on with a range/incidence envelope
+    generous enough that nothing is ever out of range or occluded must
+    reproduce the exact same result as leaving it off entirely -- the
+    mechanism should only ever change an outcome when it actually binds."""
+    baseline_scenario = default_two_cluster_scenario()
+    permissive_scenario = replace(
+        baseline_scenario,
+        visibility_limits=VisibilityLimits(max_range_m=1000.0, max_incidence_angle_rad=np.pi / 2),
+    )
+    station_poses = [
+        InstrumentPose(position_m=np.array([0.0, 4.0, 3.0])),
+        InstrumentPose(position_m=np.array([6.0, -2.0, 2.0])),
+    ]
+    baseline = evaluate_plan(station_poses, baseline_scenario)
+    permissive = evaluate_plan(station_poses, permissive_scenario)
+    assert permissive is not None
+    assert np.allclose(
+        baseline.network_solve.target_covariance_m2, permissive.network_solve.target_covariance_m2
+    )
+
+
+def _wall_occlusion_scenario(obstacles) -> PlanningScenario:
+    """A minimal hand-placed scene for exercising mesh occlusion plumbing:
+    4 targets, an anchor sitting on the far side of a wall from a
+    candidate station so the geometry can put the wall in the path of
+    exactly one station-target pair (candidate -> target 3) and no
+    others -- see the calling tests for the worked-out ray/wall
+    intersection each coordinate was chosen to produce."""
+    target_points_m = np.array(
+        [
+            [3.0, 0.0, 1.0],
+            [3.2, 0.3, 1.2],
+            [2.8, -0.3, 0.8],
+            [3.0, 0.0, 2.0],
+        ]
+    )
+    surface_normal = np.array([0.0, 0.0, 1.0])
+    characteristics = [
+        Characteristic(
+            name=f"pt{i}",
+            target_indices=[i],
+            tolerance=ProfileTolerance(zone_width_m=1e-4, surface_normal=surface_normal),
+        )
+        for i in range(4)
+    ]
+    cluster = FeatureCluster("cluster", ProcessPrior(mean_m=0.0, std_m=5e-6))
+    assignments = {c.name: ClusterAssignment(c.name, cluster, confidence=0.9) for c in characteristics}
+    decision_rules = {c.name: DecisionRule.from_zone_width(1e-4) for c in characteristics}
+    return PlanningScenario(
+        target_points_m=target_points_m,
+        tracker=LaserTracker(),
+        characteristics=characteristics,
+        assignments=assignments,
+        decision_rules=decision_rules,
+        anchor_pose=InstrumentPose(position_m=np.array([6.0, 0.0, 2.0])),
+        obstacles=obstacles,
+        visibility_limits=VisibilityLimits(max_range_m=10.0, max_incidence_angle_rad=np.pi / 2),
+    )
+
+
+def test_mesh_obstacle_filters_one_station_target_pair_but_plan_stays_feasible():
+    """A wall between the candidate station and target 3 only (the anchor,
+    on the far side, has an unobstructed line to every target) must leave
+    the plan feasible -- target 3 is still seen by the anchor, and the
+    candidate still sees the other 3 targets (meeting
+    `MIN_TARGETS_PER_NON_ANCHOR_STATION`) -- while making target 3's own
+    uncertainty measurably worse than it would be with the wall absent,
+    since it loses one of its two observations."""
+    wall = TriangleMesh(
+        vertices_m=np.array(
+            [
+                [1.5, -2.0, 2.3],
+                [1.5, 2.0, 2.3],
+                [1.5, 2.0, 2.7],
+                [1.5, -2.0, 2.7],
+            ]
+        ),
+        faces=np.array([[0, 1, 2], [0, 2, 3]]),
+    )
+    candidate = InstrumentPose(position_m=np.array([0.0, 0.0, 3.0]))
+
+    occluded = evaluate_plan([candidate], _wall_occlusion_scenario(obstacles=wall))
+    clear = evaluate_plan([candidate], _wall_occlusion_scenario(obstacles=None))
+
+    assert occluded is not None
+    target3_trace_occluded = np.trace(occluded.network_solve.target_point_covariance(3))
+    target3_trace_clear = np.trace(clear.network_solve.target_point_covariance(3))
+    assert target3_trace_occluded > target3_trace_clear
+    # Targets 0-2's own uncertainty also moves (not held exactly fixed):
+    # with only two stations total, losing one observation of target 3
+    # leaves the candidate's own 6-DOF pose less well constrained, and
+    # every target's recovered position shares that same station-pose
+    # uncertainty in a joint network solve (CLAUDE.md §5 step 3 -- this
+    # is genuine cross-target correlation, not a test artefact). The wall
+    # not being in those targets' own sightlines means this is an
+    # indirect, shared-pose effect rather than a direct one.
+
+
+def test_grid_search_reports_n_infeasible_and_avoids_disqualified_candidates():
+    """A candidate placed far enough away to see nothing at all must be
+    disqualified outright -- not scored, not chosen -- and counted in
+    `GridSearchResult.n_infeasible` (CLAUDE.md §8: a null/negative result,
+    here "this candidate cannot be used", reported rather than silently
+    dropped)."""
+    scenario = replace(
+        default_two_cluster_scenario(),
+        visibility_limits=VisibilityLimits(max_range_m=10.0, max_incidence_angle_rad=np.pi / 2),
+    )
+    centre_m = scenario.target_points_m.mean(axis=0)
+    near_candidate = hemisphere_candidate_poses(
+        centre_m, radius_m=4.0, azimuths_deg=[0.0], elevations_deg=[0.0]
+    )[0]
+    far_candidate = InstrumentPose(position_m=np.array([1000.0, 0.0, 1.0]))
+
+    result = grid_search_station_placement(
+        [near_candidate, far_candidate], n_stations=1, scenario=scenario, objective_fn=objective_a0_trace_covariance
+    )
+
+    assert result.n_infeasible == 1
+    assert len(result.all_evaluations) == 1
+    assert result.best is not None
+    assert np.allclose(result.best.station_poses[0].position_m, near_candidate.position_m)
 
 
 def test_weighted_uncertainty_objective_matches_hand_computation():

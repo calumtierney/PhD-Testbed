@@ -36,18 +36,31 @@ class GridSearchResult:
     ----------
     best : the lowest-objective-value PlanEvaluation found, or None if
         every candidate was disqualified (e.g. by a `constrained_objective`
-        cap that nothing in the candidate set satisfies).
+        cap that nothing in the candidate set satisfies, or -- once a
+        scenario's visibility layer is switched on -- every combination
+        left some target unseen by any station).
     best_objective_value : the objective value `best` achieved (for
         reporting/comparison across searches); None alongside `best=None`.
-    all_evaluations : every candidate combination's PlanEvaluation, in the
-        order evaluated -- kept for reporting/plotting (e.g. a
-        distribution of achieved objective values across the candidate
-        set), not just the single winner.
+    all_evaluations : every *feasible* candidate combination's
+        PlanEvaluation, in the order evaluated -- kept for
+        reporting/plotting (e.g. a distribution of achieved objective
+        values across the candidate set), not just the single winner.
+        Combinations `objectives.evaluate_plan` returned `None` for (see
+        `n_infeasible`) are not included here -- there is no evaluation to
+        report.
+    n_infeasible : how many of the `C(n_candidates, n_stations)`
+        combinations `evaluate_plan` disqualified outright (visibility
+        left some target or non-anchor station unobservable), before an
+        objective value was ever computed for them. 0 for every scenario
+        built without a visibility layer (CLAUDE.md §8: a null result --
+        here, "visibility never binds" -- is reported as prominently as a
+        positive one, not silently omitted).
     """
 
     best: Optional[PlanEvaluation]
     best_objective_value: Optional[float]
     all_evaluations: List[PlanEvaluation]
+    n_infeasible: int = 0
 
 
 def grid_search_station_placement(
@@ -80,18 +93,27 @@ def grid_search_station_placement(
 
     all_evaluations = []
     scored = []
+    n_infeasible = 0
     for combo_indices in itertools.combinations(range(len(candidate_poses)), n_stations):
         station_poses = [candidate_poses[i] for i in combo_indices]
         evaluation = evaluate_plan(station_poses, scenario)
+        if evaluation is None:
+            n_infeasible += 1
+            continue
         all_evaluations.append(evaluation)
         value = objective_fn(evaluation, scenario)
         if value < float("inf"):
             scored.append((value, evaluation))
 
     if not scored:
-        return GridSearchResult(best=None, best_objective_value=None, all_evaluations=all_evaluations)
+        return GridSearchResult(
+            best=None, best_objective_value=None, all_evaluations=all_evaluations, n_infeasible=n_infeasible
+        )
 
     best_value, best_evaluation = min(scored, key=lambda pair: pair[0])
     return GridSearchResult(
-        best=best_evaluation, best_objective_value=best_value, all_evaluations=all_evaluations
+        best=best_evaluation,
+        best_objective_value=best_value,
+        all_evaluations=all_evaluations,
+        n_infeasible=n_infeasible,
     )
