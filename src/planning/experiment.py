@@ -17,7 +17,7 @@ costs ~10ms). See docs/step6_headline_experiment.md for the full write-up
 of scene, results and what changed between draft and this revision.
 """
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Sequence
+from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -40,7 +40,12 @@ from planning.objectives import (
     risk_derived_weights,
     uniform_weights,
 )
-from planning.search import GridSearchResult, grid_search_station_placement
+from planning.search import (
+    GASearchResult,
+    GridSearchResult,
+    genetic_algorithm_station_placement,
+    grid_search_station_placement,
+)
 from risk.jcgm106 import ClusterAssignment, DecisionRule, FeatureCluster, ProcessPrior, RiskResult, evaluate_conformity_risk
 
 # The two feature clusters, calibrated to GKN Aerospace's own two
@@ -678,3 +683,114 @@ def iso_risk_station_counts(
             if total_expected_risk(search.best, scenario) <= target_total_risk:
                 results[name] = n_stations
     return results
+
+
+# Validated directly on this scenario (docs/step6_headline_experiment.md's
+# "The wing scenario" section has the full story): grid search's
+# C(n_candidates, n_stations) cost is intractable once candidates come
+# from a floor-spanning grid rather than a compact ring, so this scene
+# is searched with the GA instead (CLAUDE.md §3's named fallback). A
+# plain, unseeded GA run was demonstrably unreliable here even at a ~6x
+# bigger budget -- cross-checking one objective's winning stations
+# against another's own formula caught misses of up to ~4x. Seeding each
+# objective's search with every previously-run objective's winning
+# stations (run_wing_experiment's own cascade below) fixed this with a
+# far smaller budget than throwing more raw evaluations at the problem
+# did. `workers=-1` is the default here (not in `run_headline_experiment`
+# above, which doesn't need it) because this scene's own cost is large
+# enough that serial evaluation would take on the order of an hour per
+# scenario -- see genetic_algorithm_station_placement's own docstring for
+# why pinning every BLAS library to one thread per process first
+# (`OMP_NUM_THREADS=1` etc.) matters for that to actually help rather
+# than hurt.
+WING_DEFAULT_BOUNDS_M: Tuple[Tuple[float, float], ...] = ((-2.0, 34.0), (-8.0, 8.0), (1.0, 10.0))
+WING_DEFAULT_DE_KWARGS = dict(seed=0, maxiter=60, popsize=20, tol=1e-6, workers=-1, updating="deferred")
+
+
+@dataclass(frozen=True)
+class WingExperimentResult:
+    """The GA-search analogue of `HeadlineExperimentResult`, for
+    `wing_four_point_scenario` -- same four objectives, same reporting
+    (`PlanReport` via `plan_a0`/`plan_a1`/`plan_b`/`plan_c`), backed by
+    `GASearchResult` instead of `GridSearchResult`."""
+
+    scenario: PlanningScenario
+    search_a0: GASearchResult
+    search_a1: GASearchResult
+    search_b: GASearchResult
+    search_c: GASearchResult
+
+    @property
+    def plan_a0(self) -> Optional[PlanReport]:
+        return _plan_report(self.search_a0.best, self.scenario)
+
+    @property
+    def plan_a1(self) -> Optional[PlanReport]:
+        return _plan_report(self.search_a1.best, self.scenario)
+
+    @property
+    def plan_b(self) -> Optional[PlanReport]:
+        return _plan_report(self.search_b.best, self.scenario)
+
+    @property
+    def plan_c(self) -> Optional[PlanReport]:
+        return _plan_report(self.search_c.best, self.scenario)
+
+
+def run_wing_experiment(
+    include_support_tower: bool = True,
+    n_stations: int = 3,
+    bounds_m: Sequence[Tuple[float, float]] = WING_DEFAULT_BOUNDS_M,
+    reference_uncertainty_m: float = 8e-6,
+    de_kwargs: Optional[Dict] = None,
+) -> WingExperimentResult:
+    """Run the A0/A1/B/C comparison on `wing_four_point_scenario` via the
+    GA search, cascading each objective's initial population seed from
+    every objective already run (A0 first, from a blind random initial
+    population; A1 seeded with A0's result; B seeded with A0's and A1's;
+    C seeded with all three) -- see the module-level comment above and
+    docs/step6_headline_experiment.md's "The wing scenario" section for
+    why this is necessary and how it was validated, not just assumed to
+    help.
+
+    `de_kwargs`, if given, overrides `WING_DEFAULT_DE_KWARGS` entries
+    (e.g. to trade budget for runtime -- this scene's own cost per
+    evaluation makes that tradeoff much more consequential than for
+    `run_headline_experiment`'s scene).
+    """
+    scenario = wing_four_point_scenario(include_support_tower=include_support_tower)
+    weights_uniform = uniform_weights(scenario)
+    weights_risk = risk_derived_weights(scenario, reference_uncertainty_m)
+
+    objectives = [
+        ("A0", objective_a0_trace_covariance),
+        ("A1", make_weighted_uncertainty_objective(weights_uniform)),
+        ("B", make_weighted_uncertainty_objective(weights_risk)),
+        ("C", objective_c_direct_risk),
+    ]
+    kwargs = dict(WING_DEFAULT_DE_KWARGS)
+    if de_kwargs:
+        kwargs.update(de_kwargs)
+
+    seed_positions: List[List[np.ndarray]] = []
+    searches = {}
+    for name, objective_fn in objectives:
+        search = genetic_algorithm_station_placement(
+            scenario,
+            n_stations=n_stations,
+            objective_fn=objective_fn,
+            bounds_m=bounds_m,
+            seed_station_positions_m=list(seed_positions) if seed_positions else None,
+            **kwargs,
+        )
+        searches[name] = search
+        if search.best is not None:
+            seed_positions.append([pose.position_m for pose in search.best.station_poses])
+
+    return WingExperimentResult(
+        scenario=scenario,
+        search_a0=searches["A0"],
+        search_a1=searches["A1"],
+        search_b=searches["B"],
+        search_c=searches["C"],
+    )

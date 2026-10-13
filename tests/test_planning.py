@@ -27,6 +27,7 @@ from planning.experiment import (
     iso_risk_station_counts,
     mixed_tolerance_two_cluster_scenario,
     run_headline_experiment,
+    run_wing_experiment,
     wing_four_point_scenario,
 )
 from planning.objectives import (
@@ -756,6 +757,22 @@ def test_wing_scenario_support_tower_reduces_but_does_not_eliminate_visibility()
 
     assert coverage_towered.sum() < coverage_clear.sum()  # the tower costs real visibility...
     assert np.all(coverage_towered > 0)  # ...but never eliminates a target entirely
+
+
+def test_run_wing_experiment_wires_four_objectives_with_cascaded_seeding():
+    """Not a test of search quality -- docs/step6_headline_experiment.md's
+    own validated run (60 generations, population 20, workers=-1) is
+    where that claim is made and checked. This just confirms the four
+    objectives, the cascaded seeding between them, and
+    WingExperimentResult's reporting properties all wire together
+    correctly, at a tiny budget fast enough for the test suite."""
+    result = run_wing_experiment(
+        n_stations=1, de_kwargs=dict(maxiter=1, popsize=4, tol=1e-1, workers=1),
+    )
+    assert result.scenario is not None
+    for plan in (result.plan_a0, result.plan_a1, result.plan_b, result.plan_c):
+        if plan is not None:
+            assert isinstance(plan.summed_characteristic_uncertainty_m, float)
 
 
 def test_wing_scenario_ga_search_finds_a_multi_station_plan():
