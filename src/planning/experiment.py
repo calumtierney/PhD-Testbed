@@ -24,7 +24,9 @@ import numpy as np
 from characteristics.characteristic import Characteristic
 from characteristics.datum import Datum
 from characteristics.tolerances import ParallelismTolerance, PositionTolerance, ProfileTolerance
+from geometry.mesh import box_mesh
 from geometry.pose import InstrumentPose
+from geometry.visibility import VisibilityLimits
 from instruments.laser_tracker import LaserTracker
 from planning.candidates import hemisphere_candidate_poses
 from planning.objectives import (
@@ -269,6 +271,184 @@ def mixed_tolerance_two_cluster_scenario(
         assignments=assignments,
         decision_rules=decision_rules,
         anchor_pose=anchor_pose,
+    )
+
+
+# A support structure under mid-span -- CLAUDE.md §1's own factory-floor
+# framing: a 30 m wing in assembly sits in a cradle/jig and shares the
+# hall with crane-rail support columns and other fixed structure, not
+# loose on an open floor, and that structure is exactly the kind of thing
+# that can block a tracker's line of sight. Representative dimensions,
+# not drawn from a real jig drawing (none is available to this testbed) --
+# flagged here, not silently assumed realistic. Taller (top at z=2.5 m)
+# than every target point (all at z <= 2.0 m, `wing_four_point_scenario`'s
+# own target_points_m) on purpose: every target needs a surface-normal
+# -compliant station *above* it to have acceptable incidence against a
+# top-facing surface (CLAUDE.md §3's "risk depends on direction" cuts
+# both ways -- an instrument's own visibility is direction-dependent
+# too), and a tower capped below every target's own height could never
+# occlude a station that already clears that bar. Taller than the
+# targets means it can still stand between an elevated, incidence-
+# compliant station on one side of mid-span and a target on the other.
+WING_SUPPORT_TOWER_MIN_CORNER_M = np.array([13.0, -1.5, 0.0])
+WING_SUPPORT_TOWER_MAX_CORNER_M = np.array([17.0, 1.5, 2.5])
+
+# CLAUDE.md §1: "measuring aerospace structures from 2 m to 30 m" -- used
+# directly as this scenario's visibility range cap, rather than invented.
+WING_MAX_RANGE_M = 30.0
+# 80 deg is not a literature figure (CLAUDE.md §4 has none for incidence
+# limits); it is the generous-but-finite convention this codebase's own
+# visibility tests already use throughout (tests/test_visibility.py's
+# GENEROUS_LIMITS, tests/test_visualization.py) -- reused here rather than
+# inventing a second unsourced number alongside it.
+WING_MAX_INCIDENCE_ANGLE_RAD = np.deg2rad(80.0)
+
+
+def wing_four_point_scenario(
+    anchor_position_m: np.ndarray = None,
+    tracker: Optional[LaserTracker] = None,
+    include_support_tower: bool = True,
+) -> PlanningScenario:
+    """A single ~30 m aircraft wing, four measurement points spread along
+    its span, with a factory-floor obstacle in the way -- the scene the
+    user asked for to make the headline experiment closer to a real
+    measurement task: CLAUDE.md §1's own upper range bound (30 m) made
+    literal, rather than the original two-cluster scene's few-metres-
+    across compact geometry.
+
+    Four points, root to tip, each its own characteristic (no clusters of
+    three identical features this time -- a real wing inspection plan
+    cares about specific named fittings, not a batch of interchangeable
+    points), all on the wing's upper surface (z roughly 1.7-2.0 m --
+    above `WING_SUPPORT_TOWER_MAX_CORNER_M`'s own top, see that
+    constant's comment for why):
+
+      - index 0, "root_profile" -- x=2 m, near the root/fuselage joint.
+      - index 3, "midspan_profile" -- x=15 m, a spar attachment.
+      - index 6, "neartip_profile" -- x=26 m, a rib close to the tip.
+      - index 7, "tip_profile" -- x=29 m, the tip fitting itself.
+
+    Four more points (indices 1, 2, 4, 5) sit between them, spread along
+    the same surface, as pure network *tie points* -- not characteristics
+    in their own right, no tolerance, no process-capability assignment,
+    just extra shared observations a station can use to pin its own 6-DOF
+    pose (CLAUDE.md §7's own glossary: "Network solve... returns a
+    covariance" over "all station poses and target coordinates together" --
+    nothing in that definition requires every target solved for to be a
+    toleranced characteristic). A real tracker network over a 30 m part
+    always includes common reference nests like these, beyond whatever
+    specific features are being measured, precisely so stations spread
+    along the span don't each need direct sight of every single
+    characteristic -- CLAUDE.md §5 step 3's `MIN_TARGETS_PER_NON_ANCHOR_STATION`
+    threshold (`planning.objectives`) otherwise has nothing nearby for a
+    station covering just the tip, say, to see 3 of. Without them, a
+    station near one end of the wing cannot be well-posed on its own
+    (the 4 characteristics alone are too sparse and too far apart for
+    any one station to see 3 of, except from very far back) -- this is
+    an engineering necessity of the scene, not a free design choice to
+    skip.
+
+    Root and mid-span are assigned the high-capability process prior,
+    near-tip and tip the marginal one (the same two GKN-sourced priors
+    `default_two_cluster_scenario` uses -- CLAUDE.md §6: reusing a
+    sourced number for a new "for the sake of argument" scene rather than
+    inventing a third). This is a representative choice, not a claim
+    about which real wing fittings are harder to hold to tolerance -- the
+    experimental point is having two different priors across a spread-out
+    part, as before, not this particular pairing.
+
+    `include_support_tower=True` (the default) adds a block occluder
+    (`WING_SUPPORT_TOWER_MIN_CORNER_M`/`_MAX_CORNER_M`, `geometry.mesh.
+    box_mesh`) representing a wing-holding jig's support structure under
+    mid-span -- see that constant's own comment for what it is and isn't
+    based on. `False` gives the identical scene with the visibility layer
+    still switched on (range and incidence limits still apply) but
+    nothing to occlude -- the direct A/B comparison
+    `docs/step6_headline_experiment.md`'s wing-scenario section reports.
+
+    Visibility limits use CLAUDE.md §1's own stated LVM range (30 m) and
+    this codebase's existing generous-incidence test convention (80 deg,
+    not a literature number -- see `WING_MAX_INCIDENCE_ANGLE_RAD`).
+
+    The default anchor sits elevated near the root (CLAUDE.md §5 step 3's
+    fixed frame-of-reference station) and sees a local subset of points
+    well (root plus three nearby tie points) -- it is not required to see
+    the whole span on its own (nothing in `evaluate_plan`'s feasibility
+    check asks the anchor specifically to; only that *some* station,
+    anchor or not, sees each target -- see `objectives.
+    MIN_TARGETS_PER_NON_ANCHOR_STATION`'s docstring). A single station
+    covering all 30 m under a finite incidence limit is not achievable
+    here regardless of height (checked directly: no position this
+    module's own test suite tried sees every point at once) -- a real
+    multi-station plan is exactly what a spread-out part actually needs,
+    not an artefact of this scene being under-designed.
+    """
+    target_points_m = np.array(
+        [
+            [2.0, 0.0, 1.8],  # 0: root_profile
+            [8.0, 0.2, 1.8],  # 1: tie point
+            [11.0, -0.2, 1.9],  # 2: tie point
+            [15.0, 3.0, 2.0],  # 3: midspan_profile -- offset clear of the
+            #                   tower footprint (y in [-1.5, 1.5]): directly
+            #                   above the tower it would be unseeable from
+            #                   almost any direction at once, which would be
+            #                   a modelling artefact (a real fitting is not
+            #                   placed where nothing can ever see it), not a
+            #                   finding -- CLAUDE.md §4e's own point that a
+            #                   prediction has to have a way to come out
+            #                   *interesting*, not merely impossible.
+            [19.0, -0.2, 1.9],  # 4: tie point
+            [22.0, 0.2, 1.8],  # 5: tie point
+            [26.0, 0.2, 1.7],  # 6: neartip_profile
+            [29.0, 0.1, 1.7],  # 7: tip_profile
+        ]
+    )
+    surface_normal = np.array([0.0, 0.0, 1.0])
+    target_normals_m = np.tile(surface_normal, (target_points_m.shape[0], 1))
+
+    characteristic_specs = [
+        ("root_profile", 0, HIGH_CAPABILITY_CLUSTER),
+        ("midspan_profile", 3, HIGH_CAPABILITY_CLUSTER),
+        ("neartip_profile", 6, MARGINAL_CLUSTER),
+        ("tip_profile", 7, MARGINAL_CLUSTER),
+    ]
+    characteristics = [
+        Characteristic(
+            name=name,
+            target_indices=[index],
+            tolerance=ProfileTolerance(zone_width_m=TOLERANCE_ZONE_WIDTH_M, surface_normal=surface_normal),
+        )
+        for name, index, _cluster in characteristic_specs
+    ]
+    assignments = {
+        name: ClusterAssignment(name, cluster, confidence=0.9) for name, _index, cluster in characteristic_specs
+    }
+    decision_rules = {
+        name: DecisionRule.from_zone_width(TOLERANCE_ZONE_WIDTH_M) for name, _index, _cluster in characteristic_specs
+    }
+
+    if anchor_position_m is None:
+        anchor_position_m = np.array([5.0, -4.0, 5.0])
+    anchor_pose = InstrumentPose(position_m=np.asarray(anchor_position_m, dtype=float))
+
+    obstacles = (
+        box_mesh(WING_SUPPORT_TOWER_MIN_CORNER_M, WING_SUPPORT_TOWER_MAX_CORNER_M)
+        if include_support_tower
+        else None
+    )
+
+    return PlanningScenario(
+        target_points_m=target_points_m,
+        tracker=tracker if tracker is not None else LaserTracker(),
+        characteristics=characteristics,
+        assignments=assignments,
+        decision_rules=decision_rules,
+        anchor_pose=anchor_pose,
+        target_normals_m=target_normals_m,
+        obstacles=obstacles,
+        visibility_limits=VisibilityLimits(
+            max_range_m=WING_MAX_RANGE_M, max_incidence_angle_rad=WING_MAX_INCIDENCE_ANGLE_RAD
+        ),
     )
 
 

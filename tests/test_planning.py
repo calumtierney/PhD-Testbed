@@ -17,7 +17,7 @@ from characteristics.characteristic import Characteristic
 from characteristics.tolerances import ProfileTolerance
 from geometry.mesh import TriangleMesh
 from geometry.pose import InstrumentPose
-from geometry.visibility import VisibilityLimits
+from geometry.visibility import VisibilityLimits, check_target_visibility
 from instruments.laser_tracker import LaserTracker
 from network.solve import simulate_observations, solve_network
 from planning.candidates import floor_grid_candidate_poses, hemisphere_candidate_poses, look_at_orientation
@@ -26,6 +26,7 @@ from planning.experiment import (
     iso_risk_station_counts,
     mixed_tolerance_two_cluster_scenario,
     run_headline_experiment,
+    wing_four_point_scenario,
 )
 from planning.objectives import (
     PlanningScenario,
@@ -628,3 +629,73 @@ def test_ga_search_boresights_every_station_at_the_aim_point():
     pose = result.best.station_poses[0]
     expected_orientation = look_at_orientation(pose.position_m, aim_point_m)
     assert np.allclose(pose.orientation, expected_orientation)
+
+
+def test_wing_scenario_has_four_characteristics_and_eight_targets():
+    """4 characteristics (root/midspan/neartip/tip) plus 4 unassigned
+    network tie points -- see wing_four_point_scenario's own docstring
+    for why the tie points exist."""
+    scenario = wing_four_point_scenario()
+    assert len(scenario.characteristics) == 4
+    assert scenario.target_points_m.shape[0] == 8
+    assert scenario.visibility_enabled
+    characteristic_indices = {c.target_indices[0] for c in scenario.characteristics}
+    assert characteristic_indices == {0, 3, 6, 7}
+
+
+def test_wing_scenario_support_tower_reduces_but_does_not_eliminate_visibility():
+    """The support tower (include_support_tower=True, the default) must
+    make a real, measurable difference to how many station-target pairs
+    are visible across a representative candidate set -- not zero
+    (CLAUDE.md §8: a null result would need to be reported honestly, but
+    this is not meant to be one), and not so severe that some target
+    becomes unseeable from every candidate (a modelling artefact, not a
+    finding -- see the midspan-target placement comment in
+    wing_four_point_scenario)."""
+    scenario_towered = wing_four_point_scenario(include_support_tower=True)
+    scenario_clear = wing_four_point_scenario(include_support_tower=False)
+    aim_point_m = scenario_towered.target_points_m.mean(axis=0)
+    candidates = floor_grid_candidate_poses(
+        aim_point_m=aim_point_m,
+        x_positions_m=[0.0, 5.0, 10.0, 15.0, 20.0, 25.0, 30.0],
+        y_positions_m=[-6.0, -3.0, 0.0, 3.0, 6.0],
+        station_heights_m=[3.0, 5.0, 7.0],
+        exclusion_radius_m=1.0,
+    )
+
+    def per_target_coverage(scenario):
+        coverage = np.zeros(scenario.target_points_m.shape[0], dtype=int)
+        for pose in candidates:
+            for i in range(scenario.target_points_m.shape[0]):
+                visible = check_target_visibility(
+                    pose.position_m,
+                    scenario.target_points_m[i],
+                    scenario.visibility_limits,
+                    target_normal_m=scenario.target_normals_m[i],
+                    obstacles=scenario.obstacles,
+                ).is_visible
+                coverage[i] += int(visible)
+        return coverage
+
+    coverage_towered = per_target_coverage(scenario_towered)
+    coverage_clear = per_target_coverage(scenario_clear)
+
+    assert coverage_towered.sum() < coverage_clear.sum()  # the tower costs real visibility...
+    assert np.all(coverage_towered > 0)  # ...but never eliminates a target entirely
+
+
+def test_wing_scenario_ga_search_finds_a_multi_station_plan():
+    """End-to-end smoke test: occlusion (box_mesh), the floor-grid-style
+    continuous search space, and the GA search all have to work together
+    to plan this scene at all -- a grid search over a candidate set fine
+    enough to matter here would be combinatorially infeasible (the
+    reason genetic_algorithm_station_placement exists in the first
+    place, per planning.search's module docstring)."""
+    scenario = wing_four_point_scenario()
+    result = genetic_algorithm_station_placement(
+        scenario, n_stations=2, objective_fn=objective_a0_trace_covariance,
+        bounds_m=[(-2.0, 34.0), (-8.0, 8.0), (1.0, 10.0)],
+        seed=0, maxiter=6, popsize=6, tol=1e-3,
+    )
+    assert result.best is not None
+    assert result.best_objective_value is not None and result.best_objective_value > 0.0

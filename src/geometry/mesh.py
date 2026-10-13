@@ -80,6 +80,43 @@ class TriangleMesh:
         return self.vertices_m[self.faces[i]]
 
 
+def box_mesh(min_corner_m: np.ndarray, max_corner_m: np.ndarray) -> TriangleMesh:
+    """An axis-aligned box, as a 12-triangle (2 per face, 6 faces)
+    `TriangleMesh` -- a convenient stand-in for a tooling fixture, jig
+    support tower, or other blocky factory-floor obstacle, without
+    needing an external CAD export every test scene or demonstration
+    scenario that wants a representative occluder has to author.
+
+    Winding order isn't chosen carefully (no attempt is made to keep
+    every face's normal pointing outward): `_ray_triangle_intersection_t`
+    only rejects a ray (near-)parallel to a triangle's plane
+    (`abs(a) < epsilon`), never by the sign of that dot product, so it
+    reports a hit from either side of a face -- exactly what an opaque
+    obstacle needs regardless of which side a beam approaches from.
+    """
+    min_corner_m = np.asarray(min_corner_m, dtype=float)
+    max_corner_m = np.asarray(max_corner_m, dtype=float)
+    x0, y0, z0 = min_corner_m
+    x1, y1, z1 = max_corner_m
+    vertices_m = np.array(
+        [
+            [x0, y0, z0], [x1, y0, z0], [x1, y1, z0], [x0, y1, z0],  # bottom: 0-3
+            [x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1],  # top: 4-7
+        ]
+    )
+    faces = np.array(
+        [
+            [0, 1, 2], [0, 2, 3],  # bottom (z0)
+            [4, 5, 6], [4, 6, 7],  # top (z1)
+            [0, 1, 5], [0, 5, 4],  # side y0
+            [3, 2, 6], [3, 6, 7],  # side y1
+            [0, 3, 7], [0, 7, 4],  # side x0
+            [1, 2, 6], [1, 6, 5],  # side x1
+        ]
+    )
+    return TriangleMesh(vertices_m=vertices_m, faces=faces)
+
+
 def load_stl(path) -> TriangleMesh:
     """Load a triangle mesh from an STL file, binary or ASCII.
 
