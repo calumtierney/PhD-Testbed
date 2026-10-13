@@ -20,7 +20,7 @@ from geometry.pose import InstrumentPose
 from geometry.visibility import VisibilityLimits
 from instruments.laser_tracker import LaserTracker
 from network.solve import simulate_observations, solve_network
-from planning.candidates import hemisphere_candidate_poses
+from planning.candidates import floor_grid_candidate_poses, hemisphere_candidate_poses, look_at_orientation
 from planning.experiment import (
     default_two_cluster_scenario,
     iso_risk_station_counts,
@@ -37,7 +37,7 @@ from planning.objectives import (
     risk_derived_weights,
     uniform_weights,
 )
-from planning.search import grid_search_station_placement
+from planning.search import genetic_algorithm_station_placement, grid_search_station_placement
 from risk.jcgm106 import ClusterAssignment, DecisionRule, FeatureCluster, ProcessPrior
 
 
@@ -72,6 +72,43 @@ def test_hemisphere_candidate_count_is_azimuths_times_elevations():
         np.zeros(3), radius_m=4.0, azimuths_deg=[0, 90, 180], elevations_deg=[20, 40]
     )
     assert len(poses) == 6
+
+
+def test_floor_grid_candidate_count_is_the_full_cartesian_product():
+    poses = floor_grid_candidate_poses(
+        aim_point_m=np.array([15.0, 0.0, 1.0]),
+        x_positions_m=[0.0, 5.0, 10.0],
+        y_positions_m=[-3.0, 3.0],
+        station_heights_m=[1.0, 2.0],
+    )
+    assert len(poses) == 3 * 2 * 2
+
+
+def test_floor_grid_candidates_are_boresighted_at_the_aim_point():
+    aim_point_m = np.array([15.0, 2.0, 1.0])
+    poses = floor_grid_candidate_poses(
+        aim_point_m=aim_point_m, x_positions_m=[0.0], y_positions_m=[-3.0], station_heights_m=[1.5]
+    )
+    pose = poses[0]
+    boresight = pose.orientation[:, 0]
+    to_aim = aim_point_m - pose.position_m
+    to_aim = to_aim / np.linalg.norm(to_aim)
+    assert np.allclose(boresight, to_aim, atol=1e-9)
+
+
+def test_floor_grid_exclusion_radius_drops_candidates_too_close_to_the_part():
+    aim_point_m = np.array([0.0, 0.0, 1.0])
+    poses = floor_grid_candidate_poses(
+        aim_point_m=aim_point_m,
+        x_positions_m=[0.0, 0.1, 5.0],
+        y_positions_m=[0.0],
+        station_heights_m=[1.0],
+        exclusion_radius_m=1.0,
+    )
+    # (0, 0, 1) and (0.1, 0, 1) both sit within 1 m of the aim point and
+    # must be dropped; only the (5, 0, 1) candidate should survive.
+    assert len(poses) == 1
+    assert poses[0].position_m[0] == pytest.approx(5.0)
 
 
 def test_uniform_weights_are_all_one():
@@ -531,3 +568,63 @@ def test_iso_risk_station_counts_returns_none_when_unreachable():
         azimuths_deg=[0, 180], elevations_deg=[0], max_stations=1,
     )
     assert counts["A1"] is None
+
+
+# Small, fast differential-evolution budgets throughout this section -- these
+# tests check plumbing (does it run, does it respect visibility, is it at
+# least competitive with grid search), not GA convergence quality, which
+# docs/step6_headline_experiment.md's full-resolution runs are what actually
+# demonstrates.
+_FAST_DE_KWARGS = dict(seed=0, maxiter=15, popsize=8, tol=1e-4)
+
+
+def test_ga_search_is_at_least_as_good_as_a_coarse_grid_search():
+    """A continuous search over the same space a coarse hemisphere grid
+    discretises should find a plan at least as good -- it can always fall
+    back to (close to) the grid's own candidates, plus everywhere between
+    them the grid never tried."""
+    scenario = default_two_cluster_scenario()
+    centre_m = scenario.target_points_m.mean(axis=0)
+    candidates = hemisphere_candidate_poses(centre_m, radius_m=4.0, azimuths_deg=[0, 90, 180, 270], elevations_deg=[0, 30])
+    grid_result = grid_search_station_placement(candidates, 2, scenario, objective_a0_trace_covariance)
+
+    ga_result = genetic_algorithm_station_placement(
+        scenario, n_stations=2, objective_fn=objective_a0_trace_covariance,
+        bounds_m=[(-2.0, 8.0), (-6.0, 6.0), (0.0, 6.0)], **_FAST_DE_KWARGS,
+    )
+
+    assert ga_result.best is not None
+    assert ga_result.best_objective_value <= grid_result.best_objective_value * 1.05  # 5% slack for DE noise
+
+
+def test_ga_search_disqualifies_out_of_range_positions():
+    """Shrinking bounds_m so every reachable position is out of the
+    tracker's visibility range must leave the GA unable to find a feasible
+    plan at all -- best=None, not a silently-wrong solved covariance."""
+    scenario = replace(
+        default_two_cluster_scenario(),
+        visibility_limits=VisibilityLimits(max_range_m=0.1, max_incidence_angle_rad=np.pi / 2),
+    )
+    result = genetic_algorithm_station_placement(
+        scenario, n_stations=1, objective_fn=objective_a0_trace_covariance,
+        bounds_m=[(-2.0, 8.0), (-6.0, 6.0), (0.0, 6.0)], **_FAST_DE_KWARGS,
+    )
+    assert result.best is None
+    assert result.best_objective_value is None
+    assert result.n_infeasible_evals == result.n_function_evals
+
+
+def test_ga_search_boresights_every_station_at_the_aim_point():
+    """A direct check that the position-only encoding genetic_algorithm_
+    station_placement searches over is turned into full poses the same
+    way the candidate-list generators do -- boresighted at the aim point,
+    via planning.candidates.look_at_orientation."""
+    scenario = default_two_cluster_scenario()
+    aim_point_m = np.array([3.0, 0.0, 1.0])
+    result = genetic_algorithm_station_placement(
+        scenario, n_stations=1, objective_fn=objective_a0_trace_covariance,
+        bounds_m=[(-2.0, 8.0), (-6.0, 6.0), (0.0, 6.0)], aim_point_m=aim_point_m, **_FAST_DE_KWARGS,
+    )
+    pose = result.best.station_poses[0]
+    expected_orientation = look_at_orientation(pose.position_m, aim_point_m)
+    assert np.allclose(pose.orientation, expected_orientation)
