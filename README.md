@@ -122,9 +122,20 @@ complete:
   `planning.experiment.wing_four_point_scenario` puts all of this
   together on a single ~30 m wing (CLAUDE.md §1's own upper range bound)
   with four named fittings and a support-tower occluder under mid-span.
-  A full A0/A1/B/C comparison on this scene, written up the way
-  `docs/step6_headline_experiment.md` covers the original scene, is in
-  progress.
+  The full A0/A1/B/C comparison on this scene (`planning.experiment.
+  run_wing_experiment`) is written up in `docs/step6_headline_experiment.md`'s
+  "The wing scenario" section: without the tower, risk falls
+  monotonically from A0 to C (a 19% reduction, the clean version of this
+  project's own hypothesis, on a scene an order of magnitude larger and
+  less symmetric than the original); with it, A0/A1/B land on the same
+  plan (expected -- every characteristic here shares one tolerance
+  direction, the same reason A0=A1 coincide in the original scene) and C
+  alone finds a measurably better one (6.6% lower risk). Getting a GA
+  comparison trustworthy enough to report took real iteration -- an
+  unseeded search was demonstrably wrong twice, caught by
+  cross-validating each objective's winning stations against every other
+  objective's own formula, before population seeding fixed it -- which
+  the doc section covers as honestly as the result itself.
 
 **Visualization** (`src/visualization`, not one of the six steps — see
 its module docstring): matplotlib plotting for scenes, per-point error
@@ -162,6 +173,26 @@ than simulating and fitting random noise, so there is no RNG anywhere in
 this command — the output should match the committed files exactly, not
 just approximately (`git diff results/` after running it should be
 empty).
+
+The wing scenario's figures (`panel9*_wing_*.png`,
+`docs/step6_headline_experiment.md`'s "The wing scenario" section) are
+*not* part of the command above — they're regenerated separately:
+
+```bash
+OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 \
+    python -m viz.make_wing_figures
+```
+
+This one is genuinely slow (15-25 minutes, a GA search run four times
+over two scenarios — see `viz/make_wing_figures.py`'s own module
+docstring for why it needs those environment variables to actually be
+*fast*, not slower than leaving them unset) and, unlike the command
+above, not bit-for-bit reproducible: `scipy.optimize.differential_evolution`
+is a genetic algorithm, not an exhaustive search, and re-running it can
+land on slightly different station positions and objective values than
+the ones committed — `docs/step6_headline_experiment.md`'s "Getting a
+trustworthy GA comparison took three attempts" section is the honest
+account of what that did and didn't fix.
 
 ```
 src/

@@ -564,19 +564,151 @@ matters -- resolution and tolerance diversity interacting, not either
 alone -- is itself the finding this check was built to surface, not a
 single headline number.
 
+## The wing scenario: occlusion, a finer search space, and a GA
+
+**Why this exists.** Every scene above stands candidates on a ring at one
+fixed radius around a compact, few-metres-across target cluster, with
+nothing in the scene to block a sightline. That's a reasonable proxy for
+"which side, how high" when a part is small enough that distance barely
+varies -- it says nothing about a part where distance genuinely is part of
+the placement decision, or a factory floor with tooling in the way.
+`planning.experiment.wing_four_point_scenario` is the harder scene built
+to check that: four named fittings (root/mid-span/near-tip/tip) across a
+real ~30 m span (CLAUDE.md §1's own upper range bound), plus four network
+tie points, with a support-tower obstacle (`geometry.mesh.box_mesh`) under
+mid-span that measurably reduces visibility across a representative
+candidate set without ever reducing any single target to zero coverage
+(`tests/test_planning.py::test_wing_scenario_support_tower_reduces_but_does_not_eliminate_visibility`).
+
+A candidate grid fine enough to let station *distance* vary, not just
+angle, multiplies the candidate count; `grid_search_station_placement`'s
+`C(n_candidates, n_stations)` cost multiplies combinatorially on top of
+that. CLAUDE.md §3's own named fallback is a standard GA, so this scene
+is searched with `planning.search.genetic_algorithm_station_placement`
+(`scipy.optimize.differential_evolution`, searching each station's
+continuous (x, y, z) position directly) instead of a discretised grid.
+
+**Getting a trustworthy GA comparison took three attempts, and that's
+worth reporting as plainly as the numbers themselves.** A GA is not an
+exhaustive search -- CLAUDE.md §4e's "never adjust an input to force an
+output" applies just as much to accepting an under-converged search
+result as it does to a physics constant, so each attempt was checked, not
+assumed:
+
+1. **First attempt** (40 generations, population 15, ~5500-6000
+   evaluations per run): every one of the 8 runs (4 objectives x
+   tower/no-tower) reported `converged=False`. Cross-checking directly
+   -- evaluating objective C's own risk formula at *objective A1's*
+   winning stations from the same search -- showed C's own search had
+   converged to a total risk of 0.86 while a configuration its own
+   formula scores at 0.56 already existed, found by a different run. A
+   clear search failure, not a finding about the objectives.
+2. **Second attempt**: `genetic_algorithm_station_placement` parallelised
+   (`workers=-1`, ~3.5x measured speedup once every BLAS library was
+   pinned to one thread per process -- see that function's own
+   docstring) and the budget raised ~6x (150 generations, population 25,
+   ~34,000 evaluations per run). Still every run reported
+   `converged=False`, and the same cross-check now caught objective B:
+   its own search converged to 0.000174, while objective C's winning
+   stations scored 0.0000463 under B's own formula -- a ~3.75x miss.
+   More raw budget alone was not fixing this.
+3. **Third attempt**: initial-population seeding
+   (`seed_station_positions_m`). Each scenario's objectives were run in
+   sequence -- A0 first from a blind random initial population, then
+   each subsequent objective's search seeded with every previous
+   objective's winning stations, on top of the same random fill for the
+   rest of the population. Verified directly before trusting it: seeding
+   objective B with A0/A1/C's stations reproduced the 0.0000463 value C
+   had found, with 1/6th the evaluations the second attempt used.
+
+The numbers below are from this third attempt (60 generations, population
+20, ~11,000 evaluations per run, `workers=-1`). `converged=False` is still
+reported by every run -- DE's own convergence criterion is about
+population spread, not really reachable at all on a landscape with a hard
+feasibility penalty cliff (an infeasible candidate scores a fixed
+`INFEASIBLE_PENALTY` regardless of how infeasible, so some population
+spread survives indefinitely even near a true optimum) -- so it is not,
+by itself, a reliability signal either way here. What *is* checked:
+cross-validating every objective's winning stations against every other
+objective's own formula. The residual gaps are now a few percent (e.g.
+objective A1's own search landed ~2.7% worse, by its own metric, than
+objective C's stations did) rather than the earlier 4-10x misses --
+consistent with ordinary GA imprecision, not a repeat of the same
+failure. Still worth stating directly: this is a looser guarantee than
+the main scene's exhaustive grid search, which is provably the best
+*in the searched candidate set*. A GA result is a good plan found, not a
+certified optimum.
+
+**The result**, `n_stations=3`, `bounds_m` spanning the reachable floor
+area, `reference_uncertainty_m = 8 µm` for B exactly as in the main scene:
+
+| | A0 (trace) | A1 (uniform, projected) | B (linearised risk) | C (direct risk) |
+|---|---|---|---|---|
+| **With the support tower** | | | | |
+| Global risk (PFA+PFR) | 0.3731 | 0.3731 | 0.3731 | **0.3485** |
+| **Without it** | | | | |
+| Global risk (PFA+PFR) | 0.3617 | 0.3337 | 0.3202 | **0.2939** |
+
+Two things, stated as plainly as the main scene's table states its own:
+
+**Without the tower, risk falls monotonically from A0 to C** (0.362 →
+0.334 → 0.320 → 0.294, a 19% reduction from A0 to C) -- the clean,
+textbook version of the hypothesis this project exists to test, on a
+scene an order of magnitude larger and considerably less symmetric than
+the original. Cross-validated directly (every objective's winning
+stations scored under every other objective's own formula): C's stations
+are at or within a few percent of best under every one of the four
+metrics simultaneously here, not just its own -- this scene did not turn
+out to pit the objectives sharply against each other the way the main
+scene's ablation does, which is itself worth saying rather than quietly
+picking the more dramatic-looking number to report.
+
+**With the tower, A0, A1 and B land on (within GA noise of) the same
+plan, and C alone finds something measurably better** (6.6% lower risk
+than the other three). This is the same mechanism already documented
+above for the main scene and in "Mixed tolerance types" below: every one
+of this scene's four characteristics is a `ProfileTolerance` against the
+same surface normal, so A0 (trace-blind to direction) and A1 (projected,
+but with nothing to disagree about direction-wise) have no reason to
+diverge, and B's risk-derived weights here are dominated almost entirely
+by the two marginal-cluster characteristics (near-tip/tip), which
+happen, in this scene, to want nearly the same station arrangement A0
+already finds. C's gain comes specifically from the occlusion
+interacting with the direct risk objective in a way the linearised/
+trace-based proxies don't capture at this resolution -- not a new
+mechanism, the same "linearisation can cost something, it just usually
+doesn't in this project's scenes" finding B/C's comparison already
+makes, now actually observed rather than reported as a null result.
+
+**Occlusion costs every objective risk, and costs the risk-directed one
+more in relative terms.** Comparing each objective's own "with tower" row
+to its "without" row: A0 degrades by 3.2% (0.362 → 0.373), C by 18.6%
+(0.294 → 0.349). The tower genuinely narrows C's options more than it
+narrows A0's, in relative terms -- plausible since C is normally free to
+seek out a specific risk-minimising arrangement that the occlusion then
+forecloses, while A0 was never aiming at anything that precise in the
+first place. Not asserted as a general property of occlusion, only as
+what this one scene showed.
+
 ## What step 6 still deliberately doesn't do
 
 Per CLAUDE.md §3 ("do not invent an optimiser") and §9 ("if a requested
 feature would take the project outside the ladder, say so"):
 
-- No GA. Grid search over the reduced 2-DOF-per-station space is fast
-  enough for A0/A1/B; only C's per-evaluation cost is a real constraint,
-  addressed by a smaller candidate grid rather than a different search
-  method (CLAUDE.md §3's own fallback condition, "if grid is too slow",
-  is about the *search*, and a smaller grid resolves it without
-  introducing a new search algorithm).
-- No occlusion (step 2) in the search itself -- the scene here has no
-  obstacles, so every station sees every target.
+- Grid search, not a GA, over the main scene's reduced 2-DOF-per-station
+  space -- fast enough for A0/A1/B; only C's per-evaluation cost is a
+  real constraint, addressed by a smaller candidate grid rather than a
+  different search method there. A GA *is* now built and used
+  (`planning.search.genetic_algorithm_station_placement`) for the wing
+  scenario below, where a finer/larger candidate space makes grid
+  search's combinatorics intractable -- CLAUDE.md §3's own named
+  fallback, not a new optimiser.
+- Occlusion (step 2) *is* now wired into the search itself
+  (`objectives.evaluate_plan`, `PlanningScenario.obstacles`/
+  `visibility_limits`) and exercised by the wing scenario below; the
+  main scene above still has no obstacles, so every station there sees
+  every target, by choice (keeping that scene's own comparison
+  unchanged).
 - Only one instrument type across the demonstration scene -- a
   `PlanningScenario` field a caller can vary; nothing in `planning`
   assumes it's fixed, not done here. (Tolerance type *is* now varied --
