@@ -100,8 +100,42 @@ complete:
   modestly in this scene, for reasons the write-up explains, plus an
   iso-risk comparison (risk-weighting reaches a given risk target with
   fewer stations at some targets) and a guard against unbounded
-  degradation (`docs/step6_headline_experiment.md`). The full six-step
-  chain is now built end to end.
+  degradation (`docs/step6_headline_experiment.md`). A second scenario
+  (`planning.experiment.mixed_tolerance_two_cluster_scenario`) checks
+  whether A0/A1 and B/C's coincidence in the main scene was a general
+  equivalence or just that scene's symmetry, by mixing position,
+  profile and parallelism tolerances together — the answer depends on
+  candidate-grid resolution as well as the tolerance mix (same doc).
+  The full six-step chain is now built end to end.
+- **towards a more realistic headline experiment** — three extensions so
+  far: (1) step 2's occlusion/visibility layer is now wired into
+  planning itself (`PlanningScenario.obstacles`/`visibility_limits`,
+  `objectives.evaluate_plan`), so a candidate plan that leaves a target
+  unseen, or a station unable to see enough of the scene to pin its own
+  pose, is correctly disqualified rather than silently solved; (2)
+  `planning.candidates.floor_grid_candidate_poses` generalises station
+  placement beyond a fixed-radius ring to a real (x, y, height) grid, and
+  `planning.search.genetic_algorithm_station_placement` adds the
+  standard-GA search CLAUDE.md §3 names as the fallback once that grid's
+  combinatorics stop being grid-search-tractable (`scipy.optimize.
+  differential_evolution`, no new dependency); (3)
+  `planning.experiment.wing_four_point_scenario` puts all of this
+  together on a single ~30 m wing (CLAUDE.md §1's own upper range bound)
+  with four named fittings and a support-tower occluder under mid-span.
+  The full A0/A1/B/C comparison on this scene (`planning.experiment.
+  run_wing_experiment`) is written up in `docs/step6_headline_experiment.md`'s
+  "The wing scenario" section: without the tower, risk falls
+  monotonically from A0 to C (a 19% reduction, the clean version of this
+  project's own hypothesis, on a scene an order of magnitude larger and
+  less symmetric than the original); with it, A0/A1/B land on the same
+  plan (expected -- every characteristic here shares one tolerance
+  direction, the same reason A0=A1 coincide in the original scene) and C
+  alone finds a measurably better one (6.6% lower risk). Getting a GA
+  comparison trustworthy enough to report took real iteration -- an
+  unseeded search was demonstrably wrong twice, caught by
+  cross-validating each objective's winning stations against every other
+  objective's own formula, before population seeding fixed it -- which
+  the doc section covers as honestly as the result itself.
 
 **Visualization** (`src/visualization`, not one of the six steps — see
 its module docstring): matplotlib plotting for scenes, per-point error
@@ -139,6 +173,26 @@ than simulating and fitting random noise, so there is no RNG anywhere in
 this command — the output should match the committed files exactly, not
 just approximately (`git diff results/` after running it should be
 empty).
+
+The wing scenario's figures (`panel9*_wing_*.png`,
+`docs/step6_headline_experiment.md`'s "The wing scenario" section) are
+*not* part of the command above — they're regenerated separately:
+
+```bash
+OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 \
+    python -m viz.make_wing_figures
+```
+
+This one is genuinely slow (15-25 minutes, a GA search run four times
+over two scenarios — see `viz/make_wing_figures.py`'s own module
+docstring for why it needs those environment variables to actually be
+*fast*, not slower than leaving them unset) and, unlike the command
+above, not bit-for-bit reproducible: `scipy.optimize.differential_evolution`
+is a genetic algorithm, not an exhaustive search, and re-running it can
+land on slightly different station positions and objective values than
+the ones committed — `docs/step6_headline_experiment.md`'s "Getting a
+trustworthy GA comparison took three attempts" section is the honest
+account of what that did and didn't fix.
 
 ```
 src/

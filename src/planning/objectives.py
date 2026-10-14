@@ -43,14 +43,16 @@ only once, beforehand. Both are reported so a reader can see whether the
 linearisation costs anything in this scene (docs/step6_headline_experiment.md).
 """
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 
 from characteristics.characteristic import Characteristic, evaluate_characteristic
+from geometry.mesh import TriangleMesh
 from geometry.pose import InstrumentPose
+from geometry.visibility import VisibilityLimits, check_target_visibility
 from instruments.laser_tracker import LaserTracker
-from network.solve import NetworkSolveResult, exact_observations, solve_network
+from network.solve import NetworkSolveResult, Observation, exact_observations, solve_network
 from risk.jcgm106 import ClusterAssignment, DecisionRule, evaluate_conformity_risk
 
 
@@ -72,6 +74,26 @@ class PlanningScenario:
         not-search-over station (e.g. a station whose position is fixed
         by some other constraint); pass an empty list of *additional*
         stations to search over just the anchor alone.
+    target_normals_m : (N, 3) ndarray or None -- outward unit surface
+        normal at each target, for the visibility layer's incidence-angle
+        check (`geometry.visibility`, step 2). None (the default) means
+        every scenario built before this field existed keeps running the
+        occlusion-free, incidence-free fast path below exactly as before.
+    obstacles : `geometry.mesh.TriangleMesh` or None -- blocking geometry
+        for the visibility layer's occlusion check (step 2): a wall, a
+        tooling fixture, another part of the structure, anything a beam
+        can be stopped by on the factory floor. None means nothing can
+        occlude anything, same as an empty scene.
+    visibility_limits : `geometry.visibility.VisibilityLimits` or None --
+        the instrument's max range and max incidence angle, and the
+        single switch for whether the visibility layer runs at all
+        (`visibility_enabled` below). Required (non-None) the moment
+        `obstacles` or `target_normals_m` is set -- `__post_init__`
+        enforces this, since those fields would otherwise be silently
+        ignored. `None` with `obstacles=None` and `target_normals_m=None`
+        (the default) skips the whole visibility layer: every station
+        sees every target, exactly as step 6 worked before occlusion was
+        wired in here.
     """
 
     target_points_m: np.ndarray
@@ -80,6 +102,32 @@ class PlanningScenario:
     assignments: Dict[str, ClusterAssignment]
     decision_rules: Dict[str, DecisionRule]
     anchor_pose: InstrumentPose
+    target_normals_m: Optional[np.ndarray] = None
+    obstacles: Optional[TriangleMesh] = None
+    visibility_limits: Optional[VisibilityLimits] = None
+
+    def __post_init__(self):
+        if self.visibility_limits is None and (self.obstacles is not None or self.target_normals_m is not None):
+            raise ValueError(
+                "PlanningScenario sets obstacles or target_normals_m but no visibility_limits -- "
+                "without a max_range_m/max_incidence_angle_rad envelope those fields would be "
+                "silently ignored (evaluate_plan only invokes the visibility layer when "
+                "visibility_limits is set); pass visibility_limits explicitly"
+            )
+
+    @property
+    def visibility_enabled(self) -> bool:
+        """Whether the visibility layer (step 2: range, incidence,
+        occlusion) is switched on for this scenario -- the single
+        condition `evaluate_plan` checks to decide between the
+        full-visibility fast path (every station sees every target, no
+        `geometry.visibility` call at all) and the per-pair filtered
+        path. `visibility_limits` alone is sufficient to turn it on (a
+        bare range/incidence envelope, no mesh, is still a real
+        constraint -- see `test_visibility_limits_out_of_range_disqualifies_the_whole_plan`);
+        `__post_init__` above guarantees `obstacles`/`target_normals_m`
+        never appear without it."""
+        return self.visibility_limits is not None
 
 
 def uniform_weights(scenario: PlanningScenario) -> np.ndarray:
@@ -168,7 +216,73 @@ class PlanEvaluation:
     network_solve: NetworkSolveResult
 
 
-def evaluate_plan(station_poses: List[InstrumentPose], scenario: PlanningScenario) -> PlanEvaluation:
+# A non-anchor station's pose is 6 free parameters (position + orientation);
+# each target it observes contributes 3 residuals (d, theta, phi). 3 targets
+# (9 residuals) is the minimum that doesn't leave the pose under-determined
+# in raw residual count, with margin for the fact that 2 targets can still
+# leave some combination of rotation/translation poorly constrained for
+# some geometries (e.g. two targets nearly along the same bearing). This is
+# an engineering floor, not a rigorously derived bound -- see
+# `_visible_observations`'s docstring for what it guards against.
+MIN_TARGETS_PER_NON_ANCHOR_STATION = 3
+
+
+def _visible_observations(
+    target_points_m: np.ndarray, all_poses: List[InstrumentPose], scenario: PlanningScenario, anchor_index: int
+) -> Tuple[List[Observation], bool]:
+    """Every station-target observation this plan can actually take, after
+    the visibility layer (step 2: range, incidence, occlusion), plus
+    whether the result is even solvable.
+
+    Without this filter, `network.solve.solve_network` would happily
+    accept an observation list where some target has zero observations,
+    or some non-anchor station has too few to pin its own pose -- its
+    normal matrix would then carry an all-zero row/column for the
+    unconstrained parameters, and `np.linalg.pinv` silently assigns that
+    direction *zero* variance (the minimum-norm convention for a singular
+    system), not the infinite variance "this was never actually measured"
+    physically means. An occluded target would then look spuriously
+    *perfect* instead of unmeasured -- exactly backwards. `feasible=False`
+    tells `evaluate_plan` to refuse the solve entirely rather than return
+    a number that looks fine and means the opposite.
+    """
+    observations = exact_observations(target_points_m, all_poses)
+    if not scenario.visibility_enabled:
+        return observations, True
+
+    visible = []
+    n_targets = target_points_m.shape[0]
+    observed_count = np.zeros(n_targets, dtype=int)
+    station_count = np.zeros(len(all_poses), dtype=int)
+    for obs in observations:
+        pose = all_poses[obs.station_index]
+        normal_m = (
+            None if scenario.target_normals_m is None else scenario.target_normals_m[obs.target_index]
+        )
+        result = check_target_visibility(
+            pose.position_m,
+            target_points_m[obs.target_index],
+            scenario.visibility_limits,
+            target_normal_m=normal_m,
+            obstacles=scenario.obstacles,
+        )
+        if result.is_visible:
+            visible.append(obs)
+            observed_count[obs.target_index] += 1
+            station_count[obs.station_index] += 1
+
+    every_target_seen = bool(np.all(observed_count > 0))
+    every_non_anchor_station_well_posed = all(
+        station_count[i] >= MIN_TARGETS_PER_NON_ANCHOR_STATION
+        for i in range(len(all_poses))
+        if i != anchor_index
+    )
+    return visible, every_target_seen and every_non_anchor_station_well_posed
+
+
+def evaluate_plan(
+    station_poses: List[InstrumentPose], scenario: PlanningScenario
+) -> Optional[PlanEvaluation]:
     """Compute the raw ingredients (network solve, per-characteristic
     uncertainty) for one candidate set of station poses -- deliberately
     *not* reduced to a single score here; pass the result to whichever
@@ -184,9 +298,22 @@ def evaluate_plan(station_poses: List[InstrumentPose], scenario: PlanningScenari
     equal footing, no RNG state to manage across a large search) and far
     cheaper (the solve converges in a single evaluation, since the
     initial guess already *is* the exact answer).
+
+    Returns `None`, instead of a `PlanEvaluation`, when `scenario.
+    visibility_enabled` and this particular set of station poses leaves
+    some target unseen by every station, or some non-anchor station
+    unable to pin its own pose (`_visible_observations` above) -- a plan
+    the search must disqualify, not score. Every caller that drives a
+    search over many candidate combinations (`planning.search`) already
+    has to handle "this candidate doesn't qualify" (`objectives.
+    constrained_objective`'s `+inf` convention); `None` here is the same
+    idea one layer earlier, before an objective value can even be computed.
     """
     all_poses = [scenario.anchor_pose] + list(station_poses)
-    observations = exact_observations(scenario.target_points_m, all_poses)
+    observations, feasible = _visible_observations(scenario.target_points_m, all_poses, scenario, anchor_index=0)
+    if not feasible:
+        return None
+
     network_solve = solve_network(
         observations, scenario.target_points_m.copy(), all_poses, scenario.tracker, anchor_index=0
     )
@@ -209,21 +336,40 @@ def evaluate_plan(station_poses: List[InstrumentPose], scenario: PlanningScenari
 ObjectiveFn = Callable[[PlanEvaluation, PlanningScenario], float]
 
 
-def make_weighted_uncertainty_objective(weights: np.ndarray) -> ObjectiveFn:
-    """Objectives A1 (`weights=uniform_weights(...)`) and B
-    (`weights=risk_derived_weights(...)`): `sum(weight_i * uncertainty_i)`
-    over projected characteristic uncertainties.
+@dataclass(frozen=True)
+class WeightedUncertaintyObjective:
+    """Objectives A1/B's scoring rule: `sum(weight_i * uncertainty_i)` over
+    projected characteristic uncertainties -- a plain callable class
+    rather than the closure an earlier revision returned from
+    `make_weighted_uncertainty_objective` below, so it can be pickled.
+    `planning.search.genetic_algorithm_station_placement`'s parallel path
+    (`scipy.optimize.differential_evolution`'s `workers` parameter, backed
+    by `multiprocessing`) has to send the whole `ObjectiveFn` to each
+    worker process; the standard library's `pickle` cannot pickle a
+    function defined inside another function (exactly what a closure is),
+    only a module-level class instance like this one.
     """
 
-    def objective(evaluation: PlanEvaluation, scenario: PlanningScenario) -> float:
+    weights: np.ndarray
+
+    def __call__(self, evaluation: PlanEvaluation, scenario: PlanningScenario) -> float:
         return float(
             sum(
                 w * evaluation.per_characteristic_uncertainty_m[c.name]
-                for w, c in zip(weights, scenario.characteristics)
+                for w, c in zip(self.weights, scenario.characteristics)
             )
         )
 
-    return objective
+
+def make_weighted_uncertainty_objective(weights: np.ndarray) -> ObjectiveFn:
+    """Objectives A1 (`weights=uniform_weights(...)`) and B
+    (`weights=risk_derived_weights(...)`): `sum(weight_i * uncertainty_i)`
+    over projected characteristic uncertainties. Returns a
+    `WeightedUncertaintyObjective` (see its own docstring for why it isn't
+    a plain closure); callers use the result exactly the same way either
+    way -- `objective_fn(evaluation, scenario)`.
+    """
+    return WeightedUncertaintyObjective(np.asarray(weights))
 
 
 def objective_a0_trace_covariance(evaluation: PlanEvaluation, scenario: PlanningScenario) -> float:
@@ -297,13 +443,27 @@ def constrained_objective(
     search can choose within a regime a metrologist would actually
     accept. `max_uncertainty_m=None` (the default via `grid_search_station_placement`)
     applies no cap, reproducing the unconstrained objective exactly.
+
+    Returns a `_ConstrainedObjective` (a plain callable class, not a
+    closure -- see its own docstring for why).
     """
     if max_uncertainty_m is None:
         return objective_fn
+    return _ConstrainedObjective(objective_fn, max_uncertainty_m)
 
-    def wrapped(evaluation: PlanEvaluation, scenario: PlanningScenario) -> float:
-        if any(u > max_uncertainty_m for u in evaluation.per_characteristic_uncertainty_m.values()):
+
+@dataclass(frozen=True)
+class _ConstrainedObjective:
+    """`constrained_objective`'s wrapped callable -- a plain callable
+    class, not a closure, for the same pickling reason
+    `WeightedUncertaintyObjective` above isn't one: it has to survive
+    being sent to a worker process when `genetic_algorithm_station_placement`
+    is run with `workers != 1`."""
+
+    objective_fn: ObjectiveFn
+    max_uncertainty_m: float
+
+    def __call__(self, evaluation: PlanEvaluation, scenario: PlanningScenario) -> float:
+        if any(u > self.max_uncertainty_m for u in evaluation.per_characteristic_uncertainty_m.values()):
             return float("inf")
-        return objective_fn(evaluation, scenario)
-
-    return wrapped
+        return self.objective_fn(evaluation, scenario)

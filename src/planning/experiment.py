@@ -17,13 +17,16 @@ costs ~10ms). See docs/step6_headline_experiment.md for the full write-up
 of scene, results and what changed between draft and this revision.
 """
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Sequence
+from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
 from characteristics.characteristic import Characteristic
-from characteristics.tolerances import ProfileTolerance
+from characteristics.datum import Datum
+from characteristics.tolerances import ParallelismTolerance, PositionTolerance, ProfileTolerance
+from geometry.mesh import box_mesh
 from geometry.pose import InstrumentPose
+from geometry.visibility import VisibilityLimits
 from instruments.laser_tracker import LaserTracker
 from planning.candidates import hemisphere_candidate_poses
 from planning.objectives import (
@@ -37,7 +40,12 @@ from planning.objectives import (
     risk_derived_weights,
     uniform_weights,
 )
-from planning.search import GridSearchResult, grid_search_station_placement
+from planning.search import (
+    GASearchResult,
+    GridSearchResult,
+    genetic_algorithm_station_placement,
+    grid_search_station_placement,
+)
 from risk.jcgm106 import ClusterAssignment, DecisionRule, FeatureCluster, ProcessPrior, RiskResult, evaluate_conformity_risk
 
 # The two feature clusters, calibrated to GKN Aerospace's own two
@@ -166,6 +174,286 @@ def default_two_cluster_scenario(
         assignments=assignments,
         decision_rules=decision_rules,
         anchor_pose=anchor_pose,
+    )
+
+
+def mixed_tolerance_two_cluster_scenario(
+    anchor_position_m: np.ndarray = None, tracker: Optional[LaserTracker] = None
+) -> PlanningScenario:
+    """The same two clusters, same six target points, same process
+    priors as `default_two_cluster_scenario` -- but each cluster now
+    carries one of each tolerance type (CLAUDE.md §3's own example: "A
+    hole-position tolerance and a parallelism tolerance on the same
+    feature... carry different risk because they project the error
+    ellipsoid differently") instead of six identical profile callouts.
+
+    This is the check `docs/step6_headline_experiment.md`'s "What step 6
+    still deliberately doesn't do" flagged as the natural next one: A0
+    and A1 (and, separately, B and C) landed on the *identical* plan in
+    `default_two_cluster_scenario` -- documented there as a property of
+    that scene's symmetry (every characteristic shares one projected
+    direction, one tolerance type), not a general equivalence. Breaking
+    that symmetry is the direct test of whether they actually can
+    diverge, per CLAUDE.md §4b/§4e's own insistence that a prediction is
+    only meaningful if there's a way for it to come out wrong.
+
+    Per cluster, the three points get:
+
+      - point 0: `PositionTolerance` (spherical) -- constrains all three
+        directions at once, so A1's projected uncertainty for this point
+        sees the *whole* covariance, same as A0's raw trace does. This
+        point is where A0 and A1 should agree most closely.
+      - point 1: `ProfileTolerance`, surface normal = z (vertical) -- the
+        single direction every characteristic used in the symmetric
+        scene; kept as a baseline reference inside the mixed scene too.
+      - point 2: `ParallelismTolerance`, datum normal = x (horizontal,
+        along the nominal line of sight to the scene) -- a direction
+        that has nothing to do with the point's own surface, and nothing
+        to do with point 1's z-normal either, per `ParallelismTolerance`'s
+        own docstring on why its direction is externally supplied, not
+        derived from the measured surface.
+
+    A1 can now legitimately diverge from A0 (it sees three different
+    slices of each point's covariance, weighted equally, where A0 always
+    sees the whole thing); B and C get the chance to diverge too, since
+    a mixed scene's candidates no longer have to trade off identically
+    between two interchangeable-by-symmetry clusters.
+    """
+    cluster1_points_m = np.array(
+        [[3.0, 2.0, 1.0], [3.2, 2.3, 1.2], [2.8, 1.8, 0.8]]
+    )  # high-capability
+    cluster2_points_m = np.array(
+        [[3.0, -2.0, 1.0], [3.2, -2.3, 1.2], [2.8, -1.8, 0.8]]
+    )  # marginal
+    target_points_m = np.vstack([cluster1_points_m, cluster2_points_m])
+
+    surface_normal = np.array([0.0, 0.0, 1.0])  # z: same as the symmetric scene's profile points
+    datum = Datum(name="D (mounting face)", normal=np.array([1.0, 0.0, 0.0]))  # x: unrelated to z
+
+    def _tolerances_for_cluster(point_offset: int) -> List[Characteristic]:
+        return [
+            Characteristic(
+                name=f"cluster{point_offset // 3 + 1}_position",
+                target_indices=[point_offset],
+                tolerance=PositionTolerance(zone_diameter_m=TOLERANCE_ZONE_WIDTH_M),
+            ),
+            Characteristic(
+                name=f"cluster{point_offset // 3 + 1}_profile",
+                target_indices=[point_offset + 1],
+                tolerance=ProfileTolerance(zone_width_m=TOLERANCE_ZONE_WIDTH_M, surface_normal=surface_normal),
+            ),
+            Characteristic(
+                name=f"cluster{point_offset // 3 + 1}_parallelism",
+                target_indices=[point_offset + 2],
+                tolerance=ParallelismTolerance(zone_width_m=TOLERANCE_ZONE_WIDTH_M),
+                datum=datum,
+            ),
+        ]
+
+    characteristics = _tolerances_for_cluster(0) + _tolerances_for_cluster(3)
+
+    assignments = {}
+    for characteristic in characteristics[:3]:
+        assignments[characteristic.name] = ClusterAssignment(
+            characteristic.name, HIGH_CAPABILITY_CLUSTER, confidence=0.9
+        )
+    for characteristic in characteristics[3:]:
+        assignments[characteristic.name] = ClusterAssignment(characteristic.name, MARGINAL_CLUSTER, confidence=0.9)
+
+    decision_rules = {
+        characteristic.name: DecisionRule.from_zone_width(TOLERANCE_ZONE_WIDTH_M)
+        for characteristic in characteristics
+    }
+
+    if anchor_position_m is None:
+        anchor_position_m = np.array([0.0, 0.0, 1.0])
+    anchor_pose = InstrumentPose(position_m=np.asarray(anchor_position_m, dtype=float))
+
+    return PlanningScenario(
+        target_points_m=target_points_m,
+        tracker=tracker if tracker is not None else LaserTracker(),
+        characteristics=characteristics,
+        assignments=assignments,
+        decision_rules=decision_rules,
+        anchor_pose=anchor_pose,
+    )
+
+
+# A support structure under mid-span -- CLAUDE.md §1's own factory-floor
+# framing: a 30 m wing in assembly sits in a cradle/jig and shares the
+# hall with crane-rail support columns and other fixed structure, not
+# loose on an open floor, and that structure is exactly the kind of thing
+# that can block a tracker's line of sight. Representative dimensions,
+# not drawn from a real jig drawing (none is available to this testbed) --
+# flagged here, not silently assumed realistic. Taller (top at z=2.5 m)
+# than every target point (all at z <= 2.0 m, `wing_four_point_scenario`'s
+# own target_points_m) on purpose: every target needs a surface-normal
+# -compliant station *above* it to have acceptable incidence against a
+# top-facing surface (CLAUDE.md §3's "risk depends on direction" cuts
+# both ways -- an instrument's own visibility is direction-dependent
+# too), and a tower capped below every target's own height could never
+# occlude a station that already clears that bar. Taller than the
+# targets means it can still stand between an elevated, incidence-
+# compliant station on one side of mid-span and a target on the other.
+WING_SUPPORT_TOWER_MIN_CORNER_M = np.array([13.0, -1.5, 0.0])
+WING_SUPPORT_TOWER_MAX_CORNER_M = np.array([17.0, 1.5, 2.5])
+
+# CLAUDE.md §1: "measuring aerospace structures from 2 m to 30 m" -- used
+# directly as this scenario's visibility range cap, rather than invented.
+WING_MAX_RANGE_M = 30.0
+# 80 deg is not a literature figure (CLAUDE.md §4 has none for incidence
+# limits); it is the generous-but-finite convention this codebase's own
+# visibility tests already use throughout (tests/test_visibility.py's
+# GENEROUS_LIMITS, tests/test_visualization.py) -- reused here rather than
+# inventing a second unsourced number alongside it.
+WING_MAX_INCIDENCE_ANGLE_RAD = np.deg2rad(80.0)
+
+
+def wing_four_point_scenario(
+    anchor_position_m: np.ndarray = None,
+    tracker: Optional[LaserTracker] = None,
+    include_support_tower: bool = True,
+) -> PlanningScenario:
+    """A single ~30 m aircraft wing, four measurement points spread along
+    its span, with a factory-floor obstacle in the way -- the scene the
+    user asked for to make the headline experiment closer to a real
+    measurement task: CLAUDE.md §1's own upper range bound (30 m) made
+    literal, rather than the original two-cluster scene's few-metres-
+    across compact geometry.
+
+    Four points, root to tip, each its own characteristic (no clusters of
+    three identical features this time -- a real wing inspection plan
+    cares about specific named fittings, not a batch of interchangeable
+    points), all on the wing's upper surface (z roughly 1.7-2.0 m --
+    above `WING_SUPPORT_TOWER_MAX_CORNER_M`'s own top, see that
+    constant's comment for why):
+
+      - index 0, "root_profile" -- x=2 m, near the root/fuselage joint.
+      - index 3, "midspan_profile" -- x=15 m, a spar attachment.
+      - index 6, "neartip_profile" -- x=26 m, a rib close to the tip.
+      - index 7, "tip_profile" -- x=29 m, the tip fitting itself.
+
+    Four more points (indices 1, 2, 4, 5) sit between them, spread along
+    the same surface, as pure network *tie points* -- not characteristics
+    in their own right, no tolerance, no process-capability assignment,
+    just extra shared observations a station can use to pin its own 6-DOF
+    pose (CLAUDE.md §7's own glossary: "Network solve... returns a
+    covariance" over "all station poses and target coordinates together" --
+    nothing in that definition requires every target solved for to be a
+    toleranced characteristic). A real tracker network over a 30 m part
+    always includes common reference nests like these, beyond whatever
+    specific features are being measured, precisely so stations spread
+    along the span don't each need direct sight of every single
+    characteristic -- CLAUDE.md §5 step 3's `MIN_TARGETS_PER_NON_ANCHOR_STATION`
+    threshold (`planning.objectives`) otherwise has nothing nearby for a
+    station covering just the tip, say, to see 3 of. Without them, a
+    station near one end of the wing cannot be well-posed on its own
+    (the 4 characteristics alone are too sparse and too far apart for
+    any one station to see 3 of, except from very far back) -- this is
+    an engineering necessity of the scene, not a free design choice to
+    skip.
+
+    Root and mid-span are assigned the high-capability process prior,
+    near-tip and tip the marginal one (the same two GKN-sourced priors
+    `default_two_cluster_scenario` uses -- CLAUDE.md §6: reusing a
+    sourced number for a new "for the sake of argument" scene rather than
+    inventing a third). This is a representative choice, not a claim
+    about which real wing fittings are harder to hold to tolerance -- the
+    experimental point is having two different priors across a spread-out
+    part, as before, not this particular pairing.
+
+    `include_support_tower=True` (the default) adds a block occluder
+    (`WING_SUPPORT_TOWER_MIN_CORNER_M`/`_MAX_CORNER_M`, `geometry.mesh.
+    box_mesh`) representing a wing-holding jig's support structure under
+    mid-span -- see that constant's own comment for what it is and isn't
+    based on. `False` gives the identical scene with the visibility layer
+    still switched on (range and incidence limits still apply) but
+    nothing to occlude -- the direct A/B comparison
+    `docs/step6_headline_experiment.md`'s wing-scenario section reports.
+
+    Visibility limits use CLAUDE.md §1's own stated LVM range (30 m) and
+    this codebase's existing generous-incidence test convention (80 deg,
+    not a literature number -- see `WING_MAX_INCIDENCE_ANGLE_RAD`).
+
+    The default anchor sits elevated near the root (CLAUDE.md §5 step 3's
+    fixed frame-of-reference station) and sees a local subset of points
+    well (root plus three nearby tie points) -- it is not required to see
+    the whole span on its own (nothing in `evaluate_plan`'s feasibility
+    check asks the anchor specifically to; only that *some* station,
+    anchor or not, sees each target -- see `objectives.
+    MIN_TARGETS_PER_NON_ANCHOR_STATION`'s docstring). A single station
+    covering all 30 m under a finite incidence limit is not achievable
+    here regardless of height (checked directly: no position this
+    module's own test suite tried sees every point at once) -- a real
+    multi-station plan is exactly what a spread-out part actually needs,
+    not an artefact of this scene being under-designed.
+    """
+    target_points_m = np.array(
+        [
+            [2.0, 0.0, 1.8],  # 0: root_profile
+            [8.0, 0.2, 1.8],  # 1: tie point
+            [11.0, -0.2, 1.9],  # 2: tie point
+            [15.0, 3.0, 2.0],  # 3: midspan_profile -- offset clear of the
+            #                   tower footprint (y in [-1.5, 1.5]): directly
+            #                   above the tower it would be unseeable from
+            #                   almost any direction at once, which would be
+            #                   a modelling artefact (a real fitting is not
+            #                   placed where nothing can ever see it), not a
+            #                   finding -- CLAUDE.md §4e's own point that a
+            #                   prediction has to have a way to come out
+            #                   *interesting*, not merely impossible.
+            [19.0, -0.2, 1.9],  # 4: tie point
+            [22.0, 0.2, 1.8],  # 5: tie point
+            [26.0, 0.2, 1.7],  # 6: neartip_profile
+            [29.0, 0.1, 1.7],  # 7: tip_profile
+        ]
+    )
+    surface_normal = np.array([0.0, 0.0, 1.0])
+    target_normals_m = np.tile(surface_normal, (target_points_m.shape[0], 1))
+
+    characteristic_specs = [
+        ("root_profile", 0, HIGH_CAPABILITY_CLUSTER),
+        ("midspan_profile", 3, HIGH_CAPABILITY_CLUSTER),
+        ("neartip_profile", 6, MARGINAL_CLUSTER),
+        ("tip_profile", 7, MARGINAL_CLUSTER),
+    ]
+    characteristics = [
+        Characteristic(
+            name=name,
+            target_indices=[index],
+            tolerance=ProfileTolerance(zone_width_m=TOLERANCE_ZONE_WIDTH_M, surface_normal=surface_normal),
+        )
+        for name, index, _cluster in characteristic_specs
+    ]
+    assignments = {
+        name: ClusterAssignment(name, cluster, confidence=0.9) for name, _index, cluster in characteristic_specs
+    }
+    decision_rules = {
+        name: DecisionRule.from_zone_width(TOLERANCE_ZONE_WIDTH_M) for name, _index, _cluster in characteristic_specs
+    }
+
+    if anchor_position_m is None:
+        anchor_position_m = np.array([5.0, -4.0, 5.0])
+    anchor_pose = InstrumentPose(position_m=np.asarray(anchor_position_m, dtype=float))
+
+    obstacles = (
+        box_mesh(WING_SUPPORT_TOWER_MIN_CORNER_M, WING_SUPPORT_TOWER_MAX_CORNER_M)
+        if include_support_tower
+        else None
+    )
+
+    return PlanningScenario(
+        target_points_m=target_points_m,
+        tracker=tracker if tracker is not None else LaserTracker(),
+        characteristics=characteristics,
+        assignments=assignments,
+        decision_rules=decision_rules,
+        anchor_pose=anchor_pose,
+        target_normals_m=target_normals_m,
+        obstacles=obstacles,
+        visibility_limits=VisibilityLimits(
+            max_range_m=WING_MAX_RANGE_M, max_incidence_angle_rad=WING_MAX_INCIDENCE_ANGLE_RAD
+        ),
     )
 
 
@@ -395,3 +683,114 @@ def iso_risk_station_counts(
             if total_expected_risk(search.best, scenario) <= target_total_risk:
                 results[name] = n_stations
     return results
+
+
+# Validated directly on this scenario (docs/step6_headline_experiment.md's
+# "The wing scenario" section has the full story): grid search's
+# C(n_candidates, n_stations) cost is intractable once candidates come
+# from a floor-spanning grid rather than a compact ring, so this scene
+# is searched with the GA instead (CLAUDE.md §3's named fallback). A
+# plain, unseeded GA run was demonstrably unreliable here even at a ~6x
+# bigger budget -- cross-checking one objective's winning stations
+# against another's own formula caught misses of up to ~4x. Seeding each
+# objective's search with every previously-run objective's winning
+# stations (run_wing_experiment's own cascade below) fixed this with a
+# far smaller budget than throwing more raw evaluations at the problem
+# did. `workers=-1` is the default here (not in `run_headline_experiment`
+# above, which doesn't need it) because this scene's own cost is large
+# enough that serial evaluation would take on the order of an hour per
+# scenario -- see genetic_algorithm_station_placement's own docstring for
+# why pinning every BLAS library to one thread per process first
+# (`OMP_NUM_THREADS=1` etc.) matters for that to actually help rather
+# than hurt.
+WING_DEFAULT_BOUNDS_M: Tuple[Tuple[float, float], ...] = ((-2.0, 34.0), (-8.0, 8.0), (1.0, 10.0))
+WING_DEFAULT_DE_KWARGS = dict(seed=0, maxiter=60, popsize=20, tol=1e-6, workers=-1, updating="deferred")
+
+
+@dataclass(frozen=True)
+class WingExperimentResult:
+    """The GA-search analogue of `HeadlineExperimentResult`, for
+    `wing_four_point_scenario` -- same four objectives, same reporting
+    (`PlanReport` via `plan_a0`/`plan_a1`/`plan_b`/`plan_c`), backed by
+    `GASearchResult` instead of `GridSearchResult`."""
+
+    scenario: PlanningScenario
+    search_a0: GASearchResult
+    search_a1: GASearchResult
+    search_b: GASearchResult
+    search_c: GASearchResult
+
+    @property
+    def plan_a0(self) -> Optional[PlanReport]:
+        return _plan_report(self.search_a0.best, self.scenario)
+
+    @property
+    def plan_a1(self) -> Optional[PlanReport]:
+        return _plan_report(self.search_a1.best, self.scenario)
+
+    @property
+    def plan_b(self) -> Optional[PlanReport]:
+        return _plan_report(self.search_b.best, self.scenario)
+
+    @property
+    def plan_c(self) -> Optional[PlanReport]:
+        return _plan_report(self.search_c.best, self.scenario)
+
+
+def run_wing_experiment(
+    include_support_tower: bool = True,
+    n_stations: int = 3,
+    bounds_m: Sequence[Tuple[float, float]] = WING_DEFAULT_BOUNDS_M,
+    reference_uncertainty_m: float = 8e-6,
+    de_kwargs: Optional[Dict] = None,
+) -> WingExperimentResult:
+    """Run the A0/A1/B/C comparison on `wing_four_point_scenario` via the
+    GA search, cascading each objective's initial population seed from
+    every objective already run (A0 first, from a blind random initial
+    population; A1 seeded with A0's result; B seeded with A0's and A1's;
+    C seeded with all three) -- see the module-level comment above and
+    docs/step6_headline_experiment.md's "The wing scenario" section for
+    why this is necessary and how it was validated, not just assumed to
+    help.
+
+    `de_kwargs`, if given, overrides `WING_DEFAULT_DE_KWARGS` entries
+    (e.g. to trade budget for runtime -- this scene's own cost per
+    evaluation makes that tradeoff much more consequential than for
+    `run_headline_experiment`'s scene).
+    """
+    scenario = wing_four_point_scenario(include_support_tower=include_support_tower)
+    weights_uniform = uniform_weights(scenario)
+    weights_risk = risk_derived_weights(scenario, reference_uncertainty_m)
+
+    objectives = [
+        ("A0", objective_a0_trace_covariance),
+        ("A1", make_weighted_uncertainty_objective(weights_uniform)),
+        ("B", make_weighted_uncertainty_objective(weights_risk)),
+        ("C", objective_c_direct_risk),
+    ]
+    kwargs = dict(WING_DEFAULT_DE_KWARGS)
+    if de_kwargs:
+        kwargs.update(de_kwargs)
+
+    seed_positions: List[List[np.ndarray]] = []
+    searches = {}
+    for name, objective_fn in objectives:
+        search = genetic_algorithm_station_placement(
+            scenario,
+            n_stations=n_stations,
+            objective_fn=objective_fn,
+            bounds_m=bounds_m,
+            seed_station_positions_m=list(seed_positions) if seed_positions else None,
+            **kwargs,
+        )
+        searches[name] = search
+        if search.best is not None:
+            seed_positions.append([pose.position_m for pose in search.best.station_poses])
+
+    return WingExperimentResult(
+        scenario=scenario,
+        search_a0=searches["A0"],
+        search_a1=searches["A1"],
+        search_b=searches["B"],
+        search_c=searches["C"],
+    )

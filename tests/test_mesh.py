@@ -2,7 +2,7 @@
 import numpy as np
 import pytest
 
-from geometry.mesh import TriangleMesh, load_stl, segment_intersects_mesh
+from geometry.mesh import TriangleMesh, box_mesh, load_stl, segment_intersects_mesh
 
 
 def test_load_binary_stl_wall_fixture():
@@ -64,6 +64,28 @@ def test_segment_stopping_short_of_the_triangle_does_not_intersect():
     mesh = _single_triangle_mesh()
     origin = np.array([0.3, 0.3, 0.0])
     target = np.array([0.3, 0.3, 0.5])  # target is well below the triangle, z=1
+    assert segment_intersects_mesh(origin, target, mesh) is False
+
+
+def test_box_mesh_has_eight_vertices_and_twelve_triangles():
+    mesh = box_mesh(np.array([0.0, 0.0, 0.0]), np.array([2.0, 1.0, 3.0]))
+    assert mesh.vertices_m.shape == (8, 3)
+    assert mesh.n_triangles == 12
+    assert np.allclose(mesh.vertices_m.min(axis=0), [0.0, 0.0, 0.0])
+    assert np.allclose(mesh.vertices_m.max(axis=0), [2.0, 1.0, 3.0])
+
+
+def test_box_mesh_blocks_a_segment_straight_through_it():
+    mesh = box_mesh(np.array([-1.0, -1.0, -1.0]), np.array([1.0, 1.0, 1.0]))
+    origin = np.array([-5.0, 0.0, 0.0])
+    target = np.array([5.0, 0.0, 0.0])  # straight through the box's centre
+    assert segment_intersects_mesh(origin, target, mesh) is True
+
+
+def test_box_mesh_does_not_block_a_segment_passing_beside_it():
+    mesh = box_mesh(np.array([-1.0, -1.0, -1.0]), np.array([1.0, 1.0, 1.0]))
+    origin = np.array([-5.0, 5.0, 0.0])
+    target = np.array([5.0, 5.0, 0.0])  # well clear of the box in y
     assert segment_intersects_mesh(origin, target, mesh) is False
 
 
