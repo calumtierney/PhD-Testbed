@@ -321,6 +321,7 @@ class LayoutOutcome:
     n_shots: int
     visible: np.ndarray
     task_coverage: Optional[np.ndarray] = None  # (6,) fraction of each task's points measured, tasks 1..6
+    trace_m2: Optional[np.ndarray] = None  # (N,) trace of each point's 3x3 covariance (m^2); NaN if unmeasured
 
     @property
     def n_measured(self) -> int:
@@ -380,10 +381,11 @@ def evaluate_layout(
     u = projected_uncertainty_m(design.point_covariance_m2, part.normals_m, scenario.tracker.systematic_std_m)
     pfa, pfr = scenario.point_risks(u, measured)
     task_coverage = np.array([measured[part.task_ids == t].mean() for t in sorted(TASK_NAMES)])
+    trace = np.einsum("tii->t", design.point_covariance_m2) + 3.0 * scenario.tracker.systematic_std_m ** 2
     return LayoutOutcome(
         True, 0.0, k, measured, u, pfa, pfr,
         float(pfa.sum()), float(pfr.sum()), float(pfa.sum() + pfr.sum()), _escape_probability(pfa),
-        int(visible.sum()), visible, task_coverage,
+        int(visible.sum()), visible, task_coverage, trace,
     )
 
 
@@ -398,6 +400,9 @@ class PlanSpec:
     trace never says when to stop -- so how many stations to use is a
     separate rule applied to its station-count curve (`knee_station_count`).
     Blind to tolerance and to process capability by construction.
+    kind "A" (the raw A-optimal criterion): the same, but minimising the mean
+    *trace* of each point's full 3x3 covariance -- what existing tools do,
+    with no knowledge of which direction the tolerance constrains.
     kind "T" (the TUR rule): every point measured, every point's
     uncertainty <= `u_max_m` -- Z540.3's own fallback criterion.
     kind "R": P_escape <= `max_p_escape` and E_FR <= `max_e_fr`, over all
@@ -419,13 +424,15 @@ class PlanSpec:
     min_task_coverage: float = 0.0
 
     def __post_init__(self):
-        if self.kind not in ("U", "T", "R"):
-            raise ValueError(f"kind must be 'U', 'T' or 'R', got {self.kind!r}")
+        if self.kind not in ("U", "A", "T", "R"):
+            raise ValueError(f"kind must be 'U', 'A', 'T' or 'R', got {self.kind!r}")
 
 
-def uncertainty_plan() -> PlanSpec:
-    """Plan U: minimise mean variance, every point measured (see `PlanSpec`)."""
-    return PlanSpec("U")
+def uncertainty_plan(trace: bool = False) -> PlanSpec:
+    """Plan U: minimise mean variance along each point's normal, every point
+    measured (see `PlanSpec`); `trace=True` minimises the mean covariance
+    trace instead (the raw A-optimal criterion, kind "A")."""
+    return PlanSpec("A" if trace else "U")
 
 
 def tur_rule_plan(scenario: InspectionScenario, tur: float = DEFAULT_TUR) -> PlanSpec:
@@ -452,7 +459,7 @@ def plan_violation(spec: PlanSpec, outcome: LayoutOutcome) -> float:
     for R: summed fractional overshoot of the two risk limits)."""
     if not outcome.feasible:
         return float("inf")
-    if spec.kind == "U":
+    if spec.kind in ("U", "A"):
         return 0.0 if outcome.measured.all() else float(1.0 - outcome.measured.mean())
     if spec.kind == "T":
         # an unmeasured point is a full violation (it has no uncertainty to
@@ -480,7 +487,9 @@ class _LayoutCost:
         if not outcome.feasible:
             return INFEASIBLE_PENALTY + outcome.deficit
         violation = plan_violation(self.spec, outcome)
-        if self.spec.kind == "U":
+        if self.spec.kind == "A":
+            secondary = float(np.mean(np.nan_to_num(outcome.trace_m2))) / 1e-12  # mean covariance trace, um^2
+        elif self.spec.kind == "U":
             secondary = float(np.mean(np.nan_to_num(outcome.u_m) ** 2)) / 1e-12  # mean variance, um^2
         elif self.spec.kind == "T":
             secondary = float(np.mean(outcome.u_m)) / self.spec.u_max_m

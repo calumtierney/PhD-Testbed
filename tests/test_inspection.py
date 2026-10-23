@@ -284,3 +284,23 @@ def test_backward_refinement_never_returns_a_worse_layout_and_keeps_the_counts(s
     for before, after in zip(sweep, refined):
         assert cost(after.positions_m.ravel()) <= cost(before.positions_m.ravel()) + 1e-12
         assert after.positions_m.shape == (after.n_stations, 3)
+
+
+def test_trace_criterion_is_at_least_the_projected_variance_and_prices_a_plan_a_layout(scenario):
+    """The covariance trace sums all three axes; the variance along one unit
+    direction cannot exceed the largest eigenvalue and is at most the trace:
+    so trace >= u^2 for every measured point (systematic term included on
+    both sides), and plan A (trace) is scored like plan U (projected)."""
+    from planning.inspection import uncertainty_plan
+
+    outcome = evaluate_layout(scenario, GOOD_LAYOUT, allow_unmeasured=True)
+    m = outcome.measured
+    assert np.all(outcome.trace_m2[m] >= outcome.u_m[m] ** 2 - 1e-18)
+    assert np.all(np.isnan(outcome.trace_m2[~m]))
+    plan_a = uncertainty_plan(trace=True)
+    assert plan_a.kind == "A" and uncertainty_plan().kind == "U"
+    assert plan_violation(plan_a, outcome) == pytest.approx(56 / 500)
+    # plan A must measure every point: GOOD_LAYOUT leaves 56 unseen, so the search sees it as
+    # infeasible, graded by the unmeasured fraction
+    cost_a = _LayoutCost(scenario, plan_a)(GOOD_LAYOUT.ravel())
+    assert cost_a == pytest.approx(INFEASIBLE_PENALTY + 56 / 500)

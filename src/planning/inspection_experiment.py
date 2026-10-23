@@ -24,6 +24,10 @@ what the plan was asked for (CLAUDE.md §3: the optimiser is held constant).
           that does not depend on plan U.
   R-all   (optional) the same limit, every point still measured -- isolates
           what the risk allocation alone buys, before any point is skipped.
+  A       (optional) the same as U but minimising the raw covariance trace --
+          what existing tools minimise, with no tolerance direction at all
+          (U, which projects onto the surface normal, is the stronger
+          baseline). R-match-A is plan R held to A's realised risk.
   T       (optional) the hard TUR rule itself: every point at u <= tolerance/
           8. Reported because it is the criterion a standards-minded reader
           expects; at the tolerances here it is usually not achievable at all
@@ -148,6 +152,7 @@ def run_inspection_experiment(
     knee_gain: float = 0.10,
     include_r_all: bool = False,
     include_tur_rule: bool = False,
+    include_a_trace: bool = False,
     backward_pass: bool = True,
     pool: Optional[CandidatePool] = None,
     u_run: Optional[PlanRun] = None,
@@ -216,6 +221,18 @@ def run_inspection_experiment(
                                 min_task_coverage=min_task_coverage), k_values_r)
     run("R", iso_risk_plan(scenario, tur, allow_unmeasured=True, slack=risk_slack, min_task_coverage=min_task_coverage),
         k_values_r)
+    if include_a_trace:
+        # The raw A-optimal criterion (mean covariance trace), for fidelity to
+        # what existing tools minimise; plan U above is the stronger baseline,
+        # since projecting onto the normal gives it the tolerance direction.
+        run_a = run("A", uncertainty_plan(trace=True), k_values_u, stop_at_first_satisfied=False)
+        a_curve = {r.n_stations: float(np.mean(r.outcome.trace_m2)) * 1e12 for r in run_a.sweep if r.outcome.feasible}
+        if len(a_curve) > 1:
+            a_star = next(r for r in run_a.sweep if r.n_stations == knee_station_count(a_curve, knee_gain))
+            runs["A"] = replace(run_a, chosen=a_star)
+            run("R-match-A", PlanSpec("R", max_p_escape=a_star.outcome.p_escape * risk_slack,
+                                      max_e_fr=a_star.outcome.e_fr * risk_slack, allow_unmeasured=True,
+                                      min_task_coverage=min_task_coverage), k_values_r)
     if include_r_all:
         run("R-all", iso_risk_plan(scenario, tur, allow_unmeasured=False, slack=risk_slack), tuple(k_values_u))
     if include_tur_rule:
