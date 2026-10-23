@@ -202,7 +202,10 @@ def design_point_covariances(
 
     b_obs = b_full[observed]
     ainv_obs = a_inv[observed]
-    d_prime = d_info - np.einsum("tia,tij,tjb->ab", b_obs, ainv_obs, b_obs)
+    # m_t = A_t^-1 B_t  (3 x cols); B^T A^-1 B = sum_t B_t^T m_t, one matrix
+    # product over the stacked (3 N) x cols arrays
+    m = np.matmul(ainv_obs, b_obs)
+    d_prime = d_info - b_obs.reshape(-1, n_cols).T @ m.reshape(-1, n_cols)
 
     diag = np.diag(d_prime)
     if np.any(diag <= 0.0):
@@ -213,8 +216,7 @@ def design_point_covariances(
         return DesignCovarianceResult(cov, observed, False, n_obs)
 
     d_prime_inv = np.linalg.inv(d_prime)
-    m = np.einsum("tij,tjc->tic", ainv_obs, b_obs)
-    cov[observed] = ainv_obs + np.einsum("tic,cd,tjd->tij", m, d_prime_inv, m)
+    cov[observed] = ainv_obs + np.matmul(m @ d_prime_inv, m.transpose(0, 2, 1))
     return DesignCovarianceResult(cov, observed, True, n_obs)
 
 

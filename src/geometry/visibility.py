@@ -209,20 +209,30 @@ def visibility_matrix(
     edge2 = obstacles.vertices_m[obstacles.faces[:, 2]] - v0
     epsilon, t_margin = 1e-9, 1e-6
 
+    # Moller-Trumbore, with every per-ray dot product rewritten as a single
+    # matrix product against a per-triangle vector precomputed once, using the
+    # scalar triple product a . (b x c) = b . (c x a):
+    #   det  a = edge1 . (d x edge2)  = d . (edge2 x edge1)
+    #   u  ~ s . (d x edge2)          = d . (edge2 x s)
+    #   v  ~ d . (s x edge1)
+    #   t  ~ edge2 . (s x edge1)
+    # so a batch of M rays against K triangles is three (M,3)@(3,K) products
+    # instead of an (M,K,3) cross-product array. Same test, same numbers to
+    # round-off (tests/test_visibility.py pins it to the scalar version).
+    det_vec = np.cross(edge2, edge1)  # (K, 3)
     for s in range(n_stations):
         candidates = np.nonzero(visible[s])[0]  # ray-cast only what range/incidence left
         if len(candidates) == 0:
             continue
         direction = aim[candidates] - stations[s]  # (M, 3)
-        h = np.cross(direction[:, None, :], edge2[None, :, :])  # (M, K, 3)
-        a = np.einsum("kj,mkj->mk", edge1, h)
+        s_vec = stations[s] - v0  # (K, 3)
+        q = np.cross(s_vec, edge1)  # (K, 3)
+        a = direction @ det_vec.T  # (M, K)
         parallel = np.abs(a) < epsilon
         with np.errstate(divide="ignore", invalid="ignore"):
             f = 1.0 / a
-            s_vec = stations[s] - v0  # (K, 3)
-            u = f * np.einsum("kj,mkj->mk", s_vec, h)
-            q = np.cross(s_vec, edge1)  # (K, 3)
-            v = f * np.einsum("mj,kj->mk", direction, q)
+            u = f * (direction @ np.cross(edge2, s_vec).T)
+            v = f * (direction @ q.T)
             t = f * np.einsum("kj,kj->k", edge2, q)[None, :]
         with np.errstate(invalid="ignore"):  # NaN where the ray is parallel; masked out by ~parallel
             hit = (
