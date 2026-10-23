@@ -213,7 +213,8 @@ def plot_surrogate_parity(truth: Dict[str, np.ndarray], prediction: Dict[str, np
         lims = [min(y.min(), p.min()), max(y.max(), p.max())]
         ax.plot(lims, lims, "k--", lw=1)
         r = report[key]
-        ax.set_title(f"{text}\nR$^2$ {r['r2']:.3f}, Spearman {r['spearman']:.3f}, MAE {r['mae']:.3g}, n={r['n']}", fontsize=9)
+        bulk = f"; excluding clamped zeros R$^2$ {r['r2_bulk']:.2f}, Spearman {r['spearman_bulk']:.2f}" if r["n_bulk"] < r["n"] or key != "coverage" else ""
+        ax.set_title(f"{text}\nR$^2$ {r['r2']:.3f}, Spearman {r['spearman']:.3f}, MAE {r['mae']:.3g}, n={r['n']:.0f}{bulk}", fontsize=8.5)
         ax.set_xlabel("exact evaluator")
         ax.set_ylabel("surrogate")
         ax.grid(alpha=0.25)
@@ -267,7 +268,8 @@ def plot_station_curves(u_curve: Dict[int, float], knee_by_gain: Dict[float, int
 def plot_sensitivity(variants: Dict[str, Dict[str, Optional[int]]], base: Dict[str, Optional[int]]):
     """Horizontal grouped bars: stations each plan needs, base case first
     then each one-at-a-time change. A hatched bar at the right edge means
-    no layout was found within the sweep."""
+    no layout was found within the sweep; no bar means the plan was not run
+    for that variant."""
     names = ["base"] + list(variants)
     rows = [base] + [variants[n] for n in variants]
     plans = [p for p in ("U", "R-match", "R") if any(p in r for r in rows)]
@@ -276,6 +278,8 @@ def plot_sensitivity(variants: Dict[str, Dict[str, Optional[int]]], base: Dict[s
     height = 0.8 / len(plans)
     for j, plan in enumerate(plans):
         for i, r in enumerate(rows):
+            if plan not in r:  # not run in this variant (lean mode): draw nothing
+                continue
             v = r.get(plan)
             y = i + (j - (len(plans) - 1) / 2) * height
             if v is None:

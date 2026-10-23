@@ -199,19 +199,31 @@ def predicted_violation(spec: PlanSpec, prediction: Dict[str, np.ndarray]) -> np
     return (np.maximum(0.0, p_escape / spec.max_p_escape - 1.0) + np.maximum(0.0, e_fr / spec.max_e_fr - 1.0))
 
 
+LOG_FLOOR = -11.0  # log10 values below this are clamped zeros (`rescore`), not measurements
+
+
 def regression_report(truth: Dict[str, np.ndarray], prediction: Dict[str, np.ndarray]) -> Dict[str, Dict[str, float]]:
     """Held-out scores per target on the feasible records: R^2, MAE, Spearman
-    rank correlation (what a shortlist depends on)."""
+    rank correlation (what a shortlist depends on), and `r2_bulk` -- the R^2
+    after dropping layouts whose log-risk sits at the clamp (`LOG_FLOOR`:
+    "no false rejections at all"). Those few layouts are trivially far from the
+    rest, and a model that merely gets them roughly right inflates R^2 while
+    saying nothing about the layouts a plan actually chooses between."""
     feasible = truth["feasible"]
     report = {}
     for name in TARGET_NAMES:
         y, p = truth[name][feasible], prediction[name][feasible]
-        ss_res, ss_tot = float(np.sum((y - p) ** 2)), float(np.sum((y - y.mean()) ** 2))
+        bulk = y > LOG_FLOOR if name.startswith("log10") else np.ones(len(y), bool)
+        yb, pb = y[bulk], p[bulk]
+
+        def r2(a, b):
+            ss_tot = float(np.sum((a - a.mean()) ** 2))
+            return 1.0 - float(np.sum((a - b) ** 2)) / ss_tot if ss_tot > 0 else float("nan")
+
         report[name] = dict(
-            r2=1.0 - ss_res / ss_tot if ss_tot > 0 else float("nan"),
-            mae=float(np.mean(np.abs(y - p))),
-            spearman=float(spearmanr(y, p).statistic),
-            n=int(feasible.sum()),
+            r2=r2(y, p), r2_bulk=r2(yb, pb), mae=float(np.mean(np.abs(y - p))), mae_bulk=float(np.mean(np.abs(yb - pb))),
+            spearman=float(spearmanr(y, p).statistic), spearman_bulk=float(spearmanr(yb, pb).statistic),
+            n=int(feasible.sum()), n_bulk=int(bulk.sum()),
         )
     return report
 

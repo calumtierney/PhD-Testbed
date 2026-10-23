@@ -164,3 +164,22 @@ def test_study_splits_are_disjoint_and_the_region_is_never_trained_on(scenario, 
     assert 0.0 <= study.feasibility_accuracy_groups <= 1.0
     assert study.exact_ms_per_layout > 0 and study.surrogate_ms_per_layout_batch > 0
     assert set(study.boundary_groups) == {"n", "n_satisfying", "accuracy", "precision", "recall"}
+
+
+def test_regression_report_does_not_let_clamped_zeros_flatter_the_fit():
+    """A handful of layouts with *no* false rejections sit at the log-risk
+    clamp, far from the rest; a model that gets those roughly right scores a
+    high R^2 on everything while knowing nothing about the bulk. The report
+    carries both."""
+    rng = np.random.default_rng(0)
+    bulk = rng.normal(1.0, 0.5, 200)                      # log10 E_FR of ordinary layouts
+    truth = np.concatenate([bulk, np.full(10, -12.0)])    # plus ten clamped zeros
+    pred = np.concatenate([rng.normal(1.0, 0.5, 200), np.full(10, -11.0)])  # bulk predicted by noise only
+    feasible = np.ones(210, bool)
+    zeros = np.zeros(210)
+    t = dict(coverage=zeros, log10_p_escape=zeros, log10_e_fr=truth, feasible=feasible)
+    p = dict(coverage=zeros, log10_p_escape=zeros, log10_e_fr=pred)
+    report = regression_report(t, p)["log10_e_fr"]
+    assert report["r2"] > 0.9                    # flattered by the ten clamped points
+    assert report["r2_bulk"] < 0.1               # the ordinary layouts are not predicted at all
+    assert report["n"] == 210 and report["n_bulk"] == 200
