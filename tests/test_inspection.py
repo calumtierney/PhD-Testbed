@@ -218,3 +218,39 @@ def test_greedy_cover_seeds_are_tied_in_and_cover_greedily():
     layout = greedy_cover_layouts(pool, np.ones(30), n_layouts=1, max_stations=4, min_shared_points=3)[0]
     chosen = [int(np.where((positions == p).all(axis=1))[0][0]) for p in layout]
     assert chosen == [1, 2, 0]  # 0 becomes eligible once 2 has covered 6-9; 3 never does
+
+
+def test_normal_directed_candidates_make_every_point_reachable(scenario):
+    """A uniform candidate sample misses the narrow region that sees the
+    underside of the nose (two points are seen from none of 6000 uniform
+    candidates); candidates placed along each point's own normal do not."""
+    from planning.inspection import build_candidate_pool
+
+    uniform_only = build_candidate_pool(scenario, n_candidates=1500, seed=0, n_directed_per_point=0)
+    with_directed = build_candidate_pool(scenario, n_candidates=1500, seed=0, n_directed_per_point=4)
+    assert not uniform_only.visible.any(axis=0).all()
+    assert with_directed.visible.any(axis=0).all()
+    assert len(with_directed.positions_m) > len(uniform_only.positions_m)
+    lo = np.array([b[0] for b in scenario.part.station_bounds_m])
+    hi = np.array([b[1] for b in scenario.part.station_bounds_m])
+    assert np.all(with_directed.positions_m >= lo) and np.all(with_directed.positions_m <= hi)
+    inside = np.all((with_directed.positions_m > scenario.part.keep_out_min_m)
+                    & (with_directed.positions_m < scenario.part.keep_out_max_m), axis=1)
+    assert not inside.any()
+
+
+def test_a_minimum_task_coverage_floor_turns_a_skipped_task_into_a_violation(scenario):
+    """GOOD_LAYOUT leaves the lower flap skins unseen but measures every
+    other point, so it satisfies the plain risk plan and fails a floor that
+    insists on 100% of every task; a modest floor it still meets."""
+    outcome = evaluate_layout(scenario, GOOD_LAYOUT, allow_unmeasured=True)
+    cov = outcome.task_coverage
+    assert cov.shape == (6,) and np.all((cov >= 0) & (cov <= 1))
+    assert cov[2] == 1.0 and cov[3] == 1.0  # T3 free-form surface and T4 top skin fully seen
+    assert cov[4] < 1.0 and cov[5] < 1.0    # the flaps lose their lower skins
+    base = iso_risk_plan(scenario)
+    assert plan_violation(base, outcome) == 0.0
+    assert plan_violation(iso_risk_plan(scenario, min_task_coverage=0.4), outcome) == 0.0
+    strict = plan_violation(iso_risk_plan(scenario, min_task_coverage=1.0), outcome)
+    assert strict == pytest.approx(float(np.sum(1.0 - cov)))
+    assert plan_violation(iso_risk_plan(scenario, min_task_coverage=0.9), outcome) > 0.0

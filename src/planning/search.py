@@ -305,7 +305,10 @@ def run_station_search(
         differential_evolution_kwargs["init"] = np.vstack([np.array(seed_rows), random_rows])
 
     workers = differential_evolution_kwargs.get("workers", 1)
-    if workers != 1:
+    if workers != 1 or differential_evolution_kwargs.get("vectorized", False):
+        # (vectorized=True hands `cost` a whole generation as an (ndim, S)
+        # array -- how `planning.surrogate` scores a population in one batch
+        # -- which the per-call infeasible counter below cannot wrap)
         # scipy requires (and silently forces, with a warning, if not told)
         # updating="deferred" whenever workers != 1 -- a whole generation
         # evaluated at once is what makes handing it to a worker pool

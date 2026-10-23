@@ -303,7 +303,8 @@ class LayoutOutcome:
     `e_fa`, `e_fr`, `e_wrong` the expected numbers of false accepts, false
     rejects and wrong decisions per part; `p_escape` the probability at
     least one point is falsely accepted; `n_shots` the station-point
-    sightlines used.
+    sightlines used; `task_coverage` the fraction of each of the six tasks'
+    points that is measured (what a minimum-sampling policy constrains).
     """
 
     feasible: bool
@@ -319,6 +320,7 @@ class LayoutOutcome:
     p_escape: float
     n_shots: int
     visible: np.ndarray
+    task_coverage: Optional[np.ndarray] = None  # (6,) fraction of each task's points measured, tasks 1..6
 
     @property
     def n_measured(self) -> int:
@@ -377,10 +379,11 @@ def evaluate_layout(
         return _infeasible(scenario, k, 1.0, visible)
     u = projected_uncertainty_m(design.point_covariance_m2, part.normals_m, scenario.tracker.systematic_std_m)
     pfa, pfr = scenario.point_risks(u, measured)
+    task_coverage = np.array([measured[part.task_ids == t].mean() for t in sorted(TASK_NAMES)])
     return LayoutOutcome(
         True, 0.0, k, measured, u, pfa, pfr,
         float(pfa.sum()), float(pfr.sum()), float(pfa.sum() + pfr.sum()), _escape_probability(pfa),
-        int(visible.sum()), visible,
+        int(visible.sum()), visible, task_coverage,
     )
 
 
@@ -391,7 +394,13 @@ class PlanSpec:
     kind "U": every point measured, every point's uncertainty <= `u_max_m`.
     kind "R": P_escape <= `max_p_escape` and E_FR <= `max_e_fr`, over all
     points; `allow_unmeasured` False forces every point to be measured (so
-    only uncertainty, not coverage, is relaxed).
+    only uncertainty, not coverage, is relaxed). `min_task_coverage` is a
+    sampling *policy* floor, not a risk quantity: every one of the six tasks
+    must have at least this fraction of its points measured, whatever the
+    risk arithmetic says (0 = no floor, 1 = everything measured). It exists
+    because a risk calculation resting on placeholder process priors should
+    not be allowed to switch a whole inspection task off; no source gives
+    the right floor, so it is swept, never defaulted to a hidden value.
     """
 
     kind: str
@@ -399,6 +408,7 @@ class PlanSpec:
     max_p_escape: float = np.inf
     max_e_fr: float = np.inf
     allow_unmeasured: bool = False
+    min_task_coverage: float = 0.0
 
     def __post_init__(self):
         if self.kind not in ("U", "R"):
@@ -410,12 +420,13 @@ def uniform_rule_plan(scenario: InspectionScenario, tur: float = DEFAULT_TUR) ->
 
 
 def iso_risk_plan(scenario: InspectionScenario, tur: float = DEFAULT_TUR, allow_unmeasured: bool = True,
-                  slack: float = 1.0) -> PlanSpec:
+                  slack: float = 1.0, min_task_coverage: float = 0.0) -> PlanSpec:
     """Plan R held to what the uniform TUR rule guarantees: the escape
     probability and expected false rejections if every point were measured
     at exactly the TUR limit (times `slack`, 1.0 = strictly no worse)."""
     _, e_fr, p_escape = scenario.risk_at_uniform_uncertainty(scenario.uniform_uncertainty_limit_m(tur))
-    return PlanSpec("R", max_p_escape=p_escape * slack, max_e_fr=e_fr * slack, allow_unmeasured=allow_unmeasured)
+    return PlanSpec("R", max_p_escape=p_escape * slack, max_e_fr=e_fr * slack, allow_unmeasured=allow_unmeasured,
+                    min_task_coverage=min_task_coverage)
 
 
 def plan_violation(spec: PlanSpec, outcome: LayoutOutcome) -> float:
@@ -430,8 +441,11 @@ def plan_violation(spec: PlanSpec, outcome: LayoutOutcome) -> float:
         # compare); measured points count their fractional overshoot
         overshoot = np.where(outcome.measured, np.maximum(0.0, np.nan_to_num(outcome.u_m) / spec.u_max_m - 1.0), 1.0)
         return float(np.mean(overshoot))
-    return float(max(0.0, outcome.p_escape / spec.max_p_escape - 1.0)
-                 + max(0.0, outcome.e_fr / spec.max_e_fr - 1.0))
+    violation = max(0.0, outcome.p_escape / spec.max_p_escape - 1.0) + max(0.0, outcome.e_fr / spec.max_e_fr - 1.0)
+    if spec.min_task_coverage > 0.0:
+        shortfall = np.maximum(0.0, spec.min_task_coverage - outcome.task_coverage)
+        violation += float(shortfall.sum() / spec.min_task_coverage)
+    return float(violation)
 
 
 @dataclass(frozen=True)
@@ -481,12 +495,27 @@ class CandidatePool:
     visible: np.ndarray  # (M, N) bool
 
 
-def build_candidate_pool(scenario: InspectionScenario, n_candidates: int = 20000, seed: int = 0) -> CandidatePool:
+def build_candidate_pool(scenario: InspectionScenario, n_candidates: int = 20000, seed: int = 0,
+                         n_directed_per_point: int = 4) -> CandidatePool:
+    """`n_candidates` uniform random allowed positions, plus
+    `n_directed_per_point` per inspection point placed 0.5-4 m out along
+    that point's own surface normal (with 0.3 m of scatter, clipped to the
+    station box). The directed ones exist because a uniform sample almost
+    never lands in the narrow region from which a downward-facing point --
+    the underside of the nose, the lower flap skin -- can be seen at all
+    (the synthetic part's two lowest nose points are seen from none of
+    6000 uniform candidates), which would make "every point measured"
+    look impossible when it is only unsampled."""
     rng = np.random.default_rng(seed)
     part = scenario.part
     lo = np.array([b[0] for b in part.station_bounds_m])
     hi = np.array([b[1] for b in part.station_bounds_m])
     pos = rng.uniform(lo, hi, size=(n_candidates, 3))
+    if n_directed_per_point > 0:
+        idx = np.repeat(np.arange(part.n_points), n_directed_per_point)
+        distance = rng.uniform(0.5, 4.0, size=(len(idx), 1))
+        directed = part.points_m[idx] + part.normals_m[idx] * distance + rng.normal(0.0, 0.3, size=(len(idx), 3))
+        pos = np.vstack([pos, np.clip(directed, lo, hi)])
     pos = pos[~np.all((pos > part.keep_out_min_m) & (pos < part.keep_out_max_m), axis=1)]
     vis = np.vstack([
         visibility_matrix(pos[i:i + 2000], part.points_m, scenario.limits, part.normals_m, part.occluder,
@@ -542,11 +571,17 @@ def search_station_counts(
     seed: int = 0,
     stop_at_first_satisfied: bool = True,
     seed_layouts: Optional[Sequence[np.ndarray]] = None,
+    extension_positions_m: Optional[np.ndarray] = None,
+    n_extension_trials: int = 300,
 ) -> List[KResult]:
     """Search each station count in `k_values` (ascending) for the best
     layout under `spec`. Each count is seeded with the prefixes of
     `seed_layouts` of that length (e.g. `greedy_cover_layouts`) and with the
-    best layout of the previous count plus one more station. With
+    best layout of the previous count plus one more station -- the best of
+    `n_extension_trials` positions drawn from `extension_positions_m` (e.g. a
+    `CandidatePool`'s), scored by the plan's own cost, since a station
+    dropped at random almost never ties into the network and would hand the
+    search an infeasible seed. With
     `stop_at_first_satisfied` the sweep ends at the first count whose best
     layout meets the constraint -- the answer to "how few stations"; the
     K-curve before it (the best violation reached at each smaller count) is
@@ -560,8 +595,15 @@ def search_station_counts(
     for k in k_values:
         seeds = [np.asarray(l)[:k] for l in (seed_layouts or []) if len(l) >= k]
         if previous is not None:
-            extra = np.array([rng.uniform(lo, hi) for lo, hi in bounds])
-            seeds.append(np.vstack([previous, extra]))
+            if extension_positions_m is not None and len(extension_positions_m):
+                trial = rng.choice(len(extension_positions_m), size=min(n_extension_trials, len(extension_positions_m)),
+                                   replace=False)
+                cost = _LayoutCost(scenario, spec)
+                options = [np.vstack([previous, extension_positions_m[i]]) for i in trial]
+                seeds.append(min(options, key=lambda layout: cost(layout.ravel())))
+            else:
+                extra = np.array([rng.uniform(lo, hi) for lo, hi in bounds])
+                seeds.append(np.vstack([previous, extra]))
         de_result, _ = run_station_search(_LayoutCost(scenario, spec), k, bounds, seed, seeds or None, **kwargs)
         positions = np.asarray(de_result.x).reshape(-1, 3)
         outcome = evaluate_layout(scenario, positions, spec.allow_unmeasured)
