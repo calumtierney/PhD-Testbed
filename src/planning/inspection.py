@@ -699,6 +699,8 @@ def search_station_counts(
             else:
                 extra = np.array([rng.uniform(lo, hi) for lo, hi in bounds])
                 seeds.append(np.vstack([previous, extra]))
+        capacity = kwargs["popsize"] * 3 * k
+        seeds = seeds[-capacity:]  # more seeds than population slots: keep the latest (own-cost, witness, extension)
         de_result, _ = run_station_search(_LayoutCost(scenario, spec), k, bounds, seed, seeds or None, **kwargs)
         positions = np.asarray(de_result.x).reshape(-1, 3)
         outcome = evaluate_layout(scenario, positions, spec.allow_unmeasured)
