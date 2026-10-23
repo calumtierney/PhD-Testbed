@@ -1,7 +1,8 @@
 """Run the wing-box inspection experiment (plan U vs plan R), its sensitivity
 sweeps and the surrogate study, and draw their figures:
 
-    python -m viz.make_wingbox_figures --stage experiment   # ~1 h, writes results/wingbox_results.json
+    python -m viz.make_wingbox_figures --stage experiment   # ~2 h, writes results/wingbox_results.json
+    python -m viz.make_wingbox_figures --stage seeds        # ~15 min, adds GA-repeatability runs to that file
     python -m viz.make_wingbox_figures --stage surrogate    # ~15 min, writes results/wingbox_surrogate.json
     python -m viz.make_wingbox_figures --stage figures      # seconds, writes results/panel10*.png
 
@@ -114,6 +115,7 @@ def experiment_stage(quick: bool = False):
                                      k_values_u=range(3, 9 if quick else 15), verbose=True)
     record["base"].update(summarise(pool_scenario, base))
     record["base"]["pool_size"] = base.pool_size
+    EXPERIMENT_JSON.write_text(json.dumps(record, indent=1))  # the surrogate stage needs only the base
     print(f"base done in {time.time() - t0:.0f}s", flush=True)
     for name, change in VARIANTS.items():
         t1 = time.time()
@@ -243,13 +245,53 @@ def figures_stage():
     print("wrote panel10a-e to", RESULTS_DIR)
 
 
+def load_u_run(scenario, record):
+    """Rebuild plan U's `PlanRun` from the recorded base layouts (re-scored
+    by the exact evaluator), so later stages can reuse its layouts without
+    repeating its ~30 minute search."""
+    from planning.inspection import KResult, plan_violation, uncertainty_plan
+    from planning.inspection_experiment import PlanRun
+
+    spec = uncertainty_plan()
+    plan = record["base"]["plans"]["U"]
+    sweep = []
+    for row in plan["sweep"]:
+        positions = np.array(row["layout"])
+        outcome = evaluate_layout(scenario, positions, spec.allow_unmeasured)
+        sweep.append(KResult(row["k"], positions, outcome, plan_violation(spec, outcome), row["nfev"]))
+    chosen = next(r for r in sweep if r.n_stations == plan["answer_k"])
+    return PlanRun("U", spec, sweep, plan["seconds"], chosen)
+
+
+def seeds_stage(n_seeds: int = 5):
+    """How much of the station count is search noise? Repeat plans R-match and
+    R with different GA seeds against the *same* plan U layouts (searching U
+    again would take ~30 minutes per seed); the spread of the answers is the
+    GA's own repeatability on this problem."""
+    record = json.loads(EXPERIMENT_JSON.read_text())
+    scenario = build_inspection_scenario(**BASE)
+    pool = build_candidate_pool(scenario, n_candidates=20000, seed=0)
+    u_run = load_u_run(scenario, record)
+    repeats = []
+    for seed in range(1, n_seeds + 1):
+        res = run_inspection_experiment(scenario, de_kwargs=DE, pool=pool, u_run=u_run, seed=seed)
+        row = dict(seed=seed, answers={n: r.answer.n_stations if r.answer else None for n, r in res.runs.items()})
+        repeats.append(row)
+        print("  seed", seed, row["answers"], flush=True)
+        record["seed_repeats"] = repeats
+        EXPERIMENT_JSON.write_text(json.dumps(record, indent=1))
+    print("wrote", EXPERIMENT_JSON)
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--stage", choices=["experiment", "surrogate", "figures"], required=True)
+    parser.add_argument("--stage", choices=["experiment", "seeds", "surrogate", "figures"], required=True)
     parser.add_argument("--quick", action="store_true", help="small budgets: a smoke test, not a result")
     args = parser.parse_args()
     if args.stage == "experiment":
         experiment_stage(args.quick)
+    elif args.stage == "seeds":
+        seeds_stage(2 if args.quick else 5)
     elif args.stage == "surrogate":
         surrogate_stage(args.quick)
     else:
