@@ -23240,5 +23240,47 @@
     "R-match": 691.8167779445648
    }
   }
- }
+ },
+ "seed_repeats": [
+  {
+   "seed": 1,
+   "answers": {
+    "U": 9,
+    "R-match": 3,
+    "R": 2
+   }
+  },
+  {
+   "seed": 2,
+   "answers": {
+    "U": 9,
+    "R-match": 3,
+    "R": 2
+   }
+  },
+  {
+   "seed": 3,
+   "answers": {
+    "U": 9,
+    "R-match": 3,
+    "R": 2
+   }
+  },
+  {
+   "seed": 4,
+   "answers": {
+    "U": 9,
+    "R-match": 3,
+    "R": 2
+   }
+  },
+  {
+   "seed": 5,
+   "answers": {
+    "U": 9,
+    "R-match": 3,
+    "R": 2
+   }
+  }
+ ]
 }

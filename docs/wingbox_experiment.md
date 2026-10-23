@@ -352,25 +352,35 @@ that score measures extrapolation.
 | *base layouts the model never saw* | | | |
 | fraction of points measured | 0.970 | 0.023 | 0.980 |
 | log₁₀ P(escape) | 0.939 | 0.014 (3% relative) | 0.961 |
-| log₁₀ E[false rejects] | 0.852 | 0.32 dex | 0.712 |
+| log₁₀ E[false rejects] -- all 739 layouts | 0.852 | 0.32 dex | 0.712 |
+| log₁₀ E[false rejects] -- excluding 11 clamped zeros | **0.093** | 0.31 dex | 0.698 |
 | *region the model never saw* | | | |
 | fraction of points measured | 0.950 | 0.020 | 0.965 |
 | log₁₀ P(escape) | 0.854 | 0.014 | 0.928 |
 | log₁₀ E[false rejects] | **−0.525** | 0.27 dex | 0.593 |
+
+The 0.852 for false rejections is **flattered**: 11 of the 739 layouts have no
+false rejections at all (log₁₀ clamped at −12, far from the rest), and getting
+those roughly right inflates R². Without them R² is 0.09 -- the model ranks the
+ordinary layouts (Spearman 0.70) but cannot predict their false-rejection
+count to better than about a factor of two (MAE 0.31 dex). `regression_report`
+now carries both, with a test that reproduces the effect.
 
 Whether a layout is a rigid network is predicted with 93.3% accuracy on held-out
 base layouts (92.5% in the unseen region). The question a plan actually asks --
 *does this layout meet the risk limit?* -- is answered with 95.4% accuracy on
 held-out base layouts, but with precision 0.79 and recall 0.81 (83 of the 739
 test layouts satisfy it): about one "yes" in five is wrong. **E[false
-rejects] does not extrapolate** (R² below zero: worse than predicting the
-mean); coverage and escape probability do.
+rejects] is the weak output** (R² 0.09 in the bulk on held-out layouts, and
+below zero in the unseen region: worse than predicting the mean); coverage and
+escape probability are the strong ones.
 
 **Using it without being fooled.** As the *objective* of the same GA, the
 surrogate is exploited: the optimiser drives to where the model is
 over-optimistic. Taking the 60 best layouts of one surrogate-searched
-population and scoring them exactly, **none satisfied the limit at 1, 2 or 4
-stations** (19 of 60 at 3). The standard remedy is model management --
+population and scoring them exactly, **none satisfied the limit at 2 or 4
+stations**, where the plain search succeeds (19 of 60 did at 3; at 1 station
+no search finds a layout that meets it). The standard remedy is model management --
 score the shortlist exactly, add it to the training data, refit, search again
 (`rounds=4`, 240 exact evaluations in all) -- and that works:
 

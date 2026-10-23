@@ -166,6 +166,7 @@ def test_study_splits_are_disjoint_and_the_region_is_never_trained_on(scenario, 
     assert set(study.boundary_groups) == {"n", "n_satisfying", "accuracy", "precision", "recall"}
 
 
+@pytest.mark.filterwarnings("ignore:An input array is constant")  # the synthetic coverage / P(escape) targets are constant
 def test_regression_report_does_not_let_clamped_zeros_flatter_the_fit():
     """A handful of layouts with *no* false rejections sit at the log-risk
     clamp, far from the rest; a model that gets those roughly right scores a
