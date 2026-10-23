@@ -195,8 +195,7 @@ def surrogate_stage(quick: bool = False):
 
     # surrogate-assisted vs plain search at each count, same DE settings and seeds
     de = dict(maxiter=20, popsize=8) if quick else dict(maxiter=80, popsize=14)
-    assisted = {}
-    plain = {}
+    plain, assisted = {}, {}
     for k in (1, 2, 3, 4):
         t0 = time.time()
         plain_results = search_station_counts(scenario, spec, [k], de_kwargs=dict(de, tol=1e-8, workers=-1), seed=0,
@@ -204,15 +203,17 @@ def surrogate_stage(quick: bool = False):
         pr = plain_results[0]
         plain[k] = dict(violation=float(pr.violation), satisfied=bool(pr.satisfied), nfev=pr.n_function_evals,
                         seconds=time.time() - t0)
-        ar = surrogate_assisted_search(scenario, spec, study.model, k, seed_layouts=bases, n_verify=60,
-                                       de_kwargs=dict(de, tol=1e-8), seed=0)
-        assisted[k] = dict(violation=float(ar.best.violation), satisfied=bool(ar.best.satisfied),
-                           n_surrogate_evals=ar.n_surrogate_evals, n_exact_evals=ar.n_exact_evals,
-                           shortlist_satisfied=ar.n_shortlist_satisfied, seconds_search=ar.seconds_search,
-                           seconds_verify=ar.seconds_verify)
+        assisted[k] = {}
+        for rounds in (1, 4):
+            ar = surrogate_assisted_search(scenario, spec, study.model, k, seed_layouts=bases, n_verify=60,
+                                           de_kwargs=dict(de, tol=1e-8), seed=0, rounds=rounds)
+            assisted[k][rounds] = dict(
+                violation=float(ar.best.violation), satisfied=bool(ar.best.satisfied),
+                n_surrogate_evals=ar.n_surrogate_evals, n_exact_evals=ar.n_exact_evals,
+                shortlist_satisfied=ar.n_shortlist_satisfied, seconds=ar.seconds_search + ar.seconds_verify)
         print(f"  K={k}: plain violation {plain[k]['violation']:.4f} ({plain[k]['seconds']:.0f}s, {plain[k]['nfev']} exact evals); "
-              f"assisted {assisted[k]['violation']:.4f} ({assisted[k]['seconds_search'] + assisted[k]['seconds_verify']:.1f}s, "
-              f"{assisted[k]['n_exact_evals']} exact evals, {assisted[k]['shortlist_satisfied']}/60 shortlist satisfied)", flush=True)
+              + "; ".join(f"assisted x{r} {a['violation']:.4f} ({a['seconds']:.1f}s, {a['n_exact_evals']} exact, "
+                          f"{a['shortlist_satisfied']}/{a['n_exact_evals']} satisfy)" for r, a in assisted[k].items()), flush=True)
 
     def scores(report):
         return {name: {k: float(v) for k, v in r.items()} for name, r in report.items()}

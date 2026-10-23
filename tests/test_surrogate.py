@@ -131,13 +131,23 @@ def test_assisted_search_returns_only_exactly_scored_layouts(scenario, records):
     exact = evaluate_layout(scenario, result.best.positions_m, allow_unmeasured=True)
     assert result.best.outcome.p_escape == pytest.approx(exact.p_escape) or not exact.feasible
     assert result.best.violation == pytest.approx(plan_violation(spec, exact)) or not exact.feasible
-    assert result.n_verified <= 8 and 0 <= result.n_shortlist_satisfied <= result.n_verified
+    assert result.n_exact_evals <= 8 and 0 <= result.n_shortlist_satisfied <= result.n_exact_evals
+    assert result.n_surrogate_evals >= 6 * 3 * 3  # at least the initial population was scored
+    # several rounds: more exact evaluations, a model updated (not mutated), best still exactly scored
+    before = model.predict(batch_features([GOOD_LAYOUT[:3]], kmax))["log10_p_escape"].copy()
+    again = surrogate_assisted_search(scenario, spec, model, 3, seed_layouts=[GOOD_LAYOUT[:3]], n_verify=8,
+                                      de_kwargs=dict(maxiter=4, popsize=6), seed=0, rounds=2)
+    assert again.rounds == 2 and again.n_exact_evals <= 16
+    assert np.array_equal(before, model.predict(batch_features([GOOD_LAYOUT[:3]], kmax))["log10_p_escape"])
+    exact2 = evaluate_layout(scenario, again.best.positions_m, allow_unmeasured=True)
+    assert again.best.violation == pytest.approx(plan_violation(spec, exact2)) or not exact2.feasible
 
 
 def test_study_splits_are_disjoint_and_the_region_is_never_trained_on(scenario, pool, records):
     """run_surrogate_study on a small dataset: train/val/test groups are
-    disjoint, no training layout has a station in the held-out region, and
-    the reports contain every target."""
+    disjoint, no training layout has a station in the held-out region (the
+    study itself asserts this on the records), and the reports contain every
+    target."""
     from planning.surrogate import run_surrogate_study
 
     spec = iso_risk_plan(scenario)

@@ -153,6 +153,8 @@ class LayoutSurrogate:
 
     def fit(self, train_x: np.ndarray, train_targets: Dict[str, np.ndarray],
             val_x: Optional[np.ndarray] = None, val_targets: Optional[Dict[str, np.ndarray]] = None) -> "LayoutSurrogate":
+        self.train_x_, self.train_targets_ = train_x, train_targets
+        self.val_x_, self.val_targets_ = val_x, val_targets
         feasible = train_targets["feasible"]
         self.classifier_ = HistGradientBoostingClassifier(
             max_iter=self.max_iter, learning_rate=self.learning_rate, max_leaf_nodes=self.max_leaf_nodes,
@@ -173,6 +175,16 @@ class LayoutSurrogate:
                     early_stopping=False, random_state=self.random_state).fit(train_x[feasible], train_targets[name][feasible])
             self.regressors_[name] = model
         return self
+
+    def update(self, new_x: np.ndarray, new_targets: Dict[str, np.ndarray]) -> "LayoutSurrogate":
+        """A new model fitted with extra exactly-evaluated layouts appended to
+        the training set (the validation set is left alone). This is how a search corrects
+        a surrogate it has been exploiting: the layouts the optimiser likes
+        best are exactly where the surrogate is most wrong, so those are the
+        ones to evaluate exactly and learn from."""
+        merged = {k: np.concatenate([self.train_targets_[k], new_targets[k]]) for k in self.train_targets_}
+        fresh = LayoutSurrogate(self.k_max, self.max_iter, self.learning_rate, self.max_leaf_nodes, self.random_state)
+        return fresh.fit(np.vstack([self.train_x_, new_x]), merged, self.val_x_, self.val_targets_)  # a new model; self is untouched
 
     def predict(self, x: np.ndarray) -> Dict[str, np.ndarray]:
         out = {name: model.predict(x) for name, model in self.regressors_.items()}
@@ -315,20 +327,21 @@ class SurrogateCost:
 
 @dataclass(frozen=True)
 class AssistedResult:
-    """One station count searched with the surrogate, then verified exactly.
+    """One station count searched with the surrogate, verified exactly.
 
-    `best` is the exact evaluator's verdict on the best shortlisted layout
-    (a `KResult`, so it is directly comparable to the plain search's);
-    `n_shortlist_satisfied` how many of the `n_verified` exactly-scored
-    shortlist layouts really met the constraint -- the surrogate's
-    precision at the decision boundary."""
+    `best` is the exact evaluator's verdict on the best layout verified in
+    any round (a `KResult`, directly comparable to the plain search's);
+    `n_shortlist_satisfied` how many of the `n_exact_evals` exactly-scored
+    layouts met the constraint -- the surrogate's precision where the
+    search actually looks; `n_surrogate_evals` the candidate layouts the
+    surrogate scored."""
 
     n_stations: int
     best: "KResult"
     n_surrogate_evals: int
     n_exact_evals: int
-    n_verified: int
     n_shortlist_satisfied: int
+    rounds: int
     seconds_search: float
     seconds_verify: float
 
@@ -342,13 +355,25 @@ def surrogate_assisted_search(
     n_verify: int = 60,
     de_kwargs: Optional[dict] = None,
     seed: int = 0,
+    rounds: int = 1,
 ) -> AssistedResult:
     """Search `n_stations` with the surrogate as the objective (same
     differential-evolution driver and settings as the exact search --
     `planning.search.run_station_search`, here with `vectorized=True` so a
     whole generation is one batch prediction), take the `n_verify` best
     distinct layouts of the final population, score *those* with the exact
-    evaluator, and return the best by the exact cost."""
+    evaluator, and return the best by the exact cost.
+
+    With `rounds` > 1 the exactly scored shortlist is also added to the
+    surrogate's training data and the model refitted before the next round,
+    which is seeded with the best exact layout so far. One round is the
+    naive use, and a fair test of it: an optimiser drives straight to where
+    a regression surrogate is over-optimistic, so near a constraint boundary
+    the shortlist often contains nothing that really satisfies it. The extra
+    rounds are the standard correction (model management in surrogate-
+    assisted evolutionary search); every layout returned has been scored by
+    the exact evaluator either way.
+    """
     import time
     from planning.inspection import KResult, _LayoutCost
     from planning.search import run_station_search
@@ -356,35 +381,51 @@ def surrogate_assisted_search(
     kwargs = dict(maxiter=60, popsize=12, tol=1e-8)
     kwargs.update(de_kwargs or {})
     kwargs.pop("workers", None)  # vectorized batches replace worker processes
-    seeds = [np.asarray(l)[:n_stations] for l in seed_layouts if len(l) >= n_stations] or None
-    t0 = time.time()
-    result, _ = run_station_search(SurrogateCost(surrogate, spec, n_stations), n_stations,
-                                   scenario.part.station_bounds_m, seed, seeds,
-                                   vectorized=True, updating="deferred", **kwargs)
-    t_search = time.time() - t0
-
-    t0 = time.time()
-    order = np.argsort(result.population_energies)
     exact_cost = _LayoutCost(scenario, spec)
-    shortlist, seen = [], set()
-    for i in order:
-        key = tuple(np.round(result.population[i], 3))
-        if key in seen:
-            continue
-        seen.add(key)
-        shortlist.append(result.population[i].reshape(-1, 3))
-        if len(shortlist) >= n_verify:
-            break
-    scored = []
-    for positions in shortlist:
-        outcome = evaluate_layout(scenario, positions, spec.allow_unmeasured)
-        scored.append((exact_cost(positions.ravel()), positions, outcome))
-    scored.sort(key=lambda row: row[0])
-    cost, positions, outcome = scored[0]
-    best = KResult(n_stations, positions, outcome, plan_violation(spec, outcome), len(shortlist))
-    n_ok = sum(1 for _, _, o in scored if o.feasible and plan_violation(spec, o) <= 1e-12)
-    return AssistedResult(n_stations, best, int(result.nfev), len(shortlist), len(shortlist), n_ok,
-                          t_search, time.time() - t0)
+    seeds = [np.asarray(l)[:n_stations] for l in seed_layouts if len(l) >= n_stations]
+    model = surrogate
+    k_max = model.k_max
+    t_search = t_verify = 0.0
+    n_surrogate = n_exact = n_ok = 0
+    best_row = None
+    for round_index in range(rounds):
+        t0 = time.time()
+        capacity = kwargs["popsize"] * 3 * n_stations
+        result, _ = run_station_search(SurrogateCost(model, spec, n_stations), n_stations,
+                                       scenario.part.station_bounds_m, seed + round_index, seeds[-capacity:] or None,
+                                       vectorized=True, updating="deferred", **kwargs)
+        t_search += time.time() - t0
+        n_surrogate += (int(result.nit) + 1) * len(result.population)
+
+        t0 = time.time()
+        order = np.argsort(result.population_energies)
+        shortlist, seen = [], set()
+        for i in order:
+            key = tuple(np.round(result.population[i], 3))
+            if key not in seen:
+                seen.add(key)
+                shortlist.append(result.population[i].reshape(-1, 3))
+            if len(shortlist) >= n_verify:
+                break
+        records = []
+        for positions in shortlist:
+            outcome = evaluate_layout(scenario, positions, spec.allow_unmeasured)
+            row = (exact_cost(positions.ravel()), positions, outcome)
+            records.append(row)
+            n_exact += 1
+            n_ok += int(outcome.feasible and plan_violation(spec, outcome) <= 1e-12)
+            if best_row is None or row[0] < best_row[0]:
+                best_row = row
+        t_verify += time.time() - t0
+        if round_index + 1 < rounds:
+            t0 = time.time()
+            recs = [LayoutRecord(p, -1, "search", o.feasible, o.measured, o.u_m) for _, p, o in records]
+            model = model.update(batch_features([r.positions_m for r in recs], k_max), rescore(scenario, recs))
+            t_verify += time.time() - t0
+            seeds = seeds + [best_row[1]]
+    cost, positions, outcome = best_row
+    best = KResult(n_stations, positions, outcome, plan_violation(spec, outcome), n_exact)
+    return AssistedResult(n_stations, best, n_surrogate, n_exact, n_ok, rounds, t_search, t_verify)
 
 
 # --------------------------------------------------------------------------
