@@ -252,3 +252,204 @@ because it is careless. It measures the points whose process can fail
 tightly, and skips points whose process is very unlikely to have failed --
 and that last clause rests entirely on the placeholder priors and on the
 0.9 confidence in the cluster assignment, which is why §7 exists.
+
+## 7. What the result depends on
+
+One change at a time from the base case (`results/panel10d_wingbox_sensitivity.png`;
+every row is a full search). Plan U's layouts do not depend on any of these
+(its cost involves neither tolerance nor priors), so they are searched once and
+re-scored; R-match is re-held to the risk *that* scenario's plan U delivers.
+"—" means not run (the slow variants ran R-match only, up to 10 stations).
+
+| Change from base | U | R-match | R (TUR ceiling) |
+|---|---|---|---|
+| **base** (±50 µm, offset priors, c = 0.9, T1-T3 marginal) | 9 | **3** | **2** |
+| tolerance ±25 µm | 9 | 3 | 3 |
+| tolerance ±100 µm | 9 | 3 | 2 |
+| tolerance ±250 µm | 9 | 3 | 1 |
+| centred priors (σ = T / 3Cpk) | 9 | 3 | 2 |
+| assignment confidence c = 1.0 | 9 | **2** | 2 |
+| assignment confidence c = 0.5 | 9 | **5** | 3 |
+| top skin (T4) marginal instead | 9 | 2 | 1 |
+| **flaps (T5, T6) marginal instead** | 9 | **9** | none found |
+| all six tasks marginal | 9 | 5 | — |
+| no task marginal (all high capability) | 9 | 5 | — |
+| risk limit × 2 (looser than U delivers) | 9 | 1 | — |
+| risk limit × 0.5 (stricter than U delivers) | 9 | none found ≤ 10 | — |
+| risk limit × 0.25 | 9 | none found ≤ 10 | — |
+| every task ≥ 25% measured | 9 | 3 | — |
+| every task ≥ 50% measured | 9 | 3 | — |
+| **every task ≥ 75% measured** | 9 | **9** | — |
+| every task 100% measured | 9 | 9 | — |
+
+What this says, plainly:
+
+1. **The saving is not a tolerance or prior-shape artefact.** R-match needs
+   3 stations at ±25, ±50, ±100 and ±250 µm and under both prior shapes,
+   because it is always held to whatever plan U actually delivers there.
+2. **It depends heavily on the assumed cluster assignment and on which
+   features are the marginal ones.** At c = 1.0 R-match needs 2 (it can skip
+   the whole flap and half the top skin: 248 of 500 points measured); at
+   c = 0.5 it needs 5. And if the **flaps** are the marginal cluster instead
+   of the leading edge, **there is no saving at all** (R-match = 9, plan U's
+   own layout): the risk-driven plan must measure the expensive-to-see points
+   tightly, so it cannot skip them. The base-case saving exists because, in
+   the placeholder assignment, the expensive points (lower flap skins) happen
+   to be in the high-capability cluster. That coincidence is the
+   hypothesis's whole content -- *risk-driven planning wins where the
+   hard-to-measure features are the ones that rarely fail* -- and it is the
+   thing the real cluster assignment, from real process data, decides. With
+   every task marginal, or none, the saving is smaller (5) -- in the first
+   case skipped points are dear, in the second the part's whole escape risk is so
+   small that a plan held to U's realised number has little room.
+3. **A stricter limit cannot be bought.** At half of what U delivers, no
+   layout was found with ≤ 10 stations -- and none could be: with c = 0.9 the
+   escape probability cannot go below 2.2×10⁻³ even with every point measured
+   at 1 µm (about the best any point can do: the interferometer's own 1.2 µm
+   noise), above the ×0.5 limit (1.5×10⁻³). The process, not the plan, sets
+   that floor (§3).
+4. **A sampling-policy floor is where the saving lives or dies.** Requiring
+   at least 25% or 50% of every task measured costs nothing (3 stations, 683-707 shots); at
+   75% R-match is back to 9, because the 56 lower-skin points of T5 and T6
+   are what a floor that high forces it to measure. Whether it is acceptable
+   to leave those points unmeasured is a quality and safety judgement, not a
+   modelling one. The digital twin's contribution is to price it: ~1.8×10⁻⁴
+   expected escapes, and 6 stations.
+5. **GA repeatability.** Against the same plan U layouts, five GA seeds give
+   R-match = 3 and R = 2 every time. Plan U's own count is less settled: an
+   earlier full search with the same method gave a knee of 10, this one 9
+   (and 12 before the backward pass), so treat "9" as "9 ± 1".
+
+## 8. The ML model
+
+The brief asked for an ML model. Four layers of the plan evaluator need no
+learning (the physics is known), so ML here is a *surrogate of the digital
+twin* (`planning.surrogate`): given a station layout, predict the fraction of
+points measured, the log escape probability and the log expected false
+rejections, and whether the layout is a rigid network at all -- the numbers
+plan R's constraint is written in. It is gradient-boosted trees
+(scikit-learn's `HistGradientBoosting*`; the dependency is added in
+`requirements.txt` with its reason, and nothing outside `planning/surrogate.py`
+and its test imports it).
+
+**Data and the split (CLAUDE.md §6: visible in the code).** 12,743 layouts of
+1-6 stations simulated by the exact evaluator (6,369 of them rigid networks
+-- the rest train the feasibility classifier): uniformly random layouts, and
+perturbations of greedy covers and of the layouts the searches returned.
+Perturbations of one base layout are near-duplicates, so a random split
+over *layouts* would put a base layout's copies on both sides and score
+memorisation. The split is by **group** (a base layout and all its
+perturbations): 2,113 / 704 / 704 groups for train / validation / test, with
+no group in two sets (asserted in `run_surrogate_study` and in
+`tests/test_surrogate.py`). Validation only chooses the number of boosting
+rounds. A second, harder test holds out a **region**: every group with a
+station in the far corner of the station box (x 2.5-5 m, y 2-5.5 m) is kept
+out of training, validation and the interpolation test (5,838 records), so
+that score measures extrapolation.
+
+| Held-out score | R² | MAE | Spearman |
+|---|---|---|---|
+| *base layouts the model never saw* | | | |
+| fraction of points measured | 0.970 | 0.023 | 0.980 |
+| log₁₀ P(escape) | 0.939 | 0.014 (3% relative) | 0.961 |
+| log₁₀ E[false rejects] | 0.852 | 0.32 dex | 0.712 |
+| *region the model never saw* | | | |
+| fraction of points measured | 0.950 | 0.020 | 0.965 |
+| log₁₀ P(escape) | 0.854 | 0.014 | 0.928 |
+| log₁₀ E[false rejects] | **−0.525** | 0.27 dex | 0.593 |
+
+Whether a layout is a rigid network is predicted with 93.3% accuracy on held-out
+base layouts (92.5% in the unseen region). The question a plan actually asks --
+*does this layout meet the risk limit?* -- is answered with 95.4% accuracy on
+held-out base layouts, but with precision 0.79 and recall 0.81 (83 of the 739
+test layouts satisfy it): about one "yes" in five is wrong. **E[false
+rejects] does not extrapolate** (R² below zero: worse than predicting the
+mean); coverage and escape probability do.
+
+**Using it without being fooled.** As the *objective* of the same GA, the
+surrogate is exploited: the optimiser drives to where the model is
+over-optimistic. Taking the 60 best layouts of one surrogate-searched
+population and scoring them exactly, **none satisfied the limit at 1, 2 or 4
+stations** (19 of 60 at 3). The standard remedy is model management --
+score the shortlist exactly, add it to the training data, refit, search again
+(`rounds=4`, 240 exact evaluations in all) -- and that works:
+
+| Stations | plain GA: violation (exact evals, wall s) | surrogate, 1 round | surrogate, 4 rounds |
+|---|---|---|---|
+| 1 | 0.249 (3,538; 5 s) | 0.264 | 0.263 |
+| 2 | **met** (6,951; 14 s) | 0.066 | **met** (240; 42 s) |
+| 3 | **met** (10,416; 25 s) | **met** (60; 4 s) | **met** (240; 40 s) |
+| 4 | **met** (14,700; 50 s) | 0.025 | **met** (240; 43 s) |
+
+(Violation 0 = both risk limits met; every layout returned was scored by the
+exact evaluator, and that score is what the table shows.)
+
+**Honest verdict.**
+
+* The surrogate predicts the plan's decision variables well enough to
+  *shortlist* (coverage and escape probability to ~3% on unseen layouts), and
+  with model management it reaches the same station counts as the plain search
+  with **29-61× fewer exact evaluations** (240 against 6,951-14,700).
+* It is **not faster in wall-clock time here**: the exact evaluator is already
+  ~5-10 ms for 500 points (the block-diagonal fast form CLAUDE.md §3 asked for
+  *before* any surrogate), the plain GA runs on four cores, and refitting costs
+  seconds. Building the training set took 138 s and 8 s of fitting; a batch
+  prediction is ~0.16 ms per layout against ~11 ms to simulate one (70×), but
+  that gain is spent on the training set. Nothing about this part needs a
+  surrogate.
+* Where it will pay: when one exact evaluation costs seconds rather than
+  milliseconds (the NPL 14-parameter instrument model, atmospheric and thermal
+  terms -- CLAUDE.md §4c/§4d steps not yet in the chain), when the same model
+  must answer many what-ifs across scenarios, and -- the original reason for
+  asking -- when real measurement data is added to the training set. That is a
+  one-line change (`LayoutSurrogate.update` takes exactly this: extra layouts
+  with their evaluated outcomes), and the group and region splits above are the
+  validation that would keep a real dataset from leaking.
+
+Other places ML could enter, not built: estimating the **cluster
+assignment and its confidence** (the quantity §7 shows the saving hinges on)
+from real process data, and learning a **layout-to-uncertainty field** so
+that the visibility ray-cast, the larger half of the evaluator, is also
+replaced.
+
+## 9. What is needed from the author, and what is placeholder
+
+1. **The real part**: the ~500 inspection points, their normals and the CAD
+   (STL) -- `geometry.wing_box.WingBoxPart` is built from exactly these.
+   Everything above is about a synthetic stand-in, and in particular which
+   points are hard to see is a property of that stand-in's flap and fixture.
+2. **Tolerances**: the ±50 µm is the repo's reference scale, not a wing-box
+   number. The saving was robust across ±25 to ±250 µm *relative to plan U*,
+   but absolute risks and the TUR comparison are tolerance-specific.
+3. **Process clusters and priors** (CLAUDE.md §3: per feature-cluster,
+   sourced): which tasks are marginal, their Cpk, and the confidence in the
+   assignment. §7 shows the headline hinges on these.
+4. **The acceptable risk**: a programme or customer limit on false accept
+   (and on false rejection), and whether any task may be left partly
+   unmeasured. `PlanSpec(max_p_escape, max_e_fr, min_task_coverage)` takes them.
+5. **Station constraints**: heights (0.8-3 m assumed), reachable floor area,
+   whether a tracker can stand on the fixture, the 80° incidence and 10 m
+   range limits, instrument(s) beyond one tracker type.
+6. **A cost model** if time rather than station count is the target (set-up
+   time per station, time per shot). Not needed for the comparison above --
+   R-match uses fewer of both -- but needed for absolute savings.
+
+## 10. Reproducing it
+
+```bash
+OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 \
+    python -m viz.make_wingbox_figures --stage experiment   # ~2 h: base + variants
+    python -m viz.make_wingbox_figures --stage seeds        # ~15 min: GA repeatability
+    python -m viz.make_wingbox_figures --stage surrogate    # ~15 min: ML study
+    python -m viz.make_wingbox_figures --stage figures      # seconds: panel10a-e
+```
+
+The searches are a seeded GA: repeatable on one machine, not bit-for-bit
+across machines, and they find a layout, not a proof of the fewest stations.
+`results/wingbox_results.json` and `results/wingbox_surrogate.json` are the
+record of the run quoted here (the last nine sensitivity variants were run
+with R-match only and up to ten stations -- `viz.make_wingbox_figures.LEAN`
+-- because their TUR-ceiling plan R would fail through every station count
+and take hours). Tests: `tests/test_inspection.py`,
+`tests/test_inspection_experiment.py`, `tests/test_surrogate.py`,
+`tests/test_wing_box.py`, `tests/test_design_covariance.py`.
