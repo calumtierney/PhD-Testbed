@@ -74,11 +74,19 @@ def plot_plan_layouts(scenario_part, outcomes: Dict[str, object], positions: Dic
     `planning.inspection.LayoutOutcome`; `positions[name]` its stations."""
     names = list(outcomes)
     fig, axes = plt.subplots(len(names), 2, figsize=(11, 4.4 * len(names)), squeeze=False)
+    # one set of axis limits for every row, so a reader compares layouts at the
+    # same scale instead of three differently zoomed views
+    everything = np.vstack([scenario_part.points_m] + [positions[n] for n in names])
+    lo, hi = everything.min(axis=0) - 0.3, everything.max(axis=0) + 0.3
     for row, name in enumerate(names):
         o = outcomes[name]
         title = (f"Plan {name}: {len(positions[name])} stations, {o.n_measured}/{len(o.measured)} points measured, "
                  f"P(escape) {o.p_escape:.2e}, E[false rejects] {o.e_fr:.1f}")
         plot_layout_views(scenario_part.points_m, scenario_part.task_ids, o.measured, positions[name], title, axes[row])
+        for ax, dims in zip(axes[row], ((0, 1), (0, 2))):
+            ax.set_xlim(lo[dims[0]], hi[dims[0]])
+            ax.set_ylim(lo[dims[1]], hi[dims[1]])
+            ax.set_aspect("equal", adjustable="box")
     fig.legend(handles=task_legend_handles(), loc="lower center", ncol=4, fontsize=8, frameon=False)
     fig.suptitle(suptitle, fontsize=11)
     fig.tight_layout(rect=(0, 0.06, 1, 0.97))
