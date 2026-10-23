@@ -124,18 +124,16 @@ complete:
   with four named fittings and a support-tower occluder under mid-span.
   The full A0/A1/B/C comparison on this scene (`planning.experiment.
   run_wing_experiment`) is written up in `docs/step6_headline_experiment.md`'s
-  "The wing scenario" section: without the tower, risk falls
-  monotonically from A0 to C (a 19% reduction, the clean version of this
-  project's own hypothesis, on a scene an order of magnitude larger and
-  less symmetric than the original); with it, A0/A1/B land on the same
-  plan (expected -- every characteristic here shares one tolerance
-  direction, the same reason A0=A1 coincide in the original scene) and C
-  alone finds a measurably better one (6.6% lower risk). Getting a GA
-  comparison trustworthy enough to report took real iteration -- an
-  unseeded search was demonstrably wrong twice, caught by
-  cross-validating each objective's winning stations against every other
-  objective's own formula, before population seeding fixed it -- which
-  the doc section covers as honestly as the result itself.
+  "The wing scenario" section. **That section carries a correction:** the
+  first version of this result (a 19% / 6.6% risk reduction for objective C)
+  came from layouts that were not valid networks -- a station tied to the
+  rest by a single shared target has a gauge freedom that `solve_network`'s
+  `pinv` silently reports as zero variance, and the GA had learned to use
+  it. With rigid connectivity enforced (`network.design`), all four
+  objectives land within 1.6% of each other (total risk ~0.80-0.87; three
+  stations over ~30 m is a weak-measurement regime), which is the size of
+  the GA's own imprecision. The wing-box experiment below is where the
+  project's hypothesis is now tested.
 
 **Visualization** (`src/visualization`, not one of the six steps — see
 its module docstring): matplotlib plotting for scenes, per-point error
