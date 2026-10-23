@@ -37,6 +37,7 @@ from planning.objectives import (
     make_weighted_uncertainty_objective,
     objective_a0_trace_covariance,
     objective_c_direct_risk,
+    plan_infeasibility_deficit,
     risk_derived_weights,
     uniform_weights,
 )
@@ -227,7 +228,8 @@ def _wall_occlusion_scenario(obstacles) -> PlanningScenario:
         [
             [3.0, 0.0, 1.0],
             [3.2, 0.3, 1.2],
-            [2.8, -0.3, 0.8],
+            [2.8, -0.3, 1.1],  # not collinear with targets 0 and 1: three collinear shared
+            #                    targets leave the candidate free to roll about their line
             [3.0, 0.0, 2.0],
         ]
     )
@@ -757,6 +759,27 @@ def test_wing_scenario_support_tower_reduces_but_does_not_eliminate_visibility()
 
     assert coverage_towered.sum() < coverage_clear.sum()  # the tower costs real visibility...
     assert np.all(coverage_towered > 0)  # ...but never eliminates a target entirely
+
+
+def test_a_station_tied_to_the_network_by_one_shared_target_is_disqualified():
+    """Regression for a real defect: the first wing-scenario experiment's
+    reported plans (this is its objective-A1, no-tower result) all had a
+    station seeing only targets {5, 6, 7}, sharing exactly one target (5)
+    with the rest. One shared point cannot pin a station's pose -- it is
+    free to rotate about it -- but the old rule only asked each station to
+    see >= 3 targets of any kind, and solve_network's pinv assigned the
+    unconstrained direction zero variance, so the plan scored as excellent.
+    It must now be rejected, with a positive graded deficit."""
+    scenario = wing_four_point_scenario(include_support_tower=False)
+    aim_point_m = scenario.target_points_m.mean(axis=0)
+    reported_stations_m = [
+        [2.286908128143982, -0.15140443388573377, 5.379420159054965],
+        [15.067035198174558, 3.05741684795127, 3.205144396893839],
+        [26.518909860831247, 0.24392045457679304, 2.846858864831216],
+    ]
+    poses = [InstrumentPose(np.array(p), look_at_orientation(np.array(p), aim_point_m)) for p in reported_stations_m]
+    assert evaluate_plan(poses, scenario) is None
+    assert plan_infeasibility_deficit(poses, scenario) > 0.0
 
 
 def test_run_wing_experiment_wires_four_objectives_with_cascaded_seeding():

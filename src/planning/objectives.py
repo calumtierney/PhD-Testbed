@@ -52,6 +52,7 @@ from geometry.mesh import TriangleMesh
 from geometry.pose import InstrumentPose
 from geometry.visibility import VisibilityLimits, check_target_visibility
 from instruments.laser_tracker import LaserTracker
+from network.design import design_covariances_for_poses
 from network.solve import NetworkSolveResult, Observation, exact_observations, solve_network
 from risk.jcgm106 import ClusterAssignment, DecisionRule, evaluate_conformity_risk
 
@@ -227,57 +228,118 @@ class PlanEvaluation:
 MIN_TARGETS_PER_NON_ANCHOR_STATION = 3
 
 
+def _visibility_matrix(
+    target_points_m: np.ndarray, all_poses: List[InstrumentPose], scenario: PlanningScenario
+) -> np.ndarray:
+    """(S, N) bool: station s can measure target t, after the visibility
+    layer (step 2: range, incidence, occlusion). All True when the
+    scenario has no visibility layer."""
+    n_targets = target_points_m.shape[0]
+    if not scenario.visibility_enabled:
+        return np.ones((len(all_poses), n_targets), dtype=bool)
+    matrix = np.zeros((len(all_poses), n_targets), dtype=bool)
+    for s, pose in enumerate(all_poses):
+        for t in range(n_targets):
+            normal_m = None if scenario.target_normals_m is None else scenario.target_normals_m[t]
+            matrix[s, t] = check_target_visibility(
+                pose.position_m,
+                target_points_m[t],
+                scenario.visibility_limits,
+                target_normal_m=normal_m,
+                obstacles=scenario.obstacles,
+            ).is_visible
+    return matrix
+
+
+def _stations_not_tied_to_anchor(visible: np.ndarray, anchor_index: int) -> int:
+    """How many stations cannot be attached to the anchor's frame by at
+    least `MIN_TARGETS_PER_NON_ANCHOR_STATION` shared targets, growing the
+    anchor's group station by station (a target seen by any member of the
+    group is a known point in the group's frame). A necessary condition
+    for the network to be rigid, and a graded one -- counting stations
+    rather than returning yes/no -- so a search has something to descend
+    when most candidate plans are infeasible. It ignores collinearity;
+    `network.design`'s rank test is the final arbiter."""
+    seen = [set(np.nonzero(row)[0]) for row in visible]
+    group_targets = set(seen[anchor_index])
+    remaining = [s for s in range(len(seen)) if s != anchor_index]
+    changed = True
+    while changed and remaining:
+        changed = False
+        for s in list(remaining):
+            if len(seen[s] & group_targets) >= MIN_TARGETS_PER_NON_ANCHOR_STATION:
+                group_targets |= seen[s]
+                remaining.remove(s)
+                changed = True
+    return len(remaining)
+
+
+def _plan_is_solvable(
+    target_points_m: np.ndarray, all_poses: List[InstrumentPose], scenario: PlanningScenario,
+    visible: np.ndarray, anchor_index: int,
+) -> Tuple[bool, float]:
+    """(feasible, deficit): whether the shots in `visible` determine every
+    target in one common frame, and -- 0.0 when feasible -- a graded
+    measure of how far from that the plan is (unobserved targets + stations
+    not tied to the anchor + 1 if the rank test still fails).
+
+    Without this check, `network.solve.solve_network` would happily accept
+    an observation list where a target has no observations, or a station
+    shares too few targets with the rest of the network to be pinned in
+    space -- a gauge freedom. Its normal matrix is then singular and
+    `np.linalg.pinv` assigns the unconstrained directions *zero* variance
+    (the minimum-norm convention), not the unknown/infinite variance that
+    "never measured" or "free to rotate" physically means: an occluded or
+    untied target would look spuriously *perfect*, exactly backwards. An
+    earlier version of this check only required each non-anchor station to
+    see >= 3 targets of any kind, which let a station tied to the network
+    through a single shared target pass -- every plan the first wing-
+    scenario experiment reported had one (found by re-scoring them with
+    `network.design`, whose rank test cannot be fooled this way).
+    """
+    n_unobserved = int((~visible.any(axis=0)).sum())
+    station_counts = visible.sum(axis=1)
+    n_thin = sum(
+        1 for i in range(len(all_poses))
+        if i != anchor_index and station_counts[i] < MIN_TARGETS_PER_NON_ANCHOR_STATION
+    )
+    n_untied = _stations_not_tied_to_anchor(visible, anchor_index)
+    deficit = float(n_unobserved + max(n_thin, n_untied))
+    if deficit > 0.0:
+        return False, deficit
+    result = design_covariances_for_poses(
+        target_points_m, all_poses, scenario.tracker, visible, anchor_index=anchor_index
+    )
+    if not result.connected:
+        return False, 1.0
+    return True, 0.0
+
+
 def _visible_observations(
     target_points_m: np.ndarray, all_poses: List[InstrumentPose], scenario: PlanningScenario, anchor_index: int
 ) -> Tuple[List[Observation], bool]:
     """Every station-target observation this plan can actually take, after
     the visibility layer (step 2: range, incidence, occlusion), plus
-    whether the result is even solvable.
-
-    Without this filter, `network.solve.solve_network` would happily
-    accept an observation list where some target has zero observations,
-    or some non-anchor station has too few to pin its own pose -- its
-    normal matrix would then carry an all-zero row/column for the
-    unconstrained parameters, and `np.linalg.pinv` silently assigns that
-    direction *zero* variance (the minimum-norm convention for a singular
-    system), not the infinite variance "this was never actually measured"
-    physically means. An occluded target would then look spuriously
-    *perfect* instead of unmeasured -- exactly backwards. `feasible=False`
-    tells `evaluate_plan` to refuse the solve entirely rather than return
-    a number that looks fine and means the opposite.
-    """
+    whether those shots determine every target (see `_plan_is_solvable`)."""
     observations = exact_observations(target_points_m, all_poses)
     if not scenario.visibility_enabled:
         return observations, True
+    visible = _visibility_matrix(target_points_m, all_poses, scenario)
+    feasible, _ = _plan_is_solvable(target_points_m, all_poses, scenario, visible, anchor_index)
+    kept = [o for o in observations if visible[o.station_index, o.target_index]]
+    return kept, feasible
 
-    visible = []
-    n_targets = target_points_m.shape[0]
-    observed_count = np.zeros(n_targets, dtype=int)
-    station_count = np.zeros(len(all_poses), dtype=int)
-    for obs in observations:
-        pose = all_poses[obs.station_index]
-        normal_m = (
-            None if scenario.target_normals_m is None else scenario.target_normals_m[obs.target_index]
-        )
-        result = check_target_visibility(
-            pose.position_m,
-            target_points_m[obs.target_index],
-            scenario.visibility_limits,
-            target_normal_m=normal_m,
-            obstacles=scenario.obstacles,
-        )
-        if result.is_visible:
-            visible.append(obs)
-            observed_count[obs.target_index] += 1
-            station_count[obs.station_index] += 1
 
-    every_target_seen = bool(np.all(observed_count > 0))
-    every_non_anchor_station_well_posed = all(
-        station_count[i] >= MIN_TARGETS_PER_NON_ANCHOR_STATION
-        for i in range(len(all_poses))
-        if i != anchor_index
-    )
-    return visible, every_target_seen and every_non_anchor_station_well_posed
+def plan_infeasibility_deficit(
+    station_poses: List[InstrumentPose], scenario: PlanningScenario
+) -> float:
+    """0.0 if `evaluate_plan` would accept these stations; otherwise a
+    positive, graded measure of how far the plan is from being solvable
+    (`_plan_is_solvable`). Used by `planning.search` to give the GA a
+    gradient across the infeasible region instead of one flat penalty."""
+    all_poses = [scenario.anchor_pose] + list(station_poses)
+    visible = _visibility_matrix(scenario.target_points_m, all_poses, scenario)
+    return _plan_is_solvable(scenario.target_points_m, all_poses, scenario, visible, 0)[1]
 
 
 def evaluate_plan(

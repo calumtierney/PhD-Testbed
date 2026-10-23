@@ -43,7 +43,13 @@ from scipy.optimize import differential_evolution
 
 from geometry.pose import InstrumentPose
 from planning.candidates import look_at_orientation
-from planning.objectives import ObjectiveFn, PlanEvaluation, PlanningScenario, evaluate_plan
+from planning.objectives import (
+    ObjectiveFn,
+    PlanEvaluation,
+    PlanningScenario,
+    evaluate_plan,
+    plan_infeasibility_deficit,
+)
 
 
 @dataclass(frozen=True)
@@ -188,9 +194,15 @@ class _StationPlacementCost:
         ]
 
     def __call__(self, flat_params: np.ndarray) -> float:
-        evaluation = evaluate_plan(self.station_poses(flat_params), self.scenario)
+        poses = self.station_poses(flat_params)
+        evaluation = evaluate_plan(poses, self.scenario)
         if evaluation is None:
-            return INFEASIBLE_PENALTY
+            # INFEASIBLE_PENALTY plus a small graded deficit (unobserved
+            # targets, stations not tied to the anchor): DE only compares
+            # values, so this slopes the infeasible region towards
+            # feasibility instead of leaving it one flat plateau -- needed
+            # once connectivity is enforced and most random layouts fail.
+            return INFEASIBLE_PENALTY + plan_infeasibility_deficit(poses, self.scenario)
         value = self.objective_fn(evaluation, self.scenario)
         return value if value < float("inf") else INFEASIBLE_PENALTY
 
