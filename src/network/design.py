@@ -218,6 +218,32 @@ def design_point_covariances(
     return DesignCovarianceResult(cov, observed, True, n_obs)
 
 
+def count_untied_stations(visible: np.ndarray, anchor_index: int = 0, min_shared: int = 3) -> int:
+    """How many stations cannot be attached to the anchor's frame by at
+    least `min_shared` shared targets, growing the anchor's group station
+    by station (a target seen by any member of the group is a known point
+    in the group's frame).
+
+    A necessary condition for the network to be rigid (three shared,
+    non-collinear targets pin a station's six degrees of freedom), and a
+    *graded* one -- counting stations rather than answering yes/no -- so a
+    search has something to descend when most candidate layouts fail. It
+    ignores collinearity; `design_point_covariances`' rank test is the
+    final arbiter."""
+    seen = [set(np.nonzero(row)[0]) for row in np.asarray(visible, dtype=bool)]
+    group_targets = set(seen[anchor_index])
+    remaining = [s for s in range(len(seen)) if s != anchor_index]
+    changed = True
+    while changed and remaining:
+        changed = False
+        for s in list(remaining):
+            if len(seen[s] & group_targets) >= min_shared:
+                group_targets |= seen[s]
+                remaining.remove(s)
+                changed = True
+    return len(remaining)
+
+
 def design_covariances_for_poses(
     target_points_m: np.ndarray,
     station_poses: Sequence[InstrumentPose],

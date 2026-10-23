@@ -52,7 +52,7 @@ from geometry.mesh import TriangleMesh
 from geometry.pose import InstrumentPose
 from geometry.visibility import VisibilityLimits, check_target_visibility
 from instruments.laser_tracker import LaserTracker
-from network.design import design_covariances_for_poses
+from network.design import count_untied_stations, design_covariances_for_poses
 from network.solve import NetworkSolveResult, Observation, exact_observations, solve_network
 from risk.jcgm106 import ClusterAssignment, DecisionRule, evaluate_conformity_risk
 
@@ -251,29 +251,6 @@ def _visibility_matrix(
     return matrix
 
 
-def _stations_not_tied_to_anchor(visible: np.ndarray, anchor_index: int) -> int:
-    """How many stations cannot be attached to the anchor's frame by at
-    least `MIN_TARGETS_PER_NON_ANCHOR_STATION` shared targets, growing the
-    anchor's group station by station (a target seen by any member of the
-    group is a known point in the group's frame). A necessary condition
-    for the network to be rigid, and a graded one -- counting stations
-    rather than returning yes/no -- so a search has something to descend
-    when most candidate plans are infeasible. It ignores collinearity;
-    `network.design`'s rank test is the final arbiter."""
-    seen = [set(np.nonzero(row)[0]) for row in visible]
-    group_targets = set(seen[anchor_index])
-    remaining = [s for s in range(len(seen)) if s != anchor_index]
-    changed = True
-    while changed and remaining:
-        changed = False
-        for s in list(remaining):
-            if len(seen[s] & group_targets) >= MIN_TARGETS_PER_NON_ANCHOR_STATION:
-                group_targets |= seen[s]
-                remaining.remove(s)
-                changed = True
-    return len(remaining)
-
-
 def _plan_is_solvable(
     target_points_m: np.ndarray, all_poses: List[InstrumentPose], scenario: PlanningScenario,
     visible: np.ndarray, anchor_index: int,
@@ -303,7 +280,7 @@ def _plan_is_solvable(
         1 for i in range(len(all_poses))
         if i != anchor_index and station_counts[i] < MIN_TARGETS_PER_NON_ANCHOR_STATION
     )
-    n_untied = _stations_not_tied_to_anchor(visible, anchor_index)
+    n_untied = count_untied_stations(visible, anchor_index, MIN_TARGETS_PER_NON_ANCHOR_STATION)
     deficit = float(n_unobserved + max(n_thin, n_untied))
     if deficit > 0.0:
         return False, deficit
