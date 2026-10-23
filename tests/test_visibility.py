@@ -138,3 +138,37 @@ def test_scene_visibility_without_normals_skips_incidence_only():
 
     results = scene_visibility(scene, GENEROUS_LIMITS)
     assert results[0].reason is VisibilityReason.OCCLUDED
+
+
+def test_visibility_matrix_matches_the_scalar_check_on_random_scenes():
+    """The batched version must agree with check_target_visibility on every
+    station-target pair -- range, incidence and occlusion together."""
+    from geometry.mesh import box_mesh
+    from geometry.visibility import check_target_visibility, visibility_matrix
+
+    rng = np.random.default_rng(7)
+    mesh = box_mesh(np.array([-0.5, -0.5, 0.0]), np.array([0.5, 0.5, 1.0]))
+    limits = VisibilityLimits(max_range_m=6.0, max_incidence_angle_rad=np.deg2rad(75.0))
+    stations = rng.uniform([-4, -4, 0.2], [4, 4, 3.0], size=(12, 3))
+    targets = rng.uniform([-0.9, -0.9, 0.0], [0.9, 0.9, 1.2], size=(60, 3))
+    normals = rng.normal(size=(60, 3))
+    normals /= np.linalg.norm(normals, axis=1, keepdims=True)
+
+    batched = visibility_matrix(stations, targets, limits, target_normals_m=normals, obstacles=mesh)
+    scalar = np.array([
+        [check_target_visibility(s, t, limits, target_normal_m=n, obstacles=mesh).is_visible
+         for t, n in zip(targets, normals)]
+        for s in stations
+    ])
+    assert np.array_equal(batched, scalar)
+    assert 0 < scalar.sum() < scalar.size  # the comparison is not vacuous
+
+
+def test_visibility_matrix_without_obstacles_or_normals_is_just_range():
+    from geometry.visibility import visibility_matrix
+
+    limits = VisibilityLimits(max_range_m=5.0, max_incidence_angle_rad=np.pi / 2)
+    stations = np.array([[0.0, 0.0, 0.0], [10.0, 0.0, 0.0]])
+    targets = np.array([[1.0, 0.0, 0.0], [4.0, 0.0, 0.0]])
+    result = visibility_matrix(stations, targets, limits)
+    assert result.tolist() == [[True, True], [False, False]]

@@ -152,3 +152,82 @@ def scene_visibility(scene: Scene, limits: VisibilityLimits) -> list:
             )
         )
     return results
+
+
+def visibility_matrix(
+    station_positions_m: np.ndarray,
+    target_points_m: np.ndarray,
+    limits: VisibilityLimits,
+    target_normals_m: np.ndarray = None,
+    obstacles=None,
+    occlusion_target_offset_m: float = 0.0,
+) -> np.ndarray:
+    """Which stations can measure which targets, as an (S, N) boolean matrix.
+
+    The same three checks as `check_target_visibility` -- range, incidence,
+    occlusion -- applied to every station-target pair at once with array
+    operations (the occlusion test is the same Moller-Trumbore segment/
+    triangle test as `geometry.mesh.segment_intersects_mesh`, batched over
+    all targets and all triangles per station). Exists because planning a
+    ~500-point inspection scores tens of thousands of candidate layouts,
+    and the scalar version loops in Python over every target and every
+    triangle; `tests/test_visibility.py` pins this to the scalar version.
+
+    `occlusion_target_offset_m` lifts the *target end* of each sightline
+    this far along the target's own normal before the occlusion test (and
+    only for it). A point that lies on the part's own surface is the
+    endpoint of its sightline; a mesh that approximates that surface can
+    sit a fraction of a millimetre on the wrong side of it and block the
+    ray against the part's own skin. Default 0.0 reproduces the scalar
+    function exactly; callers whose obstacle mesh is a faceted stand-in
+    for the surface the points lie on should pass a small positive offset.
+    """
+    stations = np.atleast_2d(np.asarray(station_positions_m, dtype=float))
+    targets = np.atleast_2d(np.asarray(target_points_m, dtype=float))
+    n_stations, n_targets = len(stations), len(targets)
+
+    beams = targets[None, :, :] - stations[:, None, :]  # (S, N, 3), station -> target
+    range_m = np.linalg.norm(beams, axis=2)
+    visible = range_m <= limits.max_range_m
+
+    if target_normals_m is not None:
+        normals = np.atleast_2d(np.asarray(target_normals_m, dtype=float))
+        with np.errstate(invalid="ignore", divide="ignore"):
+            cos_incidence = np.einsum("snk,nk->sn", -beams, normals) / range_m
+        incidence = np.arccos(np.clip(cos_incidence, -1.0, 1.0))
+        visible &= incidence <= limits.max_incidence_angle_rad
+
+    if obstacles is None or obstacles.n_triangles == 0:
+        return visible
+
+    aim = targets
+    if occlusion_target_offset_m != 0.0 and target_normals_m is not None:
+        aim = targets + occlusion_target_offset_m * np.atleast_2d(np.asarray(target_normals_m, dtype=float))
+
+    v0 = obstacles.vertices_m[obstacles.faces[:, 0]]
+    edge1 = obstacles.vertices_m[obstacles.faces[:, 1]] - v0  # (K, 3)
+    edge2 = obstacles.vertices_m[obstacles.faces[:, 2]] - v0
+    epsilon, t_margin = 1e-9, 1e-6
+
+    for s in range(n_stations):
+        candidates = np.nonzero(visible[s])[0]  # ray-cast only what range/incidence left
+        if len(candidates) == 0:
+            continue
+        direction = aim[candidates] - stations[s]  # (M, 3)
+        h = np.cross(direction[:, None, :], edge2[None, :, :])  # (M, K, 3)
+        a = np.einsum("kj,mkj->mk", edge1, h)
+        parallel = np.abs(a) < epsilon
+        with np.errstate(divide="ignore", invalid="ignore"):
+            f = 1.0 / a
+            s_vec = stations[s] - v0  # (K, 3)
+            u = f * np.einsum("kj,mkj->mk", s_vec, h)
+            q = np.cross(s_vec, edge1)  # (K, 3)
+            v = f * np.einsum("mj,kj->mk", direction, q)
+            t = f * np.einsum("kj,kj->k", edge2, q)[None, :]
+        with np.errstate(invalid="ignore"):  # NaN where the ray is parallel; masked out by ~parallel
+            hit = (
+                ~parallel & (u >= 0.0) & (u <= 1.0) & (v >= 0.0) & (u + v <= 1.0)
+                & (t > t_margin) & (t < 1.0 - t_margin)
+            )
+        visible[s, candidates[hit.any(axis=1)]] = False
+    return visible
