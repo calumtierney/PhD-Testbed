@@ -391,7 +391,15 @@ def evaluate_layout(
 class PlanSpec:
     """A plan's constraint.
 
-    kind "U": every point measured, every point's uncertainty <= `u_max_m`.
+    kind "U" (uncertainty-driven, the A-optimal planner's view): every
+    point measured, the layout chosen to minimise the mean variance of the
+    points' uncertainty along their surface normals (the trace criterion of
+    CLAUDE.md §1, per point). It carries *no threshold* -- minimising a
+    trace never says when to stop -- so how many stations to use is a
+    separate rule applied to its station-count curve (`knee_station_count`).
+    Blind to tolerance and to process capability by construction.
+    kind "T" (the TUR rule): every point measured, every point's
+    uncertainty <= `u_max_m` -- Z540.3's own fallback criterion.
     kind "R": P_escape <= `max_p_escape` and E_FR <= `max_e_fr`, over all
     points; `allow_unmeasured` False forces every point to be measured (so
     only uncertainty, not coverage, is relaxed). `min_task_coverage` is a
@@ -411,12 +419,19 @@ class PlanSpec:
     min_task_coverage: float = 0.0
 
     def __post_init__(self):
-        if self.kind not in ("U", "R"):
-            raise ValueError(f"kind must be 'U' or 'R', got {self.kind!r}")
+        if self.kind not in ("U", "T", "R"):
+            raise ValueError(f"kind must be 'U', 'T' or 'R', got {self.kind!r}")
 
 
-def uniform_rule_plan(scenario: InspectionScenario, tur: float = DEFAULT_TUR) -> PlanSpec:
-    return PlanSpec("U", u_max_m=scenario.uniform_uncertainty_limit_m(tur))
+def uncertainty_plan() -> PlanSpec:
+    """Plan U: minimise mean variance, every point measured (see `PlanSpec`)."""
+    return PlanSpec("U")
+
+
+def tur_rule_plan(scenario: InspectionScenario, tur: float = DEFAULT_TUR) -> PlanSpec:
+    """The conventional TUR rule: every point measured, every point's
+    uncertainty at most tolerance / (tur * 2)."""
+    return PlanSpec("T", u_max_m=scenario.uniform_uncertainty_limit_m(tur))
 
 
 def iso_risk_plan(scenario: InspectionScenario, tur: float = DEFAULT_TUR, allow_unmeasured: bool = True,
@@ -431,12 +446,15 @@ def iso_risk_plan(scenario: InspectionScenario, tur: float = DEFAULT_TUR, allow_
 
 def plan_violation(spec: PlanSpec, outcome: LayoutOutcome) -> float:
     """0.0 when the layout meets the plan's constraint, else a positive,
-    dimensionless excess (for U: mean over all points of the fractional
+    dimensionless excess (for U: the unmeasured fraction, there being no
+    threshold; for T: mean over all points of the fractional
     overshoot of the uncertainty limit, an unmeasured point counting as 1;
     for R: summed fractional overshoot of the two risk limits)."""
     if not outcome.feasible:
         return float("inf")
     if spec.kind == "U":
+        return 0.0 if outcome.measured.all() else float(1.0 - outcome.measured.mean())
+    if spec.kind == "T":
         # an unmeasured point is a full violation (it has no uncertainty to
         # compare); measured points count their fractional overshoot
         overshoot = np.where(outcome.measured, np.maximum(0.0, np.nan_to_num(outcome.u_m) / spec.u_max_m - 1.0), 1.0)
@@ -463,6 +481,8 @@ class _LayoutCost:
             return INFEASIBLE_PENALTY + outcome.deficit
         violation = plan_violation(self.spec, outcome)
         if self.spec.kind == "U":
+            secondary = float(np.mean(np.nan_to_num(outcome.u_m) ** 2)) / 1e-12  # mean variance, um^2
+        elif self.spec.kind == "T":
             secondary = float(np.mean(outcome.u_m)) / self.spec.u_max_m
         else:
             secondary = outcome.p_escape / self.spec.max_p_escape + outcome.e_fr / self.spec.max_e_fr
@@ -563,6 +583,72 @@ def greedy_cover_layouts(
     return layouts
 
 
+def knee_station_count(j_by_k: Dict[int, float], min_gain: float = 0.10) -> int:
+    """The station count where adding one more stops paying: the smallest K
+    such that the next count (K+1) lowers the plan's criterion `j` by less
+    than a fraction `min_gain` of its value at K. The standard
+    diminishing-returns reading of an uncertainty-versus-stations curve
+    (CLAUDE.md §5 step 3's own gate: uncertainty falls with stations and
+    flattens). `min_gain` is a judgement, not a sourced number, so the
+    experiment reports the answer across several. If the curve never
+    flattens within the counts given, the largest K is returned."""
+    ks = sorted(j_by_k)
+    for k, k_next in zip(ks, ks[1:]):
+        if j_by_k[k] <= 0 or (j_by_k[k] - j_by_k[k_next]) / j_by_k[k] < min_gain:
+            return k
+    return ks[-1]
+
+
+def greedy_cost_layout(
+    scenario: InspectionScenario,
+    spec: PlanSpec,
+    pool: CandidatePool,
+    max_stations: int,
+    first_station: Optional[np.ndarray] = None,
+    n_trials: int = 400,
+    seed: int = 0,
+) -> np.ndarray:
+    """Forward-greedy layout built with the plan's *own* cost: starting from
+    `first_station` (default: the pool candidate that sees the most points),
+    add, one at a time, the station that lowers `_LayoutCost` most, from
+    `n_trials` candidates per step -- the 100 that see the most points in
+    need of a better view, the 100 that see the most points not yet
+    measured, and random ones from the pool.
+
+    A coverage-only greedy cover (`greedy_cover_layouts`) cannot see what a
+    plan actually asks for: it will happily add a station that sees new
+    points but is tied to the network by three of them, which ruins every
+    point it sees (the underside of the nose and lower flap skin are exactly
+    this). Scoring each addition with the real evaluator picks stations that
+    are both useful and well tied. Used only to seed the search (the
+    optimiser and objective are unchanged), identically for every plan."""
+    rng = np.random.default_rng(seed)
+    cost = _LayoutCost(scenario, spec)
+    if first_station is None:
+        first_station = pool.positions_m[int(np.argmax(pool.visible.sum(axis=1)))]
+    layout = np.asarray(first_station, float).reshape(1, 3)
+    while len(layout) < max_stations:
+        outcome = evaluate_layout(scenario, layout, True)
+        covered = outcome.visible.any(axis=0)
+        # Weight the points that most need another view: unmeasured ones, and
+        # measured ones in proportion to how poor their uncertainty is. A
+        # candidate that sees many of those is worth trying, even when it adds
+        # no *new* point -- a second, better-placed look at a badly tied
+        # point is exactly what lowers its uncertainty.
+        if outcome.feasible:
+            u_ref = spec.u_max_m if np.isfinite(spec.u_max_m) else float(np.nanmedian(outcome.u_m))
+            need = np.where(covered, np.nan_to_num(outcome.u_m, nan=0.0) / u_ref, 5.0)
+        else:
+            need = np.where(covered, 0.0, 5.0)
+        by_need = np.argsort(-(pool.visible.astype(float) @ need))[:100]
+        by_new = np.argsort(-(pool.visible & ~covered[None, :]).sum(axis=1))[:100]
+        random = rng.choice(len(pool.positions_m), size=max(n_trials - 200, 0), replace=False)
+        trial = np.unique(np.concatenate([by_need, by_new, random]))
+        best_cost, best_i = min((cost(np.vstack([layout, pool.positions_m[i]]).ravel()), i) for i in trial)
+        layout = np.vstack([layout, pool.positions_m[best_i]])
+    return layout
+
+
 def search_station_counts(
     scenario: InspectionScenario,
     spec: PlanSpec,
@@ -613,6 +699,46 @@ def search_station_counts(
         if stop_at_first_satisfied and result.satisfied:
             break
     return results
+
+
+def refine_backward(
+    scenario: InspectionScenario,
+    spec: PlanSpec,
+    results: Sequence[KResult],
+    de_kwargs: Optional[dict] = None,
+    seed: int = 0,
+) -> List[KResult]:
+    """Backward-elimination pass over a finished sweep. A forward sweep seeds
+    each count from the one below, so a good layout that needs a *specific*
+    new station (a second, well-placed look at a badly tied group of points)
+    is found only when the search happens to stumble on it -- and the curve
+    of cost against stations then has steps that are search luck, not
+    physics. Here, from the largest count down, every layout of K stations
+    is also seeded with the best layout obtained by dropping one station
+    from the (K+1)-station answer, and searched again; the better of the
+    old and new K-station layout is kept. A K-station layout can never be
+    worse than the best (K+1)-station one minus its least useful station, so
+    this removes the artefact. Applied to every plan alike."""
+    kwargs = dict(maxiter=40, popsize=12, tol=1e-8, workers=-1)
+    kwargs.update(de_kwargs or {})
+    cost = _LayoutCost(scenario, spec)
+    by_k = {r.n_stations: r for r in results}
+    for k in sorted(by_k, reverse=True)[1:]:
+        if k + 1 not in by_k:
+            continue
+        bigger = by_k[k + 1].positions_m
+        dropped = [np.delete(bigger, i, axis=0) for i in range(len(bigger))]
+        seeds = [min(dropped, key=lambda layout: cost(layout.ravel())), by_k[k].positions_m]
+        de_result, _ = run_station_search(cost, k, scenario.part.station_bounds_m, seed, seeds, **kwargs)
+        positions = np.asarray(de_result.x).reshape(-1, 3)
+        outcome = evaluate_layout(scenario, positions, spec.allow_unmeasured)
+        candidate = KResult(k, positions, outcome, plan_violation(spec, outcome),
+                            by_k[k].n_function_evals + int(de_result.nfev))
+        if cost(positions.ravel()) < cost(by_k[k].positions_m.ravel()):
+            by_k[k] = candidate
+        else:
+            by_k[k] = replace(by_k[k], n_function_evals=candidate.n_function_evals)
+    return [by_k[k] for k in sorted(by_k)]
 
 
 def task_summary(scenario: InspectionScenario, outcome: LayoutOutcome) -> Dict[str, Dict[str, float]]:

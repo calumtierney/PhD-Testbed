@@ -16,7 +16,7 @@ import pytest
 from planning.inspection import (
     DEFAULT_TUR, Z540_3_MAX_PFA, CandidatePool, PlanSpec, RiskTable, _LayoutCost, _escape_probability,
     build_inspection_scenario, cluster_priors, evaluate_layout, greedy_cover_layouts, iso_risk_plan,
-    nonconformance_rate, plan_violation, task_summary, uniform_rule_plan,
+    nonconformance_rate, plan_violation, task_summary, tur_rule_plan, uncertainty_plan, knee_station_count,
 )
 from planning.search import INFEASIBLE_PENALTY
 from risk.jcgm106 import ClusterAssignment, DecisionRule, evaluate_conformity_risk
@@ -64,7 +64,8 @@ def test_tur_rule_gives_the_documented_uncertainty_limit(scenario):
     allows u = 6.25 um."""
     assert DEFAULT_TUR == 4.0 and Z540_3_MAX_PFA == 0.02
     assert scenario.uniform_uncertainty_limit_m(4.0) == pytest.approx(6.25e-6)
-    assert uniform_rule_plan(scenario).u_max_m == pytest.approx(6.25e-6)
+    assert tur_rule_plan(scenario).u_max_m == pytest.approx(6.25e-6)
+    assert tur_rule_plan(scenario, 2.0).u_max_m == pytest.approx(12.5e-6)
 
 
 def test_risk_table_reproduces_the_direct_integral(scenario):
@@ -185,9 +186,11 @@ def test_plan_violation_is_zero_when_met_and_grows_as_the_limit_tightens(scenari
     assert plan_violation(tight, outcome) > 0.0
     tighter = iso_risk_plan(scenario, slack=0.25)
     assert plan_violation(tighter, outcome) > plan_violation(tight, outcome)
-    # a plan U needs every point under its uncertainty limit: the layout's worst point is ~12 um
-    spec_u = PlanSpec("U", u_max_m=6.25e-6)
+    # the TUR rule needs every point under its uncertainty limit: the layout's worst point is ~12 um
+    spec_u = PlanSpec("T", u_max_m=6.25e-6)
     assert plan_violation(spec_u, evaluate_layout(scenario, GOOD_LAYOUT, allow_unmeasured=True)) > 0.0
+    # the uncertainty-driven plan has no threshold: any all-measured layout meets it, a skipped point does not
+    assert plan_violation(uncertainty_plan(), outcome) == pytest.approx(56 / 500)
     with pytest.raises(ValueError):
         PlanSpec("X")
 
@@ -254,3 +257,30 @@ def test_a_minimum_task_coverage_floor_turns_a_skipped_task_into_a_violation(sce
     strict = plan_violation(iso_risk_plan(scenario, min_task_coverage=1.0), outcome)
     assert strict == pytest.approx(float(np.sum(1.0 - cov)))
     assert plan_violation(iso_risk_plan(scenario, min_task_coverage=0.9), outcome) > 0.0
+
+
+def test_knee_station_count_stops_when_the_next_station_gains_too_little():
+    j = {4: 100.0, 5: 60.0, 6: 40.0, 7: 37.0, 8: 36.5}
+    assert knee_station_count(j, 0.10) == 6       # 6 -> 7 gains 7.5% < 10%
+    assert knee_station_count(j, 0.02) == 7       # 7 -> 8 gains 1.4% < 2%; 6 -> 7 gained 7.5% > 2%
+    assert knee_station_count(j, 0.50) == 4       # 4 -> 5 already gains only 40% < 50%
+    assert knee_station_count({3: 10.0, 4: 5.0}, 0.10) == 4  # never flattens: the largest K is returned
+
+
+def test_backward_refinement_never_returns_a_worse_layout_and_keeps_the_counts(scenario):
+    """Fed a tiny sweep, `refine_backward` keeps every station count, never
+    raises a layout's cost, and returns layouts that are exactly evaluable."""
+    from planning.inspection import KResult, refine_backward
+
+    spec = iso_risk_plan(scenario)
+    cost = _LayoutCost(scenario, spec)
+    sweep = []
+    for k in (3, 4, 5):
+        positions = GOOD_LAYOUT[:k]
+        outcome = evaluate_layout(scenario, positions, True)
+        sweep.append(KResult(k, positions, outcome, plan_violation(spec, outcome), 0))
+    refined = refine_backward(scenario, spec, sweep, de_kwargs=dict(maxiter=3, popsize=6, workers=1), seed=0)
+    assert [r.n_stations for r in refined] == [3, 4, 5]
+    for before, after in zip(sweep, refined):
+        assert cost(after.positions_m.ravel()) <= cost(before.positions_m.ravel()) + 1e-12
+        assert after.positions_m.shape == (after.n_stations, 3)

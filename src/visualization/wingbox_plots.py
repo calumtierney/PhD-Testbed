@@ -212,3 +212,76 @@ def plot_surrogate_parity(truth: Dict[str, np.ndarray], prediction: Dict[str, np
     fig.suptitle(label, fontsize=10)
     fig.tight_layout()
     return fig, axes
+
+
+def plot_station_curves(u_curve: Dict[int, float], knee_by_gain: Dict[float, int], sweeps: Dict[str, Sequence[dict]],
+                        limits: Dict[str, Dict[str, float]]):
+    """Three panels against station count K.
+
+    (a) Plan U's criterion -- mean variance of the points' uncertainty
+        along their normals (um^2, log scale) -- with the station count the
+        knee rule picks for several "stops paying" thresholds marked.
+    (b, c) P(escape) and expected false rejections of the best layout each
+        plan found at each K (plan U's included, though it never optimised
+        either), against each risk plan's limit (dashed). `sweeps[name]` is
+        the list of per-K dicts from the experiment record; `limits[name]`
+        has `p_escape` and `e_fr`."""
+    fig, axes = plt.subplots(1, 3, figsize=(14.5, 4.4))
+    ks = sorted(int(k) for k in u_curve)
+    axes[0].semilogy(ks, [u_curve[k] if k in u_curve else u_curve[str(k)] for k in ks], "-o", c=PLAN_COLOURS["U"])
+    for gain, k in sorted(knee_by_gain.items(), key=lambda kv: -float(kv[0])):
+        axes[0].axvline(k, c="0.6", lw=1, ls=":")
+        axes[0].annotate(f"stops paying\n< {float(gain):.0%}", (k, axes[0].get_ylim()[1]), fontsize=7, rotation=90,
+                         va="top", ha="right", color="0.35")
+    axes[0].set_xlabel("stations")
+    axes[0].set_ylabel("mean variance of u along the normal (um$^2$)")
+    axes[0].set_title("(a) Plan U's criterion: falls with stations, in steps", fontsize=9)
+    axes[0].grid(alpha=0.25, which="both")
+    for ax, key, label in ((axes[1], "p_escape", "P(at least one falsely accepted point)"),
+                           (axes[2], "e_fr", "expected falsely rejected points per part")):
+        for name, rows in sweeps.items():
+            pts = [(r["k"], r[key]) for r in rows if r["feasible"] and r[key] is not None]
+            if pts:
+                ax.plot(*zip(*pts), "-o", c=PLAN_COLOURS.get(name, "k"), label=f"plan {name}", ms=4)
+        for name, lim in limits.items():
+            ax.axhline(lim[key], c=PLAN_COLOURS.get(name, "k"), ls="--", lw=1)
+        ax.set_xlabel("stations")
+        ax.set_ylabel(label)
+        ax.grid(alpha=0.25)
+    axes[1].set_title("(b) Escape probability (dashed: each risk plan's limit)", fontsize=9)
+    axes[2].set_title("(c) False rejections (dashed: each risk plan's limit)", fontsize=9)
+    axes[2].set_yscale("log")
+    axes[1].legend(fontsize=8)
+    fig.tight_layout()
+    return fig, axes
+
+
+def plot_sensitivity(variants: Dict[str, Dict[str, Optional[int]]], base: Dict[str, Optional[int]]):
+    """Horizontal grouped bars: stations each plan needs, base case first
+    then each one-at-a-time change. A hatched bar at the right edge means
+    no layout was found within the sweep."""
+    names = ["base"] + list(variants)
+    rows = [base] + [variants[n] for n in variants]
+    plans = [p for p in ("U", "R-match", "R") if any(p in r for r in rows)]
+    fig, ax = plt.subplots(figsize=(9.5, 0.42 * len(names) * len(plans) / 1.6 + 1.8))
+    top = max([v for r in rows for v in r.values() if v] + [1])
+    height = 0.8 / len(plans)
+    for j, plan in enumerate(plans):
+        for i, r in enumerate(rows):
+            v = r.get(plan)
+            y = i + (j - (len(plans) - 1) / 2) * height
+            if v is None:
+                ax.barh(y, top + 1, height=height * 0.9, color="none", edgecolor=PLAN_COLOURS.get(plan, "k"), hatch="////", lw=0.6)
+                ax.text(top + 1.1, y, "none found", va="center", fontsize=6)
+            else:
+                ax.barh(y, v, height=height * 0.9, color=PLAN_COLOURS.get(plan, "k"), label=f"plan {plan}" if i == 0 else None)
+                ax.text(v + 0.1, y, str(v), va="center", fontsize=6.5)
+    ax.set_yticks(range(len(names)))
+    ax.set_yticklabels(names, fontsize=8)
+    ax.invert_yaxis()
+    ax.set_xlabel("stations needed")
+    ax.grid(axis="x", alpha=0.25)
+    ax.legend(fontsize=8, loc="lower right")
+    ax.set_title("Stations needed by each plan: base case and one change at a time", fontsize=10)
+    fig.tight_layout()
+    return fig, ax
