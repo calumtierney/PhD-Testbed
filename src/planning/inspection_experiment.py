@@ -150,6 +150,7 @@ def run_inspection_experiment(
     risk_slack: float = 1.0,
     min_task_coverage: float = 0.0,
     knee_gain: float = 0.10,
+    include_r: bool = True,
     include_r_all: bool = False,
     include_tur_rule: bool = False,
     include_a_trace: bool = False,
@@ -227,8 +228,9 @@ def run_inspection_experiment(
         run("R-match", PlanSpec("R", max_p_escape=chosen.outcome.p_escape * risk_slack,
                                 max_e_fr=chosen.outcome.e_fr * risk_slack, allow_unmeasured=True,
                                 min_task_coverage=min_task_coverage), k_values_r, witness_layouts=u_layouts)
-    run("R", iso_risk_plan(scenario, tur, allow_unmeasured=True, slack=risk_slack, min_task_coverage=min_task_coverage),
-        k_values_r, witness_layouts=u_layouts)
+    if include_r:
+        run("R", iso_risk_plan(scenario, tur, allow_unmeasured=True, slack=risk_slack, min_task_coverage=min_task_coverage),
+            k_values_r, witness_layouts=u_layouts)
     if include_a_trace:
         # The raw A-optimal criterion (mean covariance trace), for fidelity to
         # what existing tools minimise; plan U above is the stronger baseline,

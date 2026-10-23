@@ -106,24 +106,39 @@ def summarise(scenario, result) -> dict:
                 knee_by_gain={str(k): v for k, v in result.knee_by_gain.items()}, plans=plans, timing_s=result.timing_s)
 
 
-def _run_variants(record, pool, base_u_run, de, quick):
+# The later variants are slow when plan R cannot meet its limit (the search
+# fails through every station count), so they run plan R-match only, up to ten
+# stations (plan U's own count is 9, and its layout is a witness for R-match).
+LEAN = dict(include_r=False, k_values_r=tuple(range(1, 11)))
+LEAN_VARIANTS = {
+    "no marginal tasks", "risk limit x2", "risk limit x0.5", "risk limit x0.25",
+    "task floor 25%", "task floor 50%", "task floor 75%", "task floor 100%", "all tasks marginal",
+}
+
+
+def _run_variants(record, pool, base_u_run, de, quick, only=None):
     """Plan R's variants (and the base case's plan R / R-match, re-run here so
     every R result in the record comes from the same code: plan U's layouts
-    seed plan R as feasible witnesses). Plan U is never searched again."""
+    seed plan R as feasible witnesses). Plan U is never searched again. With
+    `only`, run just those variants and merge them into the record."""
     base_scenario = build_inspection_scenario(**BASE)
-    t1 = time.time()
-    again = run_inspection_experiment(base_scenario, de_kwargs=de, pool=pool, u_run=base_u_run,
-                                      k_values_u=range(3, 9 if quick else 15))
-    fresh = summarise(base_scenario, again)["plans"]
-    for name in ("R-match", "R"):
-        record["base"]["plans"][name] = fresh[name]
-    print(f"base plan R / R-match re-run: " + ", ".join(f"{n}={fresh[n]['answer_k']}" for n in ("R-match", "R"))
-          + f" ({time.time() - t1:.0f}s)", flush=True)
-    record["variants"] = {}
+    if only is None:
+        t1 = time.time()
+        again = run_inspection_experiment(base_scenario, de_kwargs=de, pool=pool, u_run=base_u_run,
+                                          k_values_u=range(3, 9 if quick else 15))
+        fresh = summarise(base_scenario, again)["plans"]
+        for name in ("R-match", "R"):
+            record["base"]["plans"][name] = fresh[name]
+        print(f"base plan R / R-match re-run: " + ", ".join(f"{n}={fresh[n]['answer_k']}" for n in ("R-match", "R"))
+              + f" ({time.time() - t1:.0f}s)", flush=True)
+        record["variants"] = {}
     for name, change in VARIANTS.items():
+        if only is not None and name not in only:
+            continue
         t1 = time.time()
         sc = build_inspection_scenario(**dict(BASE, **change.get("scenario", {})))
-        res = run_inspection_experiment(sc, de_kwargs=de, pool=pool, u_run=base_u_run, **change.get("run", {}),
+        run_kwargs = dict(LEAN if name in LEAN_VARIANTS else {}, **change.get("run", {}))
+        res = run_inspection_experiment(sc, de_kwargs=de, pool=pool, u_run=base_u_run, **run_kwargs,
                                         k_values_u=range(3, 9 if quick else 15))
         record["variants"][name] = dict(change={k: {kk: (list(vv) if isinstance(vv, tuple) else vv) for kk, vv in v.items()}
                                                 for k, v in change.items()}, **summarise(sc, res))
@@ -148,14 +163,15 @@ def experiment_stage(quick: bool = False):
     print("wrote", EXPERIMENT_JSON)
 
 
-def variants_stage(quick: bool = False):
-    """Re-run only the variants (and the base plan R / R-match) from a
-    recorded base: plan U's layouts are rebuilt from the JSON."""
+def variants_stage(quick: bool = False, only=None):
+    """Re-run only the variants (and, unless `only` is given, the base plan
+    R / R-match) from a recorded base: plan U's layouts are rebuilt from the
+    JSON."""
     de = dict(DE, maxiter=20, popsize=8) if quick else DE
     record = json.loads(EXPERIMENT_JSON.read_text())
     scenario = build_inspection_scenario(**BASE)
     pool = build_candidate_pool(scenario, n_candidates=4000 if quick else 20000, seed=0)
-    _run_variants(record, pool, load_u_run(scenario, record), de, quick)
+    _run_variants(record, pool, load_u_run(scenario, record), de, quick, only=only)
     print("wrote", EXPERIMENT_JSON)
 
 
@@ -315,11 +331,12 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--stage", choices=["experiment", "variants", "seeds", "surrogate", "figures"], required=True)
     parser.add_argument("--quick", action="store_true", help="small budgets: a smoke test, not a result")
+    parser.add_argument("--only", default=None, help="variants stage: comma-separated variant names to run and merge")
     args = parser.parse_args()
     if args.stage == "experiment":
         experiment_stage(args.quick)
     elif args.stage == "variants":
-        variants_stage(args.quick)
+        variants_stage(args.quick, only=set(args.only.split(",")) if args.only else None)
     elif args.stage == "seeds":
         seeds_stage(2 if args.quick else 5)
     elif args.stage == "surrogate":
