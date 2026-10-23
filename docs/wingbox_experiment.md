@@ -200,3 +200,55 @@ each reported because each could have flattered one plan:
 
 A GA finds *a* layout, not a proof that none with fewer stations exists:
 "no layout found" and every station count below are what this search found.
+
+## 6. Result, base case
+
+Synthetic wing box, tolerance ±50 µm, offset priors (marginal T1-T3, high-
+capability T4-T6), assignment confidence 0.9, one tracker, up to 14 stations
+for plan U. Figures: `results/panel10a_wingbox_layouts.png` (layouts),
+`panel10b_wingbox_uncertainty.png` (per-point u), `panel10c_wingbox_kcurves.png`
+(stations versus criterion and risk). Raw record: `results/wingbox_results.json`.
+
+| | Stations | Points measured | Shots | P(escape) | E[false rejects] | Mean / max u (µm) |
+|---|---|---|---|---|---|---|
+| **U** uncertainty-driven (A-optimal, knee 10%) | **9** | 500 | 1151 | 3.03×10⁻³ | 8.70 | 4.8 / 38.8 |
+| **R-match** risk-driven, no riskier than U | **3** | 444 | 679 | 2.89×10⁻³ | 0.30 | 2.2 / 4.5 |
+| **R** risk-driven, TUR 4:1 risk ceiling | **2** | 380 | 444 | 3.17×10⁻³ | 0.60 | 2.9 / 5.1 |
+| R-all (ceiling, every point measured) | 8 | 500 | 1214 | 2.75×10⁻³ | 8.13 | 5.1 / 46.8 |
+| T (hard TUR 4:1 on every point) | none found ≤ 14 | | | | | |
+
+Read across the rows:
+
+* **Plan R-match meets or beats plan U's own risk on both metrics with a
+  third of the stations** (3 against 9) and 59% of the shots (679 against
+  1151): `P_escape` is 5% lower, and expected false rejections are 29×
+  lower (0.30 against 8.70). Stations and shots both fall, so R-match is
+  cheaper for *any* positive set-up time per station and measurement time
+  per point -- no cost model had to be assumed.
+* **Where the stations go.** U must measure every point, and its mean
+  variance is dominated by the few worst: the lower flap skins, seen only by
+  one weakly tied low station each (T6's mean u is 19.6 µm, with 5.3 of U's
+  8.7 expected false rejections). Much of U's station budget goes to giving
+  those points a second, better view (its worst point falls from 60 µm at 5
+  stations to 39 µm at 9). R-match measures the marginal leading-edge tasks
+  (T1-T3) at 1.4-2.5 µm, measures the flat skin and the *upper* flap skins,
+  and leaves only the 56 lower-flap points unmeasured, each carrying
+  ~3×10⁻⁶ of escape risk (1.8×10⁻⁴ expected escapes over all 56) --
+  already counted in the 2.89×10⁻³ above.
+* **R-all** (every point measured, risk limit at the TUR ceiling) needs 8:
+  almost all of plan U's cost is the obligation to measure everything, not
+  the uncertainty it delivers. **R** (the looser ceiling) needs 2.
+* **The conventional TUR rule cannot be met at all** (plan T): the best
+  layout found at 14 stations still has points at 33 µm against a 6.25 µm
+  limit. A handful of grazing, single-station points defeat it. This is why
+  plan U is the A-optimal planner with a knee rule and not a hard TUR rule.
+* **Plan U's count is a judgement.** The knee is K = 9 for "stops paying" at
+  20% or 10% per station, 11 at 5%, 12 at 2%; its curve
+  (`panel10c`, left) falls in steps. Repeat searches differ by about one
+  station (§7), so "9" is "9 ± 1", and R-match's "3" is "3 ± 1".
+
+What the result is *not*: it is not that risk-driven planning measures less
+because it is careless. It measures the points whose process can fail
+tightly, and skips points whose process is very unlikely to have failed --
+and that last clause rests entirely on the placeholder priors and on the
+0.9 confidence in the cluster assignment, which is why §7 exists.
