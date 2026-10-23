@@ -2,6 +2,7 @@
 sweeps and the surrogate study, and draw their figures:
 
     python -m viz.make_wingbox_figures --stage experiment   # ~2 h, writes results/wingbox_results.json
+    python -m viz.make_wingbox_figures --stage variants     # re-runs only the variants from a recorded base
     python -m viz.make_wingbox_figures --stage seeds        # ~15 min, adds GA-repeatability runs to that file
     python -m viz.make_wingbox_figures --stage surrogate    # ~15 min, writes results/wingbox_surrogate.json
     python -m viz.make_wingbox_figures --stage figures      # seconds, writes results/panel10*.png
@@ -105,6 +106,32 @@ def summarise(scenario, result) -> dict:
                 knee_by_gain={str(k): v for k, v in result.knee_by_gain.items()}, plans=plans, timing_s=result.timing_s)
 
 
+def _run_variants(record, pool, base_u_run, de, quick):
+    """Plan R's variants (and the base case's plan R / R-match, re-run here so
+    every R result in the record comes from the same code: plan U's layouts
+    seed plan R as feasible witnesses). Plan U is never searched again."""
+    base_scenario = build_inspection_scenario(**BASE)
+    t1 = time.time()
+    again = run_inspection_experiment(base_scenario, de_kwargs=de, pool=pool, u_run=base_u_run,
+                                      k_values_u=range(3, 9 if quick else 15))
+    fresh = summarise(base_scenario, again)["plans"]
+    for name in ("R-match", "R"):
+        record["base"]["plans"][name] = fresh[name]
+    print(f"base plan R / R-match re-run: " + ", ".join(f"{n}={fresh[n]['answer_k']}" for n in ("R-match", "R"))
+          + f" ({time.time() - t1:.0f}s)", flush=True)
+    record["variants"] = {}
+    for name, change in VARIANTS.items():
+        t1 = time.time()
+        sc = build_inspection_scenario(**dict(BASE, **change.get("scenario", {})))
+        res = run_inspection_experiment(sc, de_kwargs=de, pool=pool, u_run=base_u_run, **change.get("run", {}),
+                                        k_values_u=range(3, 9 if quick else 15))
+        record["variants"][name] = dict(change={k: {kk: (list(vv) if isinstance(vv, tuple) else vv) for kk, vv in v.items()}
+                                                for k, v in change.items()}, **summarise(sc, res))
+        print(f"  variant {name}: " + ", ".join(f"{n}={p['answer_k']}" for n, p in record["variants"][name]["plans"].items())
+              + f" ({time.time() - t1:.0f}s)", flush=True)
+        EXPERIMENT_JSON.write_text(json.dumps(record, indent=1))
+
+
 def experiment_stage(quick: bool = False):
     de = dict(DE, maxiter=20, popsize=8) if quick else DE
     pool_scenario = build_inspection_scenario(**BASE)
@@ -115,19 +142,20 @@ def experiment_stage(quick: bool = False):
                                      k_values_u=range(3, 9 if quick else 15), verbose=True)
     record["base"].update(summarise(pool_scenario, base))
     record["base"]["pool_size"] = base.pool_size
-    EXPERIMENT_JSON.write_text(json.dumps(record, indent=1))  # the surrogate stage needs only the base
+    EXPERIMENT_JSON.write_text(json.dumps(record, indent=1))  # the later stages need only the base
     print(f"base done in {time.time() - t0:.0f}s", flush=True)
-    for name, change in VARIANTS.items():
-        t1 = time.time()
-        sc = build_inspection_scenario(**dict(BASE, **change.get("scenario", {})))
-        res = run_inspection_experiment(sc, de_kwargs=de, pool=pool, u_run=base.runs["U"], **change.get("run", {}),
-                                        k_values_u=range(3, 9 if quick else 15))
-        record["variants"][name] = dict(change={k: {kk: (list(vv) if isinstance(vv, tuple) else vv) for kk, vv in v.items()}
-                                                for k, v in change.items()}, **summarise(sc, res))
-        print(f"  variant {name}: " + ", ".join(f"{n}={p['answer_k']}" for n, p in record["variants"][name]["plans"].items())
-              + f" ({time.time() - t1:.0f}s)", flush=True)
-        EXPERIMENT_JSON.write_text(json.dumps(record, indent=1))
-    EXPERIMENT_JSON.write_text(json.dumps(record, indent=1))
+    _run_variants(record, pool, base.runs["U"], de, quick)
+    print("wrote", EXPERIMENT_JSON)
+
+
+def variants_stage(quick: bool = False):
+    """Re-run only the variants (and the base plan R / R-match) from a
+    recorded base: plan U's layouts are rebuilt from the JSON."""
+    de = dict(DE, maxiter=20, popsize=8) if quick else DE
+    record = json.loads(EXPERIMENT_JSON.read_text())
+    scenario = build_inspection_scenario(**BASE)
+    pool = build_candidate_pool(scenario, n_candidates=4000 if quick else 20000, seed=0)
+    _run_variants(record, pool, load_u_run(scenario, record), de, quick)
     print("wrote", EXPERIMENT_JSON)
 
 
@@ -285,11 +313,13 @@ def seeds_stage(n_seeds: int = 5):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--stage", choices=["experiment", "seeds", "surrogate", "figures"], required=True)
+    parser.add_argument("--stage", choices=["experiment", "variants", "seeds", "surrogate", "figures"], required=True)
     parser.add_argument("--quick", action="store_true", help="small budgets: a smoke test, not a result")
     args = parser.parse_args()
     if args.stage == "experiment":
         experiment_stage(args.quick)
+    elif args.stage == "variants":
+        variants_stage(args.quick)
     elif args.stage == "seeds":
         seeds_stage(2 if args.quick else 5)
     elif args.stage == "surrogate":

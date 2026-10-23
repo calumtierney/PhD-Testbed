@@ -143,7 +143,7 @@ def run_inspection_experiment(
     scenario: InspectionScenario,
     tur: float = 4.0,
     k_values_u: Sequence[int] = tuple(range(3, 15)),
-    k_values_r: Sequence[int] = tuple(range(1, 11)),
+    k_values_r: Sequence[int] = tuple(range(1, 15)),
     n_candidates: int = 20000,
     de_kwargs: Optional[dict] = None,
     seed: int = 0,
@@ -183,10 +183,11 @@ def run_inspection_experiment(
 
     runs: Dict[str, PlanRun] = {}
 
-    def run(name: str, spec: PlanSpec, k_values, stop_at_first_satisfied: bool = True) -> PlanRun:
+    def run(name: str, spec: PlanSpec, k_values, stop_at_first_satisfied: bool = True,
+            witness_layouts: Sequence[np.ndarray] = ()) -> PlanRun:
         t1 = time.time()
         own_greedy = greedy_cost_layout(scenario, spec, pool, max(k_values), seed=seed)
-        seeds = coverage_seeds + [own_greedy]
+        seeds = coverage_seeds + [own_greedy] + list(witness_layouts)
         sweep = search_station_counts(scenario, spec, k_values, de_kwargs=de_kwargs or DEFAULT_DE, seed=seed,
                                       stop_at_first_satisfied=stop_at_first_satisfied, seed_layouts=seeds,
                                       extension_positions_m=pool.positions_m)
@@ -213,14 +214,21 @@ def run_inspection_experiment(
         chosen = next(r for r in run_u.sweep if r.n_stations == k_star)
         runs["U"] = replace(run_u, chosen=chosen)
 
+    # Plan U's layouts are known, feasible points of plan R's problem (they
+    # measure every point; whether they meet R's risk limit depends on the
+    # limit). Seeding plan R with them guarantees the search can never report
+    # a count *above* what the conventional plan itself achieves when that
+    # layout already meets the limit -- without it a failed search would be
+    # indistinguishable from a real finding that R needs more stations.
+    u_layouts = [r.positions_m for r in run_u.sweep if r.outcome.feasible]
     if chosen is not None:
         # The strictest comparison: plan R held to the risk plan U's own layout
         # actually delivers, not a ceiling it merely stays under.
         run("R-match", PlanSpec("R", max_p_escape=chosen.outcome.p_escape * risk_slack,
                                 max_e_fr=chosen.outcome.e_fr * risk_slack, allow_unmeasured=True,
-                                min_task_coverage=min_task_coverage), k_values_r)
+                                min_task_coverage=min_task_coverage), k_values_r, witness_layouts=u_layouts)
     run("R", iso_risk_plan(scenario, tur, allow_unmeasured=True, slack=risk_slack, min_task_coverage=min_task_coverage),
-        k_values_r)
+        k_values_r, witness_layouts=u_layouts)
     if include_a_trace:
         # The raw A-optimal criterion (mean covariance trace), for fidelity to
         # what existing tools minimise; plan U above is the stronger baseline,
@@ -232,7 +240,7 @@ def run_inspection_experiment(
             runs["A"] = replace(run_a, chosen=a_star)
             run("R-match-A", PlanSpec("R", max_p_escape=a_star.outcome.p_escape * risk_slack,
                                       max_e_fr=a_star.outcome.e_fr * risk_slack, allow_unmeasured=True,
-                                      min_task_coverage=min_task_coverage), k_values_r)
+                                      min_task_coverage=min_task_coverage), k_values_r, witness_layouts=u_layouts)
     if include_r_all:
         run("R-all", iso_risk_plan(scenario, tur, allow_unmeasured=False, slack=risk_slack), tuple(k_values_u))
     if include_tur_rule:
