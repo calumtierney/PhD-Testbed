@@ -621,74 +621,104 @@ assumed:
    objective B with A0/A1/C's stations reproduced the 0.0000463 value C
    had found, with 1/6th the evaluations the second attempt used.
 
-The numbers below are from this third attempt (60 generations, population
-20, ~11,000 evaluations per run, `workers=-1`). `converged=False` is still
-reported by every run -- DE's own convergence criterion is about
-population spread, not really reachable at all on a landscape with a hard
-feasibility penalty cliff (an infeasible candidate scores a fixed
-`INFEASIBLE_PENALTY` regardless of how infeasible, so some population
-spread survives indefinitely even near a true optimum) -- so it is not,
-by itself, a reliability signal either way here. What *is* checked:
-cross-validating every objective's winning stations against every other
-objective's own formula. The residual gaps are now a few percent (e.g.
-objective A1's own search landed ~2.7% worse, by its own metric, than
-objective C's stations did) rather than the earlier 4-10x misses --
-consistent with ordinary GA imprecision, not a repeat of the same
-failure. Still worth stating directly: this is a looser guarantee than
-the main scene's exhaustive grid search, which is provably the best
-*in the searched candidate set*. A GA result is a good plan found, not a
-certified optimum.
+**4. Correction (found later): every wing number from attempts 1-3 was
+invalid, and the headline reductions did not exist.** Re-scoring the saved
+wing plans with a new, much faster covariance evaluator (`network.design`,
+see below) turned up a defect in the *feasibility rule* the GA was
+searching under. A plan was accepted as long as every station saw at least
+three targets -- but a station that shares only *one* target with the rest
+of the network (or three collinear ones) is not pinned in place: it can be
+rotated or slid about that target without changing a single observation.
+That is a gauge freedom, and `network.solve.solve_network`'s `pinv` hands an
+unconstrained direction a variance of **zero**, the opposite of "unknown".
+The GA found this and used it: it parked stations so that they shared one
+tie point, and the network's reported uncertainty collapsed. The −18.7%
+(without tower) and −6.6% (with tower) risk reductions for objective C
+that the previous version of this section reported were produced by layouts
+that were not valid networks, and so were the risk values (0.362 / 0.334 /
+0.320 / 0.294 and 0.373 / 0.373 / 0.373 / 0.349). They are withdrawn.
 
-**The result**, `n_stations=3`, `bounds_m` spanning the reachable floor
-area, `reference_uncertainty_m = 8 µm` for B exactly as in the main scene:
+What changed: `network.design.design_point_covariances` computes the same
+covariance as `solve_network` (pinned to it by `tests/test_design_covariance.py`
+to <1e-4 relative) from the block-arrow structure of the normal equations
+instead of a dense fit, and *detects* the rank deficiency rather than
+hiding it -- after Jacobi scaling, a station-pose information matrix with an
+eigenvalue below 1e-9 means a free-floating station and the plan is
+infeasible. `planning.objectives` now requires that rigid connectivity
+(`tests/test_planning.py::test_a_station_tied_to_the_network_by_one_shared_
+target_is_disqualified` reproduces the old defect with the actual plan the
+GA used to report), and the GA gets a *graded* signal while most random
+layouts fail it (`network.design.count_untied_stations`) so it can still
+descend. The original two-cluster and mixed-tolerance scenes are unaffected:
+all stations see all targets there, so every network is rigid.
+
+**The corrected result**, same scene, same `n_stations=3`, `bounds_m`,
+`reference_uncertainty_m = 8 µm` and GA settings as before (60 generations,
+population 20, `workers=-1`, cascade-seeded; `results/panel9a/9b_wing_*.png`
+regenerated):
 
 | | A0 (trace) | A1 (uniform, projected) | B (linearised risk) | C (direct risk) |
 |---|---|---|---|---|
 | **With the support tower** | | | | |
-| Global risk (PFA+PFR) | 0.3731 | 0.3731 | 0.3731 | **0.3485** |
+| Global risk (PFA+PFR) | 0.8731 | 0.8731 | 0.8742 | **0.8667** |
 | **Without it** | | | | |
-| Global risk (PFA+PFR) | 0.3617 | 0.3337 | 0.3202 | **0.2939** |
+| Global risk (PFA+PFR) | 0.8097 | 0.7972 | 0.8080 | **0.7968** |
 
-Two things, stated as plainly as the main scene's table states its own:
+(~11,000 function evaluations per run; every run still reports `converged=False`, which
+for this landscape -- a hard infeasibility cliff keeps some population spread alive
+indefinitely -- says nothing either way; the cross-validation below is the check.)
+The characteristics' standard uncertainties at the winning layouts are
+12.6 / 22.1 / 35.3 / 40.9 µm (root / mid-span / near-tip / tip, objective A0,
+no tower) and 13.2 / 22.4 / 40.6 / 46.9 µm (objective C, with tower).
 
-**Without the tower, risk falls monotonically from A0 to C** (0.362 →
-0.334 → 0.320 → 0.294, a 19% reduction from A0 to C) -- the clean,
-textbook version of the hypothesis this project exists to test, on a
-scene an order of magnitude larger and considerably less symmetric than
-the original. Cross-validated directly (every objective's winning
-stations scored under every other objective's own formula): C's stations
-are at or within a few percent of best under every one of the four
-metrics simultaneously here, not just its own -- this scene did not turn
-out to pit the objectives sharply against each other the way the main
-scene's ablation does, which is itself worth saying rather than quietly
-picking the more dramatic-looking number to report.
+Three things follow, and the first is the important one:
 
-**With the tower, A0, A1 and B land on (within GA noise of) the same
-plan, and C alone finds something measurably better** (6.6% lower risk
-than the other three). This is the same mechanism already documented
-above for the main scene and in "Mixed tolerance types" below: every one
-of this scene's four characteristics is a `ProfileTolerance` against the
-same surface normal, so A0 (trace-blind to direction) and A1 (projected,
-but with nothing to disagree about direction-wise) have no reason to
-diverge, and B's risk-derived weights here are dominated almost entirely
-by the two marginal-cluster characteristics (near-tip/tip), which
-happen, in this scene, to want nearly the same station arrangement A0
-already finds. C's gain comes specifically from the occlusion
-interacting with the direct risk objective in a way the linearised/
-trace-based proxies don't capture at this resolution -- not a new
-mechanism, the same "linearisation can cost something, it just usually
-doesn't in this project's scenes" finding B/C's comparison already
-makes, now actually observed rather than reported as a null result.
+**Three stations over a ~30 m wing is a weak-measurement regime, and the
+total risk of ~0.8 says so.** Against a ±50 µm tolerance, uncertainties of
+13-47 µm mean the part is decided mostly by noise; the sum is dominated by
+false *rejection* of conforming points, not by consumer's risk. Honest
+networks of this size simply do not measure a 30 m wing that well. (The
+invalid numbers looked better because the defect made them look better.)
 
-**Occlusion costs every objective risk, and costs the risk-directed one
-more in relative terms.** Comparing each objective's own "with tower" row
-to its "without" row: A0 degrades by 3.2% (0.362 → 0.373), C by 18.6%
-(0.294 → 0.349). The tower genuinely narrows C's options more than it
-narrows A0's, in relative terms -- plausible since C is normally free to
-seek out a specific risk-minimising arrangement that the occlusion then
-forecloses, while A0 was never aiming at anything that precise in the
-first place. Not asserted as a general property of occlusion, only as
-what this one scene showed.
+**The difference between the four objectives has nearly vanished.** Without
+the tower, C is 1.6% below A0 and 0.05% below A1; with it, 0.7% below A0 and
+A1. The previous "risk falls monotonically A0 → C" reading is not supported
+(here B is *worse* than A1). Cross-validating each objective's winning
+stations under every other objective's own formula (rows: whose stations;
+gap to the best value any of the four layouts achieved under that
+objective's formula; lower is better):
+
+| No tower | scored by A0 | by A1 | by B | by C |
+|---|---|---|---|---|
+| A0's stations | +0.00% | +1.80% | +0.19% | +1.62% |
+| A1's stations | +13.54% | +0.08% | +0.32% | +0.05% |
+| B's stations | +3.93% | +1.57% | +0.00% | +1.41% |
+| C's stations | +16.89% | +0.00% | +0.07% | +0.00% |
+
+| With tower | scored by A0 | by A1 | by B | by C |
+|---|---|---|---|---|
+| A0's stations (= A1's) | +0.00% | +0.57% | +0.02% | +0.75% |
+| B's stations | +0.43% | +0.69% | +0.00% | +0.87% |
+| C's stations | +15.87% | +0.00% | +0.24% | +0.00% |
+
+C's layouts are at or within ~0.2% of best under A1, B and C in both
+scenes, and ~14-17% worse than A0's only under A0's own trace metric -- the
+usual sign that the trace objective and the risk objectives disagree
+somewhere, but the *risk* difference they buy is 0.7-1.6%, which is the
+same order as GA imprecision here (B's own-formula search lands 1.4% off
+what C's layout achieves under C). A GA result is a good plan found, not a
+certified optimum, and a difference this small cannot be separated from that.
+
+**Occlusion costs every objective about the same** (A0: +7.8%, 0.8097 →
+0.8731; C: +8.8%, 0.7968 → 0.8667) -- not the stronger asymmetry the
+withdrawn numbers suggested.
+
+What this means for the project: the wing scene as built is not where the
+risk-weighted objective shows an advantage. The four-point, three-station
+design is too weakly constrained for the objective to matter much, and the
+decisive test is now the wing-box inspection experiment
+(`docs/wingbox_experiment.md`), a ~500-point part where station count is
+the cost and coverage, not just uncertainty, is at stake.
 
 ## What step 6 still deliberately doesn't do
 

@@ -12,3 +12,10 @@ scipy==1.17.1
 matplotlib==3.11.1
 pytest==9.1.1
 streamlit==1.65.0
+# scikit-learn: used only by planning/surrogate.py (the learned surrogate of
+# the plan evaluator, `HistGradientBoosting*`). Added because writing
+# gradient-boosted trees in numpy would be far more code to get wrong than a
+# well-tested library, and nothing else in scipy covers it (CLAUDE.md §6:
+# "add others only when needed and say why"). Nothing outside that module and
+# its test imports it.
+scikit-learn==1.9.1

@@ -16,6 +16,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest"]
 app = ["streamlit"]
+ml = ["scikit-learn"]  # planning/surrogate.py only
 
 [tool.setuptools.packages.find]
 where = ["src"]

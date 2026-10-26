@@ -43,7 +43,13 @@ from scipy.optimize import differential_evolution
 
 from geometry.pose import InstrumentPose
 from planning.candidates import look_at_orientation
-from planning.objectives import ObjectiveFn, PlanEvaluation, PlanningScenario, evaluate_plan
+from planning.objectives import (
+    ObjectiveFn,
+    PlanEvaluation,
+    PlanningScenario,
+    evaluate_plan,
+    plan_infeasibility_deficit,
+)
 
 
 @dataclass(frozen=True)
@@ -188,9 +194,15 @@ class _StationPlacementCost:
         ]
 
     def __call__(self, flat_params: np.ndarray) -> float:
-        evaluation = evaluate_plan(self.station_poses(flat_params), self.scenario)
+        poses = self.station_poses(flat_params)
+        evaluation = evaluate_plan(poses, self.scenario)
         if evaluation is None:
-            return INFEASIBLE_PENALTY
+            # INFEASIBLE_PENALTY plus a small graded deficit (unobserved
+            # targets, stations not tied to the anchor): DE only compares
+            # values, so this slopes the infeasible region towards
+            # feasibility instead of leaving it one flat plateau -- needed
+            # once connectivity is enforced and most random layouts fail.
+            return INFEASIBLE_PENALTY + plan_infeasibility_deficit(poses, self.scenario)
         value = self.objective_fn(evaluation, self.scenario)
         return value if value < float("inf") else INFEASIBLE_PENALTY
 
@@ -235,6 +247,86 @@ class GASearchResult:
     n_generations: int
     converged: bool
     n_infeasible_evals: int
+
+
+def run_station_search(
+    cost,
+    n_stations: int,
+    bounds_m: Sequence[Tuple[float, float]],
+    seed: Optional[int] = 0,
+    seed_station_positions_m: Optional[Sequence[Sequence[np.ndarray]]] = None,
+    **differential_evolution_kwargs,
+):
+    """The one differential-evolution driver every station-placement
+    search in this codebase goes through -- `genetic_algorithm_station_
+    placement` (step 6) and `planning.inspection` (the wing-box inspection
+    experiment) -- so the optimiser is held constant across experiments and
+    only the objective varies (CLAUDE.md §3).
+
+    `cost` maps a flat vector of `n_stations` (x, y, z) positions to a
+    number to minimise, and must be a picklable callable when `workers != 1`
+    is passed (see `_StationPlacementCost`). Searches `bounds_m` (one
+    (x, y, z) box, applied to every station). Seeding, parallel evaluation
+    and the infeasibility counter behave exactly as documented on
+    `genetic_algorithm_station_placement`.
+
+    Returns `(scipy OptimizeResult, n_infeasible_evals)`; the count is 0
+    when `workers != 1`, where a live count cannot cross process
+    boundaries.
+    """
+    bounds_m = list(bounds_m)
+    if len(bounds_m) != 3:
+        raise ValueError(f"bounds_m must have exactly 3 (min, max) pairs (x, y, z), got {len(bounds_m)}")
+    full_bounds = bounds_m * n_stations
+    ndim = 3 * n_stations
+
+    if seed_station_positions_m is not None:
+        if "init" in differential_evolution_kwargs:
+            raise ValueError("pass either seed_station_positions_m or init=..., not both")
+        requested_popsize = differential_evolution_kwargs.get("popsize", 15)
+        total_population = requested_popsize * ndim
+        seed_rows = [np.asarray(positions, dtype=float).reshape(-1) for positions in seed_station_positions_m]
+        for row in seed_rows:
+            if row.shape != (ndim,):
+                raise ValueError(
+                    f"each seed_station_positions_m entry must contain exactly n_stations={n_stations} "
+                    f"(x, y, z) positions ({ndim} values total), got shape {row.shape}"
+                )
+        if len(seed_rows) > total_population:
+            raise ValueError(
+                f"{len(seed_rows)} seed_station_positions_m entries given, but the population "
+                f"size (popsize * n_stations * 3 = {total_population}) can only hold that many -- "
+                "raise popsize or pass fewer seeds"
+            )
+        rng = np.random.default_rng(seed)
+        low = np.array([b[0] for b in full_bounds])
+        high = np.array([b[1] for b in full_bounds])
+        random_rows = rng.uniform(low, high, size=(total_population - len(seed_rows), ndim))
+        differential_evolution_kwargs["init"] = np.vstack([np.array(seed_rows), random_rows])
+
+    workers = differential_evolution_kwargs.get("workers", 1)
+    if workers != 1 or differential_evolution_kwargs.get("vectorized", False):
+        # (vectorized=True hands `cost` a whole generation as an (ndim, S)
+        # array -- how `planning.surrogate` scores a population in one batch
+        # -- which the per-call infeasible counter below cannot wrap)
+        # scipy requires (and silently forces, with a warning, if not told)
+        # updating="deferred" whenever workers != 1 -- a whole generation
+        # evaluated at once is what makes handing it to a worker pool
+        # meaningful. Setting it explicitly avoids the warning.
+        differential_evolution_kwargs.setdefault("updating", "deferred")
+        return differential_evolution(cost, full_bounds, seed=seed, **differential_evolution_kwargs), 0
+
+    infeasible_evals = 0
+
+    def counted_cost(flat_params: np.ndarray) -> float:
+        nonlocal infeasible_evals
+        value = cost(flat_params)
+        if value >= INFEASIBLE_PENALTY:
+            infeasible_evals += 1
+        return value
+
+    result = differential_evolution(counted_cost, full_bounds, seed=seed, **differential_evolution_kwargs)
+    return result, infeasible_evals
 
 
 def genetic_algorithm_station_placement(
@@ -338,59 +430,10 @@ def genetic_algorithm_station_placement(
     if len(bounds_m) != 3:
         raise ValueError(f"bounds_m must have exactly 3 (min, max) pairs (x, y, z), got {len(bounds_m)}")
 
-    full_bounds = bounds_m * n_stations
     cost = _StationPlacementCost(scenario, objective_fn, aim_point_m, n_stations)
-    ndim = 3 * n_stations
-
-    if seed_station_positions_m is not None:
-        if "init" in differential_evolution_kwargs:
-            raise ValueError("pass either seed_station_positions_m or init=..., not both")
-        requested_popsize = differential_evolution_kwargs.get("popsize", 15)
-        total_population = requested_popsize * ndim
-        seed_rows = [np.asarray(positions, dtype=float).reshape(-1) for positions in seed_station_positions_m]
-        for row in seed_rows:
-            if row.shape != (ndim,):
-                raise ValueError(
-                    f"each seed_station_positions_m entry must contain exactly n_stations={n_stations} "
-                    f"(x, y, z) positions ({ndim} values total), got shape {row.shape}"
-                )
-        if len(seed_rows) > total_population:
-            raise ValueError(
-                f"{len(seed_rows)} seed_station_positions_m entries given, but the population "
-                f"size (popsize * n_stations * 3 = {total_population}) can only hold that many -- "
-                "raise popsize or pass fewer seeds"
-            )
-        rng = np.random.default_rng(seed)
-        low = np.array([b[0] for b in full_bounds])
-        high = np.array([b[1] for b in full_bounds])
-        n_random = total_population - len(seed_rows)
-        random_rows = rng.uniform(low, high, size=(n_random, ndim))
-        differential_evolution_kwargs["init"] = np.vstack([np.array(seed_rows), random_rows])
-
-    workers = differential_evolution_kwargs.get("workers", 1)
-    if workers != 1:
-        # scipy requires (and silently forces, with a warning, if not told)
-        # updating="deferred" whenever workers != 1 -- a whole generation
-        # evaluated at once, rather than each member updating the
-        # population immediately as it's scored, is what makes handing
-        # the generation to a worker pool meaningful in the first place.
-        # Setting it explicitly avoids the warning and makes the
-        # requirement visible here rather than left to scipy's default.
-        differential_evolution_kwargs.setdefault("updating", "deferred")
-    if workers == 1:
-        infeasible_evals = 0
-
-        def counted_cost(flat_params: np.ndarray) -> float:
-            nonlocal infeasible_evals
-            value = cost(flat_params)
-            if value >= INFEASIBLE_PENALTY:
-                infeasible_evals += 1
-            return value
-
-        de_result = differential_evolution(counted_cost, full_bounds, seed=seed, **differential_evolution_kwargs)
-    else:
-        infeasible_evals = 0  # not tracked across worker processes -- see the docstring above
-        de_result = differential_evolution(cost, full_bounds, seed=seed, **differential_evolution_kwargs)
+    de_result, infeasible_evals = run_station_search(
+        cost, n_stations, bounds_m, seed, seed_station_positions_m, **differential_evolution_kwargs
+    )
 
     best_evaluation = evaluate_plan(cost.station_poses(de_result.x), scenario)
     best_value = (

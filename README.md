@@ -124,18 +124,45 @@ complete:
   with four named fittings and a support-tower occluder under mid-span.
   The full A0/A1/B/C comparison on this scene (`planning.experiment.
   run_wing_experiment`) is written up in `docs/step6_headline_experiment.md`'s
-  "The wing scenario" section: without the tower, risk falls
-  monotonically from A0 to C (a 19% reduction, the clean version of this
-  project's own hypothesis, on a scene an order of magnitude larger and
-  less symmetric than the original); with it, A0/A1/B land on the same
-  plan (expected -- every characteristic here shares one tolerance
-  direction, the same reason A0=A1 coincide in the original scene) and C
-  alone finds a measurably better one (6.6% lower risk). Getting a GA
-  comparison trustworthy enough to report took real iteration -- an
-  unseeded search was demonstrably wrong twice, caught by
-  cross-validating each objective's winning stations against every other
-  objective's own formula, before population seeding fixed it -- which
-  the doc section covers as honestly as the result itself.
+  "The wing scenario" section. **That section carries a correction:** the
+  first version of this result (a 19% / 6.6% risk reduction for objective C)
+  came from layouts that were not valid networks -- a station tied to the
+  rest by a single shared target has a gauge freedom that `solve_network`'s
+  `pinv` silently reports as zero variance, and the GA had learned to use
+  it. With rigid connectivity enforced (`network.design`), all four
+  objectives land within 1.6% of each other (total risk ~0.80-0.87; three
+  stations over ~30 m is a weak-measurement regime), which is the size of
+  the GA's own imprecision. The wing-box experiment below is where the
+  project's hypothesis is now tested.
+
+- **the wing-box inspection experiment** (`docs/wingbox_experiment.md`) —
+  a separate experiment on a ~500-point, six-task wing box (a *synthetic
+  stand-in*: no CAD or point list was available), comparing exactly two
+  plans on station count: **U**, the conventional uncertainty-driven
+  (A-optimal) plan, and **R**, the risk-driven plan held to a decision-risk
+  limit. On the stand-in, at ±50 µm, plan U needs 9 stations and 1151
+  shots; plan R held to *no more risk than U actually delivers* needs 3
+  stations and 679 shots, with 29× fewer expected false rejections, by
+  measuring the marginal leading-edge tasks tightly and leaving 56
+  lower-flap points (priced at their process's escape risk) unmeasured. The
+  doc is explicit about what that depends on: the saving survives changes of
+  tolerance (±25 to ±250 µm) and prior shape, shrinks to 5 stations if the
+  cluster assignment is only 50% reliable, and **vanishes if the hard-to-see
+  flaps are the marginal cluster or if policy requires ≥75% of every task
+  measured**. No published aerospace limit for acceptable false-accept risk
+  was found, so the limit is *not invented*: R is held to U's own realised
+  risk, or to what a TUR 4:1 rule guarantees, with sweeps. The
+  conventional hard TUR 4:1 rule on every point could not be met at all. A
+  gradient-boosted **surrogate of the digital twin** (`planning.surrogate`,
+  scikit-learn — added to `requirements.txt` with its reason) predicts
+  coverage and escape probability to ~3% on layouts it never saw (split by
+  base layout, plus a held-out region of the station box), but not false
+  rejections; used naively as a GA objective it is exploited, and with model
+  management it reaches the same station counts with 29–61× fewer exact
+  evaluations — but no wall-clock saving at this evaluator's ~5–10 ms, which
+  the doc says plainly. Outside the six-step ladder of CLAUDE.md §5; run
+  with `python -m viz.make_wingbox_figures --stage experiment|seeds|surrogate|figures`
+  (about 2.5 hours in all; figures `results/panel10*.png`).
 
 **Visualization** (`src/visualization`, not one of the six steps — see
 its module docstring): matplotlib plotting for scenes, per-point error
