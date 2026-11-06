@@ -720,6 +720,51 @@ decisive test is now the wing-box inspection experiment
 (`docs/wingbox_experiment.md`), a ~500-point part where station count is
 the cost and coverage, not just uncertainty, is at stake.
 
+## Does the headline depend on the marginal process being biased?
+
+The marginal cluster in the headline scene is mean 38 µm, std 3 µm: a tight
+process pushed against one limit. Cpk (1.33) cannot distinguish that from a
+centred process with a wide spread (mean 0, std 12.5 µm) -- the risk
+equations use the mean and std, not Cpk -- and which of the two a real
+process resembles is exactly the thing that cannot be known before data
+exists. So the same four-objective grid search was re-run with only the
+marginal cluster's prior changed, holding **Cpk at 1.33** while the mean
+sweeps from 0 to 42 µm (`planning.experiment.with_marginal_prior`,
+`viz/make_marginal_shape_figure.py`, `results/panel6c_marginal_shape.png`,
+`results/marginal_shape_sweep.json`).
+
+| Marginal prior | A0 risk | C risk | C vs A0 |
+|---|---|---|---|
+| centred, wide (μ 0, σ 12.5 µm) | 0.00175 | 0.00173 | −1.5% |
+| moderate (μ 25, σ 6.25 µm) | 0.01527 | 0.01448 | **−5.2%** |
+| **headline** (μ 38, σ 3 µm) | 0.19898 | 0.19268 | −3.2% |
+| heavily biased (μ 42, σ 2 µm) | 0.44224 | 0.43368 | −1.9% |
+
+* **The two plans are identical at every shape.** A0 and A1 always choose
+  stations at (4.9, ±3.3, 2.4) m; B and C always choose (−0.8, 0, 2.4) and
+  (4.9, −3.3, 2.4) m. The same two layouts as in the headline appear at all
+  eleven shapes swept. What the shape changes is how much risk that choice
+  removes, not which choice is made.
+* **The risk-driven objective wins at every shape**, so the result does not
+  rest on the off-centre assumption. But the relative gain is small
+  (1-5%) everywhere, and it is not largest at the headline shape: it peaks at
+  a moderate offset (−5.2%) and is smallest for a centred process (−1.1% to
+  −1.5%). The headline's −3.2% is mid-range, not the best case, so the
+  biased prior does not flatter it. (This corrects an expectation stated
+  before the run, that a centred marginal cluster would narrow the gap
+  more than it does.)
+* **Absolute risk depends on the shape far more than on the objective**:
+  the same plan's total risk is about 250× higher at μ 42 than at μ 0
+  (0.442 against 0.00175), because a process biased towards a limit puts a
+  large share of its good parts within measurement noise of it (the
+  false-rejection effect in `docs/wingbox_experiment.md` §3). The absolute risk
+  removed by the risk-driven plan grows steadily with the offset
+  (3×10⁻⁵ centred, 8.6×10⁻³ at μ 42).
+
+Limits: one scene, two searched stations, a 276-plan grid, and the two clusters
+stay spatially separated as before. It shows that the *ordering* of objectives
+is stable across the shapes tested, not that the size of the benefit is known.
+
 ## What step 6 still deliberately doesn't do
 
 Per CLAUDE.md §3 ("do not invent an optimiser") and §9 ("if a requested

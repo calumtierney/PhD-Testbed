@@ -16,7 +16,7 @@ no principled reason to be preferred over C when a single evaluation
 costs ~10ms). See docs/step6_headline_experiment.md for the full write-up
 of scene, results and what changed between draft and this revision.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
@@ -92,6 +92,21 @@ TOLERANCE_ZONE_WIDTH_M = 1e-4  # +-50 um, CLAUDE.md §4d's own reference scale
 # docs/step6_headline_experiment.md's "Runtime" note.
 DEFAULT_AZIMUTHS_DEG = tuple(range(0, 360, 30))
 DEFAULT_ELEVATIONS_DEG = (0.0, 20.0)
+
+
+def with_marginal_prior(scenario: PlanningScenario, prior: ProcessPrior, confidence: float = 0.9) -> PlanningScenario:
+    """The same scenario with the marginal cluster's process prior replaced
+    (every `cluster2_*` characteristic is reassigned; the high-capability
+    cluster and everything else are untouched). Used to ask whether the
+    headline result depends on the marginal process being biased towards one
+    limit (mean 38 um, std 3 um) rather than, say, centred and wider at the
+    same Cpk -- `viz/make_marginal_shape_figure.py`."""
+    marginal = FeatureCluster("marginal", prior)
+    assignments = dict(scenario.assignments)
+    for characteristic in scenario.characteristics:
+        if characteristic.name.startswith("cluster2"):
+            assignments[characteristic.name] = ClusterAssignment(characteristic.name, marginal, confidence=confidence)
+    return replace(scenario, assignments=assignments)
 
 
 def default_two_cluster_scenario(

@@ -813,3 +813,20 @@ def test_wing_scenario_ga_search_finds_a_multi_station_plan():
     )
     assert result.best is not None
     assert result.best_objective_value is not None and result.best_objective_value > 0.0
+
+
+def test_with_marginal_prior_replaces_only_the_marginal_cluster():
+    from planning.experiment import default_two_cluster_scenario, with_marginal_prior
+    from risk.jcgm106 import ProcessPrior
+
+    base = default_two_cluster_scenario()
+    centred = ProcessPrior(0.0, 12.5e-6)
+    changed = with_marginal_prior(base, centred)
+    for c in base.characteristics:
+        before, after = base.assignments[c.name], changed.assignments[c.name]
+        if c.name.startswith("cluster2"):
+            assert after.cluster.prior == centred and after.cluster.name == "marginal"
+            assert after.cluster.prior.cpk(-50e-6, 50e-6) == pytest.approx(before.cluster.prior.cpk(-50e-6, 50e-6), rel=1e-3)
+        else:
+            assert after.cluster is before.cluster
+    assert base.assignments["cluster2_profile_0"].cluster.prior.mean_m == pytest.approx(38e-6)  # the original is untouched
