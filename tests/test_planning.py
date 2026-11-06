@@ -830,3 +830,23 @@ def test_with_marginal_prior_replaces_only_the_marginal_cluster():
         else:
             assert after.cluster is before.cluster
     assert base.assignments["cluster2_profile_0"].cluster.prior.mean_m == pytest.approx(38e-6)  # the original is untouched
+
+
+def test_three_cluster_scenario_adds_a_centred_marginal_cluster_with_the_same_cpk():
+    from planning.experiment import (
+        CENTRED_MARGINAL_CLUSTER, MARGINAL_CLUSTER, default_two_cluster_scenario, three_cluster_scenario,
+    )
+
+    two, three = default_two_cluster_scenario(), three_cluster_scenario()
+    assert three.target_points_m.shape == (9, 3) and len(three.characteristics) == 9
+    assert np.array_equal(three.target_points_m[:6], two.target_points_m)  # the first two clusters are untouched
+    for c in three.characteristics:
+        assert c.name in three.assignments and c.name in three.decision_rules
+        assert all(i < 9 for i in c.target_indices)
+    clusters = {c.name: three.assignments[c.name].cluster for c in three.characteristics}
+    assert clusters["cluster2_profile_0"] is MARGINAL_CLUSTER
+    assert clusters["cluster3_profile_2"] is CENTRED_MARGINAL_CLUSTER
+    tol = 50e-6
+    assert CENTRED_MARGINAL_CLUSTER.prior.mean_m == 0.0
+    assert CENTRED_MARGINAL_CLUSTER.prior.cpk(-tol, tol) == pytest.approx(MARGINAL_CLUSTER.prior.cpk(-tol, tol), rel=1e-3)
+    assert CENTRED_MARGINAL_CLUSTER.prior.std_m > 3 * MARGINAL_CLUSTER.prior.std_m  # same Cpk, made up the other way

@@ -192,6 +192,59 @@ def default_two_cluster_scenario(
     )
 
 
+# A third process for the three-cluster variant of the headline scene: the
+# *same* Cpk (1.33, AS13006 floor) as MARGINAL_CLUSTER but made up the other
+# way -- centred on nominal with a wide spread (std = 50 um / (3 * 1.33) =
+# 12.5 um) instead of biased towards a limit with a tight one. Cpk cannot tell
+# the two apart; the risk equations can (docs/step6_headline_experiment.md,
+# "Does the headline depend on the marginal process being biased?").
+CENTRED_MARGINAL_CLUSTER = FeatureCluster("marginal-centred", ProcessPrior(mean_m=0.0, std_m=50e-6 / (3 * 4.0 / 3.0)))
+
+
+def three_cluster_scenario(
+    anchor_position_m: np.ndarray = None, tracker: Optional[LaserTracker] = None
+) -> PlanningScenario:
+    """`default_two_cluster_scenario` plus a third group of three targets:
+
+      cluster 1 (y ~ +2 m)        high-capability     (Cpk 2.0, centred)
+      cluster 2 (y ~ -2 m)        marginal, offset    (mean 38 um, std 3 um, Cpk 1.33)
+      cluster 3 (x ~ 6 m, y ~ 0)  marginal, centred   (mean 0, std 12.5 um, Cpk 1.33)
+
+    The two marginal clusters share a Cpk, so a capability index alone would
+    treat them as the same kind of process; they differ in how the margin is
+    made up. Cluster 3 sits out along +x, away from the other two, so that a
+    station placed to serve it is a genuine three-way trade against the
+    others (an illustrative placement, not a statement about any real part).
+    Everything else -- profile tolerances against a +z normal, +-50 um zone,
+    confidence 0.9, the anchor -- is as in the two-cluster scene.
+    """
+    base = default_two_cluster_scenario(anchor_position_m, tracker)
+    cluster3_points_m = np.array([[6.0, 0.3, 1.0], [6.2, 0.0, 1.2], [5.8, -0.3, 0.8]])
+    surface_normal = np.array([0.0, 0.0, 1.0])
+    new_characteristics = [
+        Characteristic(
+            name=f"cluster3_profile_{i}",
+            target_indices=[6 + i],
+            tolerance=ProfileTolerance(zone_width_m=TOLERANCE_ZONE_WIDTH_M, surface_normal=surface_normal),
+        )
+        for i in range(3)
+    ]
+    assignments = dict(base.assignments)
+    decision_rules = dict(base.decision_rules)
+    for characteristic in new_characteristics:
+        assignments[characteristic.name] = ClusterAssignment(
+            characteristic.name, CENTRED_MARGINAL_CLUSTER, confidence=0.9
+        )
+        decision_rules[characteristic.name] = DecisionRule.from_zone_width(TOLERANCE_ZONE_WIDTH_M)
+    return replace(
+        base,
+        target_points_m=np.vstack([base.target_points_m, cluster3_points_m]),
+        characteristics=list(base.characteristics) + new_characteristics,
+        assignments=assignments,
+        decision_rules=decision_rules,
+    )
+
+
 def mixed_tolerance_two_cluster_scenario(
     anchor_position_m: np.ndarray = None, tracker: Optional[LaserTracker] = None
 ) -> PlanningScenario:
