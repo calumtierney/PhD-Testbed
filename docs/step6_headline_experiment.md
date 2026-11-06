@@ -720,6 +720,102 @@ decisive test is now the wing-box inspection experiment
 (`docs/wingbox_experiment.md`), a ~500-point part where station count is
 the cost and coverage, not just uncertainty, is at stake.
 
+## Does the headline depend on the marginal process being biased?
+
+The marginal cluster in the headline scene is mean 38 µm, std 3 µm: a tight
+process pushed against one limit. Cpk (1.33) cannot distinguish that from a
+centred process with a wide spread (mean 0, std 12.5 µm) -- the risk
+equations use the mean and std, not Cpk -- and which of the two a real
+process resembles is exactly the thing that cannot be known before data
+exists. So the same four-objective grid search was re-run with only the
+marginal cluster's prior changed, holding **Cpk at 1.33** while the mean
+sweeps from 0 to 42 µm (`planning.experiment.with_marginal_prior`,
+`viz/make_marginal_shape_figure.py`, `results/panel6c_marginal_shape.png`,
+`results/marginal_shape_sweep.json`).
+
+| Marginal prior | A0 risk | C risk | C vs A0 |
+|---|---|---|---|
+| centred, wide (μ 0, σ 12.5 µm) | 0.00175 | 0.00173 | −1.5% |
+| moderate (μ 25, σ 6.25 µm) | 0.01527 | 0.01448 | **−5.2%** |
+| **headline** (μ 38, σ 3 µm) | 0.19898 | 0.19268 | −3.2% |
+| heavily biased (μ 42, σ 2 µm) | 0.44224 | 0.43368 | −1.9% |
+
+* **The two plans are identical at every shape.** A0 and A1 always choose
+  stations at (4.9, ±3.3, 2.4) m; B and C always choose (−0.8, 0, 2.4) and
+  (4.9, −3.3, 2.4) m. The same two layouts as in the headline appear at all
+  eleven shapes swept. What the shape changes is how much risk that choice
+  removes, not which choice is made.
+* **The risk-driven objective wins at every shape**, so the result does not
+  rest on the off-centre assumption. But the relative gain is small
+  (1-5%) everywhere, and it is not largest at the headline shape: it peaks at
+  a moderate offset (−5.2%) and is smallest for a centred process (−1.1% to
+  −1.5%). The headline's −3.2% is mid-range, not the best case, so the
+  biased prior does not flatter it. (This corrects an expectation stated
+  before the run, that a centred marginal cluster would narrow the gap
+  more than it does.)
+* **Absolute risk depends on the shape far more than on the objective**:
+  the same plan's total risk is about 250× higher at μ 42 than at μ 0
+  (0.442 against 0.00175), because a process biased towards a limit puts a
+  large share of its good parts within measurement noise of it (the
+  false-rejection effect in `docs/wingbox_experiment.md` §3). The absolute risk
+  removed by the risk-driven plan grows steadily with the offset
+  (3×10⁻⁵ centred, 8.6×10⁻³ at μ 42).
+
+Limits: one scene, two searched stations, a 276-plan grid, and the two clusters
+stay spatially separated as before. It shows that the *ordering* of objectives
+is stable across the shapes tested, not that the size of the benefit is known.
+
+## Three clusters: one high-capability, two marginal with the same Cpk
+
+`planning.experiment.three_cluster_scenario` adds a third group of three
+targets to the headline scene (illustrative placement, out along +x at
+x ≈ 6 m, so a station that serves it is a real three-way trade):
+
+| Cluster | Process | Cpk |
+|---|---|---|
+| 1 (y ≈ +2 m) | high-capability: centred, σ 8.3 µm | 2.0 |
+| 2 (y ≈ −2 m) | marginal, off-centre: μ 38 µm, σ 3 µm | 1.33 |
+| 3 (x ≈ 6 m) | marginal, centred: μ 0, σ 12.5 µm | 1.33 |
+
+Clusters 2 and 3 have the same Cpk, so a capability index alone would treat
+them as the same kind of process. Same four-objective grid search, 2 searched
+stations (276 plans) as the headline, and 3 (2,024 plans) as a check
+(`viz/make_three_cluster_figure.py`, `results/panel6d_three_cluster.png`,
+`results/three_cluster_results.json`).
+
+**The risk weights see what Cpk hides.** Objective B's weights (slope of each
+characteristic's risk at the 8 µm reference, mean 1) are 0.002 for cluster 1,
+**2.95 for cluster 2 and 0.044 for cluster 3**: two clusters with identical Cpk
+differ by 67× in weight. At a few micrometres of measurement uncertainty the
+off-centre cluster's good parts sit right against a limit and its risk climbs
+steeply; the centred cluster's do not.
+
+| Total risk of the plan chosen by | A0 | A1 | B | C |
+|---|---|---|---|---|
+| 2 searched stations | 0.1895 | 0.2122 | **0.1751** | **0.1751** |
+| 3 searched stations | 0.1634 | 0.1634 | 0.1619 | 0.1619 |
+
+* **At 2 stations the four objectives pick three different plans**, and A0
+  and A1 now diverge (in the two-cluster scene they never did): B and C are
+  7.6% below A0 and 17.5% below A1. A1, which weights every characteristic
+  equally after projecting, does *worse* than A0 here (+11.9%): it spreads
+  its effort evenly, including onto clusters that carry no risk.
+* **At 3 stations the gain mostly disappears** (−0.9%): with a third station
+  every cluster is reasonably well covered and the objectives agree on where
+  the risk is but have little left to trade. The benefit of risk-driven
+  placement shrinks as measurement resources grow, as in the wing-box
+  experiment.
+* **Nearly all the risk is cluster 2's** (0.168 of 0.175 at 2 stations);
+  cluster 3's is 0.007 and cluster 1's is ~0. The plans differ chiefly in how
+  much they spend on cluster 2.
+* B and C choose the *same* plan at both station counts, so B's weights fixed
+  at 8 µm, which give the centred cluster very little weight, did not mislead it
+  here, even though cluster 3's points are measured at about 10 µm.
+
+Limits: one illustrative scene, one placement of the third cluster, one
+confidence (0.9), and a grid of 24 candidate poses. The ordering of the
+objectives is the finding; the size of the gap is not.
+
 ## What step 6 still deliberately doesn't do
 
 Per CLAUDE.md §3 ("do not invent an optimiser") and §9 ("if a requested
