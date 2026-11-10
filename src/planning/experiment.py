@@ -878,6 +878,7 @@ def iso_risk_station_counts(
     elevations_deg: Sequence[float] = DEFAULT_ELEVATIONS_DEG,
     max_stations: int = 4,
     candidate_poses: Optional[Sequence[InstrumentPose]] = None,
+    prefilter_visibility: bool = False,
 ) -> Dict[str, Optional[int]]:
     """For each named objective, the smallest number of (non-anchor)
     stations, from 1 up to `max_stations`, whose best plan under that
@@ -899,7 +900,9 @@ def iso_risk_station_counts(
 
     `candidate_poses`, if given, replaces the hemisphere ring (`radius_m`,
     `azimuths_deg` and `elevations_deg` are then ignored); `None` builds the
-    same ring as before.
+    same ring as before. `prefilter_visibility` is passed to the grid search
+    (`planning.search.grid_search_station_placement`): a speed-up that changes
+    no result, worth switching on when most combinations are infeasible.
     """
     if candidate_poses is None:
         centre_m = scenario.target_points_m.mean(axis=0)
@@ -910,7 +913,9 @@ def iso_risk_station_counts(
         for name, objective_fn in objective_fns_by_name.items():
             if results[name] is not None:
                 continue
-            search = grid_search_station_placement(candidate_poses, n_stations, scenario, objective_fn)
+            search = grid_search_station_placement(
+                candidate_poses, n_stations, scenario, objective_fn, prefilter_visibility=prefilter_visibility
+            )
             if search.best is None:
                 continue
             if total_expected_risk(search.best, scenario) <= target_total_risk:
