@@ -26,9 +26,10 @@ from characteristics.datum import Datum
 from characteristics.tolerances import ParallelismTolerance, PositionTolerance, ProfileTolerance
 from geometry.mesh import box_mesh
 from geometry.pose import InstrumentPose
+from geometry.station_track import StationTrack
 from geometry.visibility import VisibilityLimits
 from instruments.laser_tracker import LaserTracker
-from planning.candidates import hemisphere_candidate_poses
+from planning.candidates import hemisphere_candidate_poses, levelled_orientation
 from planning.objectives import (
     ObjectiveFn,
     PlanEvaluation,
@@ -522,6 +523,156 @@ def wing_four_point_scenario(
         visibility_limits=VisibilityLimits(
             max_range_m=WING_MAX_RANGE_M, max_incidence_angle_rad=WING_MAX_INCIDENCE_ANGLE_RAD
         ),
+    )
+
+
+# -- the long part on a station track ------------------------------------
+# A scene for the journal paper's factory-cell story: a long part on a jig, with
+# trackers standing on a track around it (`geometry.station_track`). EVERY
+# dimension below is a placeholder, TODO(source): the real part, jig, cell
+# layout, tripod and platform heights are to come from GKN. They are named
+# constants and parameters of `long_part_two_cluster_scenario`, not buried in it.
+LONG_PART_LENGTH_M = 15.0          # TODO(source): part length along x
+LONG_PART_WIDTH_M = 2.5            # TODO(source): part width across y
+LONG_PART_BOTTOM_M = 0.5           # TODO(source): underside height (the jig lifts it)
+LONG_PART_TOP_M = 2.0              # TODO(source): top surface height
+LONG_PART_TRACK_STANDOFF_M = 3.0   # TODO(source): row distance from each long face
+LONG_PART_GRID_HEIGHTS_M = (1.0, 2.4)      # TODO(source): grid-search station heights
+LONG_PART_GA_HEIGHT_BOUNDS_M = (0.8, 3.0)  # TODO(source): the range the wing-box experiment also assumes
+LONG_PART_ANCHOR_HEIGHT_M = 1.5    # TODO(source): height of the fixed reference station
+LONG_PART_MAX_RANGE_M = 30.0       # CLAUDE.md §1's upper range; a parameter so it can be shortened
+LONG_PART_CLUSTER_X_M = (4.0, 11.0)  # TODO(source): where the two clusters sit along the part
+LONG_PART_END_TIES_PER_END = 5     # TODO(source): ERS-style reference nests on each end face
+LONG_PART_TIES_PER_LONG_FACE = 5   # TODO(source): ERS-style reference nests along each long face
+LONG_PART_LONG_TIE_X_M = (1.5, 5.5, 8.5, 9.5, 13.5)  # TODO(source): placeholders; kept clear of the clusters (x 3.6-4.4 and 10.6-11.4)
+
+
+def long_part_track(
+    part_length_m: float = LONG_PART_LENGTH_M,
+    part_width_m: float = LONG_PART_WIDTH_M,
+    standoff_m: float = LONG_PART_TRACK_STANDOFF_M,
+    blocked_intervals_m: Tuple[Tuple[float, float], ...] = (),
+) -> StationTrack:
+    """The station track around `long_part_two_cluster_scenario`'s part (the
+    part spans x = 0 to `part_length_m`, centred on y = 0). Defaults: 3 m
+    standoff, no blocked zones (TODO(source): the real cell's aisles and jig
+    legs -- pass them as `blocked_intervals_m` when known)."""
+    return StationTrack(0.0, part_length_m, part_width_m, standoff_m, blocked_intervals_m=blocked_intervals_m)
+
+
+def long_part_two_cluster_scenario(
+    anchor_s_m: Optional[float] = None,
+    anchor_height_m: float = LONG_PART_ANCHOR_HEIGHT_M,
+    track: Optional[StationTrack] = None,
+    tracker: Optional[LaserTracker] = None,
+    part_length_m: float = LONG_PART_LENGTH_M,
+    part_width_m: float = LONG_PART_WIDTH_M,
+    part_bottom_m: float = LONG_PART_BOTTOM_M,
+    part_top_m: float = LONG_PART_TOP_M,
+    max_range_m: float = LONG_PART_MAX_RANGE_M,
+    max_incidence_angle_rad: float = WING_MAX_INCIDENCE_ANGLE_RAD,
+    n_end_ties_per_end: int = LONG_PART_END_TIES_PER_END,
+    long_tie_x_m: Sequence[float] = LONG_PART_LONG_TIE_X_M,
+    cluster_x_m: Tuple[float, float] = LONG_PART_CLUSTER_X_M,
+) -> PlanningScenario:
+    """A long box-shaped part on a jig, measured from a station track round it
+    (`long_part_track`), with the headline experiment's two clusters.
+
+    **The part** is a box, x in [0, `part_length_m`], y in +-`part_width_m`/2,
+    z in [`part_bottom_m`, `part_top_m`], and is the visibility layer's only
+    obstacle (`geometry.mesh.box_mesh`): a tracker on one side cannot see
+    through it to the other.
+
+    **Characteristics** -- six profile tolerances (+-50 um, as everywhere),
+    three per cluster, same priors and confidence 0.9 as
+    `default_two_cluster_scenario`:
+      cluster 1, high-capability: on the +y face (normal +y), x near `cluster_x_m[0]`
+      cluster 2, marginal:        on the -y face (normal -y), x near `cluster_x_m[1]`
+    Opposite long faces, offset along the part, so serving one cluster well
+    means being on its side and near its x -- a real trade-off for the objectives
+    to disagree about. Indices 0-2 are cluster 1 and 3-5 cluster 2, so
+    `with_marginal_prior` works as on the other scenes.
+
+    **Tie points** (ERS-style reference nests, no tolerance, no cluster, as in
+    `wing_four_point_scenario`): `n_end_ties_per_end` on each end face and
+    `len(long_tie_x_m)` on each long face. Without them a row station cannot be
+    tied into a rigid network with one on the other side, because a station
+    on a row sees only its own long face (the far face is behind the part, the
+    end faces are at grazing incidence); only the stations on the end loops
+    see both an end face and part of a long face, so they are the physical
+    bridge and the end-face ties are what they bridge with. (The top face
+    cannot be used: it is beyond the 80 deg incidence limit from the floor
+    tracks.) Placeholder counts and positions: TODO(source).
+
+    **Anchor** -- a fixed reference station, the same for every objective
+    (the datum affects results: docs/step6_headline_experiment.md). Default
+    `anchor_s_m` is the **-x tip** (`track.tip_minus_x_s_m`), where it sees the
+    -x end-face ties, at `anchor_height_m`; the sensitivity case is the +x tip
+    (`track.tip_plus_x_s_m`). Pass `anchor_s_m` to put it anywhere else.
+
+    **Visibility** is on: range `max_range_m` (CLAUDE.md §1's 30 m), incidence
+    `max_incidence_angle_rad` (80 deg, the repo's convention, not a
+    literature value). Every dimension here is a placeholder, TODO(source).
+    """
+    if track is None:
+        track = long_part_track(part_length_m, part_width_m)
+    half_width = part_width_m / 2.0
+    z_levels = (1.0, 1.25, 1.5)
+
+    cluster1 = np.array([[cluster_x_m[0] + dx, half_width, z] for dx, z in ((-0.4, z_levels[0]), (0.0, z_levels[1]), (0.4, z_levels[2]))])
+    cluster2 = np.array([[cluster_x_m[1] + dx, -half_width, z] for dx, z in ((-0.4, z_levels[0]), (0.0, z_levels[1]), (0.4, z_levels[2]))])
+    plus_y, minus_y = np.array([0.0, 1.0, 0.0]), np.array([0.0, -1.0, 0.0])
+    points = [cluster1, cluster2]
+    normals = [np.tile(plus_y, (3, 1)), np.tile(minus_y, (3, 1))]
+
+    # Ties on the two end faces: spread across y, staggered in z so no station
+    # sees them as a straight line (a collinear set cannot fix a pose).
+    end_y = np.linspace(-0.8 * half_width / 1.25, 0.8 * half_width / 1.25, n_end_ties_per_end) if n_end_ties_per_end > 1 else np.zeros(1)
+    end_z = np.array([z_levels[i % 3] for i in range(n_end_ties_per_end)])
+    for x, normal in ((0.0, np.array([-1.0, 0.0, 0.0])), (part_length_m, np.array([1.0, 0.0, 0.0]))):
+        points.append(np.column_stack([np.full(n_end_ties_per_end, x), end_y, end_z]))
+        normals.append(np.tile(normal, (n_end_ties_per_end, 1)))
+    # Ties along each long face.
+    long_x = np.asarray(long_tie_x_m, dtype=float)
+    long_z = np.array([z_levels[i % 3] for i in range(len(long_x))])
+    for sign, normal in ((+1.0, plus_y), (-1.0, minus_y)):
+        points.append(np.column_stack([long_x, np.full(len(long_x), sign * half_width), long_z]))
+        normals.append(np.tile(normal, (len(long_x), 1)))
+    target_points_m = np.vstack(points)
+    target_normals_m = np.vstack(normals)
+
+    surface_normals = {"cluster1": plus_y, "cluster2": minus_y}
+    characteristics, assignments, decision_rules = [], {}, {}
+    for cluster_name, offset, cluster in (("cluster1", 0, HIGH_CAPABILITY_CLUSTER), ("cluster2", 3, MARGINAL_CLUSTER)):
+        for i in range(3):
+            name = f"{cluster_name}_profile_{i}"
+            characteristics.append(Characteristic(
+                name=name, target_indices=[offset + i],
+                tolerance=ProfileTolerance(zone_width_m=TOLERANCE_ZONE_WIDTH_M, surface_normal=surface_normals[cluster_name]),
+            ))
+            assignments[name] = ClusterAssignment(name, cluster, confidence=0.9)
+            decision_rules[name] = DecisionRule.from_zone_width(TOLERANCE_ZONE_WIDTH_M)
+
+    if anchor_s_m is None:
+        anchor_s_m = track.tip_minus_x_s_m
+    ax, ay = track.position_xy_m(anchor_s_m)
+    anchor_position = np.array([ax, ay, anchor_height_m])
+    anchor_pose = InstrumentPose(
+        position_m=anchor_position,
+        orientation=levelled_orientation(anchor_position, np.array([part_length_m / 2.0, 0.0, anchor_height_m])),
+    )
+
+    part = box_mesh(np.array([0.0, -half_width, part_bottom_m]), np.array([part_length_m, half_width, part_top_m]))
+    return PlanningScenario(
+        target_points_m=target_points_m,
+        tracker=tracker if tracker is not None else LaserTracker(),
+        characteristics=characteristics,
+        assignments=assignments,
+        decision_rules=decision_rules,
+        anchor_pose=anchor_pose,
+        target_normals_m=target_normals_m,
+        obstacles=part,
+        visibility_limits=VisibilityLimits(max_range_m=max_range_m, max_incidence_angle_rad=max_incidence_angle_rad),
     )
 
 

@@ -122,6 +122,16 @@ class StationTrack:
     def perimeter_m(self) -> float:
         return 2.0 * self.row_length_m + 2.0 * np.pi * self.loop_radius_m
 
+    @property
+    def tip_plus_x_s_m(self) -> float:
+        """s at the apex of the +x loop (its furthest point from the part)."""
+        return self.row_length_m + 0.5 * np.pi * self.loop_radius_m
+
+    @property
+    def tip_minus_x_s_m(self) -> float:
+        """s at the apex of the -x loop."""
+        return 2.0 * self.row_length_m + 1.5 * np.pi * self.loop_radius_m
+
     # -- position and segment ---------------------------------------------
     def _breakpoints(self) -> Tuple[float, float, float]:
         length, half_loop = self.row_length_m, np.pi * self.loop_radius_m

@@ -251,6 +251,31 @@ def _visibility_matrix(
     return matrix
 
 
+def station_visibility_matrix(scenario: PlanningScenario, station_poses: List[InstrumentPose]) -> np.ndarray:
+    """(1 + n_stations, n_targets) bool: row 0 is the scenario's anchor, the
+    rest `station_poses` in order -- the visibility layer applied once, so a
+    search over many *combinations* of the same candidates can reuse each
+    candidate's row instead of ray-casting it again for every combination
+    (`planning.search.grid_search_station_placement`, `prefilter_visibility`)."""
+    return _visibility_matrix(scenario.target_points_m, [scenario.anchor_pose] + list(station_poses), scenario)
+
+
+def visibility_deficit(visible: np.ndarray, anchor_index: int = 0) -> float:
+    """The counting part of `_plan_is_solvable`, from a visibility matrix
+    alone: unobserved targets plus the larger of (stations seeing too few
+    targets) and (stations not tied to the anchor by enough shared targets).
+    0.0 means the cheap necessary conditions hold; the rank test inside
+    `_plan_is_solvable` can still reject."""
+    n_unobserved = int((~visible.any(axis=0)).sum())
+    station_counts = visible.sum(axis=1)
+    n_thin = sum(
+        1 for i in range(visible.shape[0])
+        if i != anchor_index and station_counts[i] < MIN_TARGETS_PER_NON_ANCHOR_STATION
+    )
+    n_untied = count_untied_stations(visible, anchor_index, MIN_TARGETS_PER_NON_ANCHOR_STATION)
+    return float(n_unobserved + max(n_thin, n_untied))
+
+
 def _plan_is_solvable(
     target_points_m: np.ndarray, all_poses: List[InstrumentPose], scenario: PlanningScenario,
     visible: np.ndarray, anchor_index: int,
@@ -274,14 +299,7 @@ def _plan_is_solvable(
     scenario experiment reported had one (found by re-scoring them with
     `network.design`, whose rank test cannot be fooled this way).
     """
-    n_unobserved = int((~visible.any(axis=0)).sum())
-    station_counts = visible.sum(axis=1)
-    n_thin = sum(
-        1 for i in range(len(all_poses))
-        if i != anchor_index and station_counts[i] < MIN_TARGETS_PER_NON_ANCHOR_STATION
-    )
-    n_untied = count_untied_stations(visible, anchor_index, MIN_TARGETS_PER_NON_ANCHOR_STATION)
-    deficit = float(n_unobserved + max(n_thin, n_untied))
+    deficit = visibility_deficit(visible, anchor_index)
     if deficit > 0.0:
         return False, deficit
     result = design_covariances_for_poses(

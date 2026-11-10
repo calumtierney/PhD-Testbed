@@ -174,3 +174,10 @@ def test_tilting_the_frame_does_change_the_covariance():
     levelled = tracker.covariance_global(point, InstrumentPose(position_m=position, orientation=levelled_orientation(position, aim)))
     tilted = tracker.covariance_global(point, InstrumentPose(position_m=position, orientation=look_at_orientation(position, aim)))
     assert np.abs(levelled - tilted).max() / np.abs(levelled).max() > 1e-3
+
+
+def test_tip_arc_lengths_are_the_loop_apexes(track):
+    radius = track.loop_radius_m
+    assert np.allclose(track.position_xy_m(track.tip_plus_x_s_m), [LENGTH + radius, 0.0])
+    assert np.allclose(track.position_xy_m(track.tip_minus_x_s_m), [-radius, 0.0])
+    assert track.segment(track.tip_plus_x_s_m) == "+x loop" and track.segment(track.tip_minus_x_s_m) == "-x loop"
