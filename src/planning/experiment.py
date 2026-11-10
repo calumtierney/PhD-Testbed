@@ -642,6 +642,7 @@ def run_headline_experiment(
     elevations_deg: Sequence[float] = DEFAULT_ELEVATIONS_DEG,
     reference_uncertainty_m: float = 8e-6,
     max_uncertainty_m: Optional[float] = None,
+    candidate_poses: Optional[Sequence[InstrumentPose]] = None,
 ) -> HeadlineExperimentResult:
     """Run the step 6 comparison: same scenario, same candidate set, same
     grid search, same computational budget -- objectives A0, A1, B and C
@@ -665,12 +666,19 @@ def run_headline_experiment(
     two orders of magnitude per evaluation; this resolution keeps a full
     4-objective run in well under a minute rather than searching a finer
     grid A0/A1/B could each individually afford much more cheaply.
+
+    `candidate_poses`, if given, is the candidate set to search (for example
+    `planning.candidates.track_candidate_poses` for a station track) and
+    replaces the hemisphere ring built from `radius_m`, `azimuths_deg` and
+    `elevations_deg`, which are then ignored. Left as `None` it builds exactly
+    the 24-pose ring described above, so every existing call is unchanged.
     """
     if scenario is None:
         scenario = default_two_cluster_scenario()
 
-    centre_m = scenario.target_points_m.mean(axis=0)
-    candidate_poses = hemisphere_candidate_poses(centre_m, radius_m, azimuths_deg, elevations_deg)
+    if candidate_poses is None:
+        centre_m = scenario.target_points_m.mean(axis=0)
+        candidate_poses = hemisphere_candidate_poses(centre_m, radius_m, azimuths_deg, elevations_deg)
 
     weights_uniform = uniform_weights(scenario)
     weights_risk = risk_derived_weights(scenario, reference_uncertainty_m)
@@ -718,6 +726,7 @@ def iso_risk_station_counts(
     azimuths_deg: Sequence[float] = DEFAULT_AZIMUTHS_DEG,
     elevations_deg: Sequence[float] = DEFAULT_ELEVATIONS_DEG,
     max_stations: int = 4,
+    candidate_poses: Optional[Sequence[InstrumentPose]] = None,
 ) -> Dict[str, Optional[int]]:
     """For each named objective, the smallest number of (non-anchor)
     stations, from 1 up to `max_stations`, whose best plan under that
@@ -736,9 +745,14 @@ def iso_risk_station_counts(
     Every objective is searched over the *same* growing candidate set (one
     grid search per station count, per objective) -- no shortcuts specific
     to any one objective, so the comparison stays fair.
+
+    `candidate_poses`, if given, replaces the hemisphere ring (`radius_m`,
+    `azimuths_deg` and `elevations_deg` are then ignored); `None` builds the
+    same ring as before.
     """
-    centre_m = scenario.target_points_m.mean(axis=0)
-    candidate_poses = hemisphere_candidate_poses(centre_m, radius_m, azimuths_deg, elevations_deg)
+    if candidate_poses is None:
+        centre_m = scenario.target_points_m.mean(axis=0)
+        candidate_poses = hemisphere_candidate_poses(centre_m, radius_m, azimuths_deg, elevations_deg)
 
     results: Dict[str, Optional[int]] = {name: None for name in objective_fns_by_name}
     for n_stations in range(1, max_stations + 1):

@@ -466,6 +466,23 @@ def test_headline_experiment_each_plan_wins_its_own_objective():
             assert own_value <= objective_fn(other_evaluation, scenario) + 1e-9
 
 
+def test_candidate_poses_argument_defaults_to_the_identical_ring():
+    """Passing the ring explicitly is the same experiment as the default; a
+    different candidate set changes the search space and nothing else."""
+    scenario = default_two_cluster_scenario()
+    azimuths, elevations = [0, 90, 180, 270], [0, 30]
+    default = run_headline_experiment(scenario, azimuths_deg=azimuths, elevations_deg=elevations)
+    ring = hemisphere_candidate_poses(scenario.target_points_m.mean(axis=0), 4.0, azimuths, elevations)
+    explicit = run_headline_experiment(scenario, candidate_poses=ring)
+    for name in ("search_a0", "search_a1", "search_b", "search_c"):
+        a, b = getattr(default, name).best, getattr(explicit, name).best
+        assert [p.position_m.tolist() for p in a.station_poses] == [p.position_m.tolist() for p in b.station_poses]
+    one_pose = run_headline_experiment(scenario, n_stations=1, candidate_poses=ring[:3])
+    assert len(one_pose.search_a0.all_evaluations) == 3  # the supplied set was searched, not the default ring
+    counts = iso_risk_station_counts(scenario, 1e9, {"C": objective_c_direct_risk}, max_stations=1, candidate_poses=ring[:3])
+    assert counts == {"C": 1}
+
+
 def test_mixed_tolerance_scenario_can_separate_a0_from_a1():
     """`default_two_cluster_scenario`'s A0 (trace) and A1 (uniform-
     projected) land on the *identical* plan -- documented in
