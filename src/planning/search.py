@@ -42,13 +42,16 @@ import numpy as np
 from scipy.optimize import differential_evolution
 
 from geometry.pose import InstrumentPose
-from planning.candidates import look_at_orientation
+from geometry.station_track import StationTrack
+from planning.candidates import TrackPose, levelled_orientation, look_at_orientation
 from planning.objectives import (
     ObjectiveFn,
     PlanEvaluation,
     PlanningScenario,
     evaluate_plan,
     plan_infeasibility_deficit,
+    station_visibility_matrix,
+    visibility_deficit,
 )
 
 
@@ -92,6 +95,7 @@ def grid_search_station_placement(
     n_stations: int,
     scenario: PlanningScenario,
     objective_fn: ObjectiveFn,
+    prefilter_visibility: bool = False,
 ) -> GridSearchResult:
     """Exhaustively score every `n_stations`-combination of
     `candidate_poses` under `objective_fn`, returning the best and every
@@ -109,6 +113,19 @@ def grid_search_station_placement(
     `objectives.objective_c_direct_risk` for C -- optionally wrapped in
     `objectives.constrained_objective` for a hard per-characteristic
     uncertainty cap.
+
+    `prefilter_visibility=True` is a speed-up that changes no result: each
+    candidate's visibility row is computed once, and a combination that
+    already fails the cheap necessary conditions (a target nobody sees, a
+    station seeing too few targets, a station not tied to the anchor --
+    `objectives.visibility_deficit`) is counted as infeasible without being
+    sent to `evaluate_plan`, which would ray-cast every station-target pair
+    again just to reach the same verdict. Everything that passes goes through
+    `evaluate_plan` exactly as before (it still applies the full rank test),
+    so the evaluations, the best plan and `n_infeasible` are identical
+    (tests/test_station_track_scenario.py checks this). It matters when
+    nearly every combination is infeasible, as on a long part where only
+    stations on the end loops can bridge the two sides.
     """
     if n_stations > len(candidate_poses):
         raise ValueError(
@@ -118,7 +135,16 @@ def grid_search_station_placement(
     all_evaluations = []
     scored = []
     n_infeasible = 0
+    visibility_rows = (
+        station_visibility_matrix(scenario, candidate_poses)
+        if prefilter_visibility and scenario.visibility_enabled else None
+    )
     for combo_indices in itertools.combinations(range(len(candidate_poses)), n_stations):
+        if visibility_rows is not None:
+            rows = [0] + [i + 1 for i in combo_indices]
+            if visibility_deficit(visibility_rows[rows], 0) > 0.0:
+                n_infeasible += 1
+                continue
         station_poses = [candidate_poses[i] for i in combo_indices]
         evaluation = evaluate_plan(station_poses, scenario)
         if evaluation is None:
@@ -255,6 +281,7 @@ def run_station_search(
     bounds_m: Sequence[Tuple[float, float]],
     seed: Optional[int] = 0,
     seed_station_positions_m: Optional[Sequence[Sequence[np.ndarray]]] = None,
+    dims_per_station: int = 3,
     **differential_evolution_kwargs,
 ):
     """The one differential-evolution driver every station-placement
@@ -263,22 +290,28 @@ def run_station_search(
     experiment) -- so the optimiser is held constant across experiments and
     only the objective varies (CLAUDE.md §3).
 
-    `cost` maps a flat vector of `n_stations` (x, y, z) positions to a
-    number to minimise, and must be a picklable callable when `workers != 1`
-    is passed (see `_StationPlacementCost`). Searches `bounds_m` (one
-    (x, y, z) box, applied to every station). Seeding, parallel evaluation
-    and the infeasibility counter behave exactly as documented on
-    `genetic_algorithm_station_placement`.
+    `cost` maps a flat vector of `n_stations` stations to a number to
+    minimise, and must be a picklable callable when `workers != 1` is passed
+    (see `_StationPlacementCost`). Each station has `dims_per_station`
+    searched numbers -- 3 by default, an (x, y, z) position; 2 for a station
+    on a track, `(s_m, height_m)` (`TrackStationCost`) -- and `bounds_m` holds
+    that many (min, max) pairs, applied to every station. Seeding, parallel
+    evaluation and the infeasibility counter behave exactly as documented on
+    `genetic_algorithm_station_placement`; a seed row is `n_stations *
+    dims_per_station` numbers.
 
     Returns `(scipy OptimizeResult, n_infeasible_evals)`; the count is 0
     when `workers != 1`, where a live count cannot cross process
     boundaries.
     """
     bounds_m = list(bounds_m)
-    if len(bounds_m) != 3:
-        raise ValueError(f"bounds_m must have exactly 3 (min, max) pairs (x, y, z), got {len(bounds_m)}")
+    if len(bounds_m) != dims_per_station:
+        raise ValueError(
+            f"bounds_m must have exactly {dims_per_station} (min, max) pairs (one per searched number "
+            f"per station), got {len(bounds_m)}"
+        )
     full_bounds = bounds_m * n_stations
-    ndim = 3 * n_stations
+    ndim = dims_per_station * n_stations
 
     if seed_station_positions_m is not None:
         if "init" in differential_evolution_kwargs:
@@ -290,12 +323,12 @@ def run_station_search(
             if row.shape != (ndim,):
                 raise ValueError(
                     f"each seed_station_positions_m entry must contain exactly n_stations={n_stations} "
-                    f"(x, y, z) positions ({ndim} values total), got shape {row.shape}"
+                    f"stations of {dims_per_station} numbers ({ndim} values total), got shape {row.shape}"
                 )
         if len(seed_rows) > total_population:
             raise ValueError(
                 f"{len(seed_rows)} seed_station_positions_m entries given, but the population "
-                f"size (popsize * n_stations * 3 = {total_population}) can only hold that many -- "
+                f"size (popsize * n_stations * {dims_per_station} = {total_population}) can only hold that many -- "
                 "raise popsize or pass fewer seeds"
             )
         rng = np.random.default_rng(seed)
@@ -440,6 +473,131 @@ def genetic_algorithm_station_placement(
         None if best_evaluation is None else objective_fn(best_evaluation, scenario)
     )
     if best_value is not None and best_value >= INFEASIBLE_PENALTY:
+        best_evaluation, best_value = None, None
+
+    return GASearchResult(
+        best=best_evaluation,
+        best_objective_value=best_value,
+        n_function_evals=de_result.nfev,
+        n_generations=de_result.nit,
+        converged=bool(de_result.success),
+        n_infeasible_evals=infeasible_evals,
+    )
+
+
+# -- station track ---------------------------------------------------------
+@dataclass(frozen=True)
+class TrackStationCost:
+    """Picklable cost for a differential-evolution search over stations that
+    stand on a `geometry.station_track.StationTrack`: two searched numbers
+    per station, `(s_m, height_m)`, instead of an (x, y, z) position.
+
+    `s_m` is taken modulo the track's perimeter, so any value is a valid point
+    on the closed path. A station whose `s_m` falls in one of the track's
+    blocked intervals is infeasible: the whole plan scores `INFEASIBLE_
+    PENALTY`, exactly as an unobservable plan does (and `evaluate_plan`'s own
+    visibility disqualification still applies on top).
+
+    Orientation is `levelled` by default (a real tracker is levelled; yaw
+    cannot change any covariance, tests/test_station_track.py) or `look_at`.
+    A plain frozen dataclass with no closures, so `workers=-1` can pickle it.
+    """
+
+    scenario: PlanningScenario
+    objective_fn: ObjectiveFn
+    track: StationTrack
+    n_stations: int
+    aim_point_m: np.ndarray
+    orientation_mode: str = "levelled"
+
+    def station_poses(self, flat_params: np.ndarray) -> List[TrackPose]:
+        make_orientation = levelled_orientation if self.orientation_mode == "levelled" else look_at_orientation
+        poses = []
+        for s_raw, height in np.asarray(flat_params, dtype=float).reshape(self.n_stations, 2):
+            s = float(s_raw) % self.track.perimeter_m
+            x, y = self.track.position_xy_m(s)
+            position = np.array([x, y, float(height)])
+            poses.append(
+                TrackPose(
+                    position_m=position, orientation=make_orientation(position, self.aim_point_m),
+                    s_m=s, height_m=float(height), segment=self.track.segment(s),
+                )
+            )
+        return poses
+
+    def __call__(self, flat_params: np.ndarray) -> float:
+        poses = self.station_poses(flat_params)
+        if any(self.track.is_blocked(p.s_m) for p in poses):
+            return INFEASIBLE_PENALTY
+        if self.scenario.visibility_enabled:
+            # The same graded deficit `_StationPlacementCost` uses, but from one
+            # visibility computation: nearly every random layout on a long part
+            # is infeasible, so the ray casting is most of the cost.
+            deficit = visibility_deficit(station_visibility_matrix(self.scenario, poses), 0)
+            if deficit > 0.0:
+                return INFEASIBLE_PENALTY + deficit
+        evaluation = evaluate_plan(poses, self.scenario)
+        if evaluation is None:
+            return INFEASIBLE_PENALTY + plan_infeasibility_deficit(poses, self.scenario)
+        value = self.objective_fn(evaluation, self.scenario)
+        return value if value < float("inf") else INFEASIBLE_PENALTY
+
+
+def track_genetic_algorithm_station_placement(
+    scenario: PlanningScenario,
+    track: StationTrack,
+    n_stations: int,
+    objective_fn: ObjectiveFn,
+    height_bounds_m: Tuple[float, float] = (0.8, 3.0),
+    aim_point_m: Optional[np.ndarray] = None,
+    orientation_mode: str = "levelled",
+    seed: Optional[int] = 0,
+    seed_stations: Optional[Sequence[Sequence[Tuple[float, float]]]] = None,
+    **differential_evolution_kwargs,
+) -> GASearchResult:
+    """The GA over `(s_m, height_m)` per station on a `StationTrack`: the same
+    `run_station_search` driver, objective handling, `INFEASIBLE_PENALTY` and
+    seeding as `genetic_algorithm_station_placement`, with two searched numbers
+    per station instead of three.
+
+    `s_m` ranges over [0, perimeter_m] and `height_m` over `height_bounds_m`
+    (default 0.8-3.0 m, a placeholder range, TODO(source): the real stands).
+    Blocked intervals are infeasible, not excluded from the box.
+
+    **s = 0 is a boundary of the search box.** `differential_evolution` clips
+    its trial vectors at the bounds and has no notion that the path is
+    closed, so the track is *not* periodic as DE sees it: a good region that
+    straddles the s = 0 join (the -x end of the -y row) is reachable but sits
+    at both edges of the box, and mutations between a point at s ~ 0.5 and one
+    at s ~ perimeter - 0.5 make a long jump rather than a short one. The cost
+    itself does take s modulo the perimeter, so a station at s = perimeter
+    scores identically to s = 0; nothing is lost in the answer, only some
+    search efficiency near that one place. Choose the origin of s accordingly
+    when laying out a real cell.
+
+    `seed_stations` is a list of arrangements, each `[(s_m, height_m), ...]`
+    of exactly `n_stations` entries (e.g. another objective's winning plan,
+    from `[(p.s_m, p.height_m) for p in result.best.station_poses]`).
+    `aim_point_m` None aims at the scene's target centroid; it changes
+    nothing when levelled (yaw invariance) and sets the tilt for "look_at".
+    """
+    if aim_point_m is None:
+        aim_point_m = scenario.target_points_m.mean(axis=0)
+    aim_point_m = np.asarray(aim_point_m, dtype=float)
+    if orientation_mode not in ("levelled", "look_at"):
+        raise ValueError(f"orientation_mode must be 'levelled' or 'look_at', got {orientation_mode!r}")
+
+    cost = TrackStationCost(scenario, objective_fn, track, n_stations, aim_point_m, orientation_mode)
+    bounds = [(0.0, float(track.perimeter_m)), (float(height_bounds_m[0]), float(height_bounds_m[1]))]
+    de_result, infeasible_evals = run_station_search(
+        cost, n_stations, bounds, seed, seed_stations, dims_per_station=2, **differential_evolution_kwargs
+    )
+
+    best_evaluation = evaluate_plan(cost.station_poses(de_result.x), scenario)
+    best_value = None if best_evaluation is None else objective_fn(best_evaluation, scenario)
+    if any(track.is_blocked(p.s_m) for p in cost.station_poses(de_result.x)) or (
+        best_value is not None and best_value >= INFEASIBLE_PENALTY
+    ):
         best_evaluation, best_value = None, None
 
     return GASearchResult(

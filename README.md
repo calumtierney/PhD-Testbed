@@ -164,6 +164,15 @@ complete:
   with `python -m viz.make_wingbox_figures --stage experiment|seeds|surrogate|figures`
   (about 2.5 hours in all; figures `results/panel10*.png`).
 
+- **the station-track experiment** (`docs/station_track_experiment.md`) —
+  the headline comparison on a 15 × 2.5 m part in a factory-style cell: trackers
+  stand on a stadium-shaped *station track* (`geometry.station_track`) round the part,
+  searched by a GA over `(s_m, height_m)`. On a placeholder cell, every feasible plan
+  needs ≥3 added stations, all on the end loops; A1, B and C agree and A0 delivers
+  11-19% more risk; with the anchor at the other tip B diverges from C by 26%.
+  Run with `python -m viz.run_station_track_experiment` (about 2 h) then
+  `python -m viz.make_station_track_experiment_figures` (`results/panel11*.png`).
+
 **Visualization** (`src/visualization`, not one of the six steps — see
 its module docstring): matplotlib plotting for scenes, per-point error
 ellipsoids, visibility results and network-solve outcomes, so a
