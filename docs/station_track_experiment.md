@@ -222,6 +222,49 @@ differences between A1, B and C in the first and last rows (≤0.01%) are the GA
 noise, not a finding: read the table as "A0 needs more stations (or cannot get
 there) and A1/B/C agree".
 
+### Iso-risk extended to 5 and 6 added stations
+
+Same GA, settings, seed and seeded-re-run rule, all four objectives, at 5 and 6
+added stations (`python -m viz.run_station_track_iso_risk`; 46 min and 92 min
+on 4 cores; the unseeded GA of B and C at 5 stations, and of A1, B and C at 6,
+was beaten under its own metric by another winner and re-run seeded, recorded
+in the JSON). Best total risk (expected wrong decisions over six
+characteristics), anchor at the −x tip:
+
+| Added stations | A0 | A1 | B | C | A0 above the best |
+|---|---|---|---|---|---|
+| 3 | 1.9041 | 1.7106 | 1.7109 | 1.7105 | +11.3% |
+| 4 | 1.2475 | 1.0511 | 1.0513 | 1.0511 | +18.7% |
+| 5 | 1.1687 | 1.0131 | 1.0107 | 1.0098 | +15.7% |
+| 6 | 1.0200 | 0.9781 | 0.9785 | 0.9767 | +4.4% |
+
+Smallest number of added stations whose best plan reaches a target risk
+(stations saved by C over A0 in the last column):
+
+| Target risk | A0 | A1 | B | C | C saves |
+|---|---|---|---|---|---|
+| ≤ 1.2623 | 4 | 4 | 4 | 4 | 0 |
+| ≤ 1.2210 | 5 | 4 | 4 | 4 | 1 |
+| ≤ 1.1562 | 6 | 4 | 4 | 4 | 2 |
+| ≤ 1.0745 | 6 | 4 | 4 | 4 | 2 |
+| ≤ 1.0511 | 6 | 4 | 5 | 4 | 2 (B's "5" is 0.02% noise) |
+| ≤ 1.0098 | none ≤ 6 | 6 | 6 | 5 | ≥1 |
+| ≤ 0.9768 | none ≤ 6 | none | none | 6 | ≥0 |
+
+* **Against current practice (A0) the goal-oriented plans save one to two
+  stations** across the useful risk range (4 against 5-6 stations: 20-33%
+  fewer), and A0 sits 4-19% above the best at every count.
+* **The risk curve flattens hard**: 1.71 → 1.05 → 1.01 → 0.98. Beyond four added
+  stations another station buys 4% then 3% of the risk. The extra stations
+  A0 needs are therefore spent where the return is already small, which is why
+  the gap in risk closes to 4% at six stations.
+* **A1, B and C stay within 0.4% of each other at every count**, the size of the
+  GA's own noise (at 5-6 stations the GA needed re-seeding for three of four
+  objectives, the more dimensions the less reliable a single run). Their
+  ordering at 5 and 6 (C < B < A1, ≤0.3%) is not a finding.
+* Station count is a proxy for measurement time, not a measurement of it (it
+  ignores moves between stations, which the track makes cheap, and shot counts).
+
 ### Anchor sensitivity (anchor at the +x tip)
 
 Three added stations, same search, anchor moved to the opposite tip (the part
