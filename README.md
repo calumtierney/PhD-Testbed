@@ -173,6 +173,14 @@ complete:
   Run with `python -m viz.run_station_track_experiment` (about 2 h) then
   `python -m viz.make_station_track_experiment_figures` (`results/panel11*.png`).
 
+- **the conditions sweep** (`docs/conditions_sweep.md`) — on the ring scene,
+  one condition moved at a time (tolerance, capability gap, cluster separation,
+  systematic floor), exhaustive grid: at a fixed station count A1 is never more than
+  7.8% above C in risk and B within 0.8%; the station track's variable-count
+  comparison (`docs/station_track_experiment.md` §6b) finds no station saved against
+  A1 at ±25-250 µm. Risk-based planning's case rests on what to measure, the
+  stopping rule and pricing a plan, not on reweighting a fixed station count.
+
 **Visualization** (`src/visualization`, not one of the six steps — see
 its module docstring): matplotlib plotting for scenes, per-point error
 ellipsoids, visibility results and network-solve outcomes, so a

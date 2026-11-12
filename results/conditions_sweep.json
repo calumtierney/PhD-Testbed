@@ -1,0 +1,3865 @@
+{
+ "baseline": {
+  "tolerance_um": 50,
+  "marginal_mean_um": 38,
+  "separation_m": 2.0,
+  "systematic_um": 0
+ },
+ "sweeps": {
+  "tolerance_um": [
+   25,
+   35,
+   50,
+   75,
+   100,
+   150,
+   250
+  ],
+  "marginal_mean_um": [
+   20,
+   30,
+   35,
+   38,
+   41,
+   44
+  ],
+  "separation_m": [
+   0.25,
+   0.5,
+   1.0,
+   2.0,
+   3.0
+  ],
+  "systematic_um": [
+   0,
+   2,
+   5,
+   10,
+   20
+  ]
+ },
+ "station_counts": [
+  2,
+  3
+ ],
+ "points": [
+  {
+   "axis": "tolerance_um",
+   "value": 25,
+   "n_stations": 2,
+   "seconds": 33.52665877342224,
+   "n_combinations": 276,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.6472264045864948,
+     "sum_u_um": 44.319978105296805,
+     "u_um": {
+      "cluster1_profile_0": 7.319851917032512,
+      "cluster1_profile_1": 8.114290085087331,
+      "cluster1_profile_2": 6.725847050528533,
+      "cluster2_profile_0": 7.319851917032531,
+      "cluster2_profile_1": 8.114290085087356,
+      "cluster2_profile_2": 6.725847050528538
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "A1": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.6472264045864948,
+     "sum_u_um": 44.319978105296805,
+     "u_um": {
+      "cluster1_profile_0": 7.319851917032512,
+      "cluster1_profile_1": 8.114290085087331,
+      "cluster1_profile_2": 6.725847050528533,
+      "cluster2_profile_0": 7.319851917032531,
+      "cluster2_profile_1": 8.114290085087356,
+      "cluster2_profile_2": 6.725847050528538
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "B": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.6472264045864948,
+     "sum_u_um": 44.319978105296805,
+     "u_um": {
+      "cluster1_profile_0": 7.319851917032512,
+      "cluster1_profile_1": 8.114290085087331,
+      "cluster1_profile_2": 6.725847050528533,
+      "cluster2_profile_0": 7.319851917032531,
+      "cluster2_profile_1": 8.114290085087356,
+      "cluster2_profile_2": 6.725847050528538
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.6472264045864948,
+     "sum_u_um": 44.319978105296805,
+     "u_um": {
+      "cluster1_profile_0": 7.319851917032512,
+      "cluster1_profile_1": 8.114290085087331,
+      "cluster1_profile_2": 6.725847050528533,
+      "cluster2_profile_0": 7.319851917032531,
+      "cluster2_profile_1": 8.114290085087356,
+      "cluster2_profile_2": 6.725847050528538
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "tolerance_um",
+   "value": 75,
+   "n_stations": 2,
+   "seconds": 35.1849582195282,
+   "n_combinations": 276,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.05733855790100079,
+     "sum_u_um": 44.319978105296805,
+     "u_um": {
+      "cluster1_profile_0": 7.319851917032512,
+      "cluster1_profile_1": 8.114290085087331,
+      "cluster1_profile_2": 6.725847050528533,
+      "cluster2_profile_0": 7.319851917032531,
+      "cluster2_profile_1": 8.114290085087356,
+      "cluster2_profile_2": 6.725847050528538
+     },
+     "percent_above_C": 4.907285351154633,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.05733855790100079,
+     "sum_u_um": 44.319978105296805,
+     "u_um": {
+      "cluster1_profile_0": 7.319851917032512,
+      "cluster1_profile_1": 8.114290085087331,
+      "cluster1_profile_2": 6.725847050528533,
+      "cluster2_profile_0": 7.319851917032531,
+      "cluster2_profile_1": 8.114290085087356,
+      "cluster2_profile_2": 6.725847050528538
+     },
+     "percent_above_C": 4.907285351154633,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      13,
+      21
+     ],
+     "risk": 0.054656411810745334,
+     "sum_u_um": 46.59678929167969,
+     "u_um": {
+      "cluster1_profile_0": 7.828380418984307,
+      "cluster1_profile_1": 9.156836281823471,
+      "cluster1_profile_2": 7.7355602855839445,
+      "cluster2_profile_0": 7.155721079472677,
+      "cluster2_profile_1": 8.02947713846501,
+      "cluster2_profile_2": 6.690814087350281
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      13,
+      21
+     ],
+     "risk": 0.054656411810745334,
+     "sum_u_um": 46.59678929167969,
+     "u_um": {
+      "cluster1_profile_0": 7.828380418984307,
+      "cluster1_profile_1": 9.156836281823471,
+      "cluster1_profile_2": 7.7355602855839445,
+      "cluster2_profile_0": 7.155721079472677,
+      "cluster2_profile_1": 8.02947713846501,
+      "cluster2_profile_2": 6.690814087350281
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "tolerance_um",
+   "value": 50,
+   "n_stations": 2,
+   "seconds": 35.26118302345276,
+   "n_combinations": 276,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.19898004928089486,
+     "sum_u_um": 44.319978105296805,
+     "u_um": {
+      "cluster1_profile_0": 7.319851917032512,
+      "cluster1_profile_1": 8.114290085087331,
+      "cluster1_profile_2": 6.725847050528533,
+      "cluster2_profile_0": 7.319851917032531,
+      "cluster2_profile_1": 8.114290085087356,
+      "cluster2_profile_2": 6.725847050528538
+     },
+     "percent_above_C": 3.2696176864831505,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.19898004928089486,
+     "sum_u_um": 44.319978105296805,
+     "u_um": {
+      "cluster1_profile_0": 7.319851917032512,
+      "cluster1_profile_1": 8.114290085087331,
+      "cluster1_profile_2": 6.725847050528533,
+      "cluster2_profile_0": 7.319851917032531,
+      "cluster2_profile_1": 8.114290085087356,
+      "cluster2_profile_2": 6.725847050528538
+     },
+     "percent_above_C": 3.2696176864831505,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      13,
+      21
+     ],
+     "risk": 0.19268014517588278,
+     "sum_u_um": 46.59678929167969,
+     "u_um": {
+      "cluster1_profile_0": 7.828380418984307,
+      "cluster1_profile_1": 9.156836281823471,
+      "cluster1_profile_2": 7.7355602855839445,
+      "cluster2_profile_0": 7.155721079472677,
+      "cluster2_profile_1": 8.02947713846501,
+      "cluster2_profile_2": 6.690814087350281
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      13,
+      21
+     ],
+     "risk": 0.19268014517588278,
+     "sum_u_um": 46.59678929167969,
+     "u_um": {
+      "cluster1_profile_0": 7.828380418984307,
+      "cluster1_profile_1": 9.156836281823471,
+      "cluster1_profile_2": 7.7355602855839445,
+      "cluster2_profile_0": 7.155721079472677,
+      "cluster2_profile_1": 8.02947713846501,
+      "cluster2_profile_2": 6.690814087350281
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "tolerance_um",
+   "value": 35,
+   "n_stations": 2,
+   "seconds": 35.770057916641235,
+   "n_combinations": 276,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.410450200645715,
+     "sum_u_um": 44.319978105296805,
+     "u_um": {
+      "cluster1_profile_0": 7.319851917032512,
+      "cluster1_profile_1": 8.114290085087331,
+      "cluster1_profile_2": 6.725847050528533,
+      "cluster2_profile_0": 7.319851917032531,
+      "cluster2_profile_1": 8.114290085087356,
+      "cluster2_profile_2": 6.725847050528538
+     },
+     "percent_above_C": 1.814125143540224,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.410450200645715,
+     "sum_u_um": 44.319978105296805,
+     "u_um": {
+      "cluster1_profile_0": 7.319851917032512,
+      "cluster1_profile_1": 8.114290085087331,
+      "cluster1_profile_2": 6.725847050528533,
+      "cluster2_profile_0": 7.319851917032531,
+      "cluster2_profile_1": 8.114290085087356,
+      "cluster2_profile_2": 6.725847050528538
+     },
+     "percent_above_C": 1.814125143540224,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      13,
+      21
+     ],
+     "risk": 0.4031367946903748,
+     "sum_u_um": 46.59678929167969,
+     "u_um": {
+      "cluster1_profile_0": 7.828380418984307,
+      "cluster1_profile_1": 9.156836281823471,
+      "cluster1_profile_2": 7.7355602855839445,
+      "cluster2_profile_0": 7.155721079472677,
+      "cluster2_profile_1": 8.02947713846501,
+      "cluster2_profile_2": 6.690814087350281
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      13,
+      21
+     ],
+     "risk": 0.4031367946903748,
+     "sum_u_um": 46.59678929167969,
+     "u_um": {
+      "cluster1_profile_0": 7.828380418984307,
+      "cluster1_profile_1": 9.156836281823471,
+      "cluster1_profile_2": 7.7355602855839445,
+      "cluster2_profile_0": 7.155721079472677,
+      "cluster2_profile_1": 8.02947713846501,
+      "cluster2_profile_2": 6.690814087350281
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "marginal_mean_um",
+   "value": 20,
+   "n_stations": 2,
+   "seconds": 35.615097522735596,
+   "n_combinations": 276,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.0003869336253773448,
+     "sum_u_um": 44.319978105296805,
+     "u_um": {
+      "cluster1_profile_0": 7.319851917032512,
+      "cluster1_profile_1": 8.114290085087331,
+      "cluster1_profile_2": 6.725847050528533,
+      "cluster2_profile_0": 7.319851917032531,
+      "cluster2_profile_1": 8.114290085087356,
+      "cluster2_profile_2": 6.725847050528538
+     },
+     "percent_above_C": 0.4754996551298518,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.0003869336253773448,
+     "sum_u_um": 44.319978105296805,
+     "u_um": {
+      "cluster1_profile_0": 7.319851917032512,
+      "cluster1_profile_1": 8.114290085087331,
+      "cluster1_profile_2": 6.725847050528533,
+      "cluster2_profile_0": 7.319851917032531,
+      "cluster2_profile_1": 8.114290085087356,
+      "cluster2_profile_2": 6.725847050528538
+     },
+     "percent_above_C": 0.4754996551298518,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      13,
+      21
+     ],
+     "risk": 0.0003863861452065003,
+     "sum_u_um": 46.59678929167969,
+     "u_um": {
+      "cluster1_profile_0": 7.828380418984307,
+      "cluster1_profile_1": 9.156836281823471,
+      "cluster1_profile_2": 7.7355602855839445,
+      "cluster2_profile_0": 7.155721079472677,
+      "cluster2_profile_1": 8.02947713846501,
+      "cluster2_profile_2": 6.690814087350281
+     },
+     "percent_above_C": 0.333334849310174,
+     "same_stations_as_C": false
+    },
+    "C": {
+     "candidates": [
+      11,
+      21
+     ],
+     "risk": 0.00038510246448681345,
+     "sum_u_um": 45.79667343487734,
+     "u_um": {
+      "cluster1_profile_0": 7.430340807895779,
+      "cluster1_profile_1": 9.001072674710288,
+      "cluster1_profile_2": 7.409322774596917,
+      "cluster2_profile_0": 7.2109566957393,
+      "cluster2_profile_1": 8.05668906542415,
+      "cluster2_profile_2": 6.688291416510908
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "tolerance_um",
+   "value": 150,
+   "n_stations": 2,
+   "seconds": 36.584542751312256,
+   "n_combinations": 276,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.0030998022628875802,
+     "sum_u_um": 44.319978105296805,
+     "u_um": {
+      "cluster1_profile_0": 7.319851917032512,
+      "cluster1_profile_1": 8.114290085087331,
+      "cluster1_profile_2": 6.725847050528533,
+      "cluster2_profile_0": 7.319851917032531,
+      "cluster2_profile_1": 8.114290085087356,
+      "cluster2_profile_2": 6.725847050528538
+     },
+     "percent_above_C": 5.666559815202343,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.0030998022628875802,
+     "sum_u_um": 44.319978105296805,
+     "u_um": {
+      "cluster1_profile_0": 7.319851917032512,
+      "cluster1_profile_1": 8.114290085087331,
+      "cluster1_profile_2": 6.725847050528533,
+      "cluster2_profile_0": 7.319851917032531,
+      "cluster2_profile_1": 8.114290085087356,
+      "cluster2_profile_2": 6.725847050528538
+     },
+     "percent_above_C": 5.666559815202343,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      13,
+      21
+     ],
+     "risk": 0.0029335697767664134,
+     "sum_u_um": 46.59678929167969,
+     "u_um": {
+      "cluster1_profile_0": 7.828380418984307,
+      "cluster1_profile_1": 9.156836281823471,
+      "cluster1_profile_2": 7.7355602855839445,
+      "cluster2_profile_0": 7.155721079472677,
+      "cluster2_profile_1": 8.02947713846501,
+      "cluster2_profile_2": 6.690814087350281
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      13,
+      21
+     ],
+     "risk": 0.0029335697767664134,
+     "sum_u_um": 46.59678929167969,
+     "u_um": {
+      "cluster1_profile_0": 7.828380418984307,
+      "cluster1_profile_1": 9.156836281823471,
+      "cluster1_profile_2": 7.7355602855839445,
+      "cluster2_profile_0": 7.155721079472677,
+      "cluster2_profile_1": 8.02947713846501,
+      "cluster2_profile_2": 6.690814087350281
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "tolerance_um",
+   "value": 100,
+   "n_stations": 2,
+   "seconds": 38.26612854003906,
+   "n_combinations": 276,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.018170679367940486,
+     "sum_u_um": 44.319978105296805,
+     "u_um": {
+      "cluster1_profile_0": 7.319851917032512,
+      "cluster1_profile_1": 8.114290085087331,
+      "cluster1_profile_2": 6.725847050528533,
+      "cluster2_profile_0": 7.319851917032531,
+      "cluster2_profile_1": 8.114290085087356,
+      "cluster2_profile_2": 6.725847050528538
+     },
+     "percent_above_C": 5.751842776597527,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.018170679367940486,
+     "sum_u_um": 44.319978105296805,
+     "u_um": {
+      "cluster1_profile_0": 7.319851917032512,
+      "cluster1_profile_1": 8.114290085087331,
+      "cluster1_profile_2": 6.725847050528533,
+      "cluster2_profile_0": 7.319851917032531,
+      "cluster2_profile_1": 8.114290085087356,
+      "cluster2_profile_2": 6.725847050528538
+     },
+     "percent_above_C": 5.751842776597527,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      13,
+      21
+     ],
+     "risk": 0.017182376108874374,
+     "sum_u_um": 46.59678929167969,
+     "u_um": {
+      "cluster1_profile_0": 7.828380418984307,
+      "cluster1_profile_1": 9.156836281823471,
+      "cluster1_profile_2": 7.7355602855839445,
+      "cluster2_profile_0": 7.155721079472677,
+      "cluster2_profile_1": 8.02947713846501,
+      "cluster2_profile_2": 6.690814087350281
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      13,
+      21
+     ],
+     "risk": 0.017182376108874374,
+     "sum_u_um": 46.59678929167969,
+     "u_um": {
+      "cluster1_profile_0": 7.828380418984307,
+      "cluster1_profile_1": 9.156836281823471,
+      "cluster1_profile_2": 7.7355602855839445,
+      "cluster2_profile_0": 7.155721079472677,
+      "cluster2_profile_1": 8.02947713846501,
+      "cluster2_profile_2": 6.690814087350281
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "tolerance_um",
+   "value": 250,
+   "n_stations": 2,
+   "seconds": 43.123892068862915,
+   "n_combinations": 276,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.00048044410317737377,
+     "sum_u_um": 44.319978105296805,
+     "u_um": {
+      "cluster1_profile_0": 7.319851917032512,
+      "cluster1_profile_1": 8.114290085087331,
+      "cluster1_profile_2": 6.725847050528533,
+      "cluster2_profile_0": 7.319851917032531,
+      "cluster2_profile_1": 8.114290085087356,
+      "cluster2_profile_2": 6.725847050528538
+     },
+     "percent_above_C": 3.8864761023348127,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.00048044410317737377,
+     "sum_u_um": 44.319978105296805,
+     "u_um": {
+      "cluster1_profile_0": 7.319851917032512,
+      "cluster1_profile_1": 8.114290085087331,
+      "cluster1_profile_2": 6.725847050528533,
+      "cluster2_profile_0": 7.319851917032531,
+      "cluster2_profile_1": 8.114290085087356,
+      "cluster2_profile_2": 6.725847050528538
+     },
+     "percent_above_C": 3.8864761023348127,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      13,
+      21
+     ],
+     "risk": 0.0004624703052821868,
+     "sum_u_um": 46.59678929167969,
+     "u_um": {
+      "cluster1_profile_0": 7.828380418984307,
+      "cluster1_profile_1": 9.156836281823471,
+      "cluster1_profile_2": 7.7355602855839445,
+      "cluster2_profile_0": 7.155721079472677,
+      "cluster2_profile_1": 8.02947713846501,
+      "cluster2_profile_2": 6.690814087350281
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      13,
+      21
+     ],
+     "risk": 0.0004624703052821868,
+     "sum_u_um": 46.59678929167969,
+     "u_um": {
+      "cluster1_profile_0": 7.828380418984307,
+      "cluster1_profile_1": 9.156836281823471,
+      "cluster1_profile_2": 7.7355602855839445,
+      "cluster2_profile_0": 7.155721079472677,
+      "cluster2_profile_1": 8.02947713846501,
+      "cluster2_profile_2": 6.690814087350281
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "marginal_mean_um",
+   "value": 30,
+   "n_stations": 2,
+   "seconds": 36.49639177322388,
+   "n_combinations": 276,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.019459167479411735,
+     "sum_u_um": 44.319978105296805,
+     "u_um": {
+      "cluster1_profile_0": 7.319851917032512,
+      "cluster1_profile_1": 8.114290085087331,
+      "cluster1_profile_2": 6.725847050528533,
+      "cluster2_profile_0": 7.319851917032531,
+      "cluster2_profile_1": 8.114290085087356,
+      "cluster2_profile_2": 6.725847050528538
+     },
+     "percent_above_C": 7.756762847329446,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.019459167479411735,
+     "sum_u_um": 44.319978105296805,
+     "u_um": {
+      "cluster1_profile_0": 7.319851917032512,
+      "cluster1_profile_1": 8.114290085087331,
+      "cluster1_profile_2": 6.725847050528533,
+      "cluster2_profile_0": 7.319851917032531,
+      "cluster2_profile_1": 8.114290085087356,
+      "cluster2_profile_2": 6.725847050528538
+     },
+     "percent_above_C": 7.756762847329446,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      13,
+      21
+     ],
+     "risk": 0.018058418762061018,
+     "sum_u_um": 46.59678929167969,
+     "u_um": {
+      "cluster1_profile_0": 7.828380418984307,
+      "cluster1_profile_1": 9.156836281823471,
+      "cluster1_profile_2": 7.7355602855839445,
+      "cluster2_profile_0": 7.155721079472677,
+      "cluster2_profile_1": 8.02947713846501,
+      "cluster2_profile_2": 6.690814087350281
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      13,
+      21
+     ],
+     "risk": 0.018058418762061018,
+     "sum_u_um": 46.59678929167969,
+     "u_um": {
+      "cluster1_profile_0": 7.828380418984307,
+      "cluster1_profile_1": 9.156836281823471,
+      "cluster1_profile_2": 7.7355602855839445,
+      "cluster2_profile_0": 7.155721079472677,
+      "cluster2_profile_1": 8.02947713846501,
+      "cluster2_profile_2": 6.690814087350281
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "marginal_mean_um",
+   "value": 35,
+   "n_stations": 2,
+   "seconds": 36.198007106781006,
+   "n_combinations": 276,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.09130258527668811,
+     "sum_u_um": 44.319978105296805,
+     "u_um": {
+      "cluster1_profile_0": 7.319851917032512,
+      "cluster1_profile_1": 8.114290085087331,
+      "cluster1_profile_2": 6.725847050528533,
+      "cluster2_profile_0": 7.319851917032531,
+      "cluster2_profile_1": 8.114290085087356,
+      "cluster2_profile_2": 6.725847050528538
+     },
+     "percent_above_C": 4.777028392516591,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.09130258527668811,
+     "sum_u_um": 44.319978105296805,
+     "u_um": {
+      "cluster1_profile_0": 7.319851917032512,
+      "cluster1_profile_1": 8.114290085087331,
+      "cluster1_profile_2": 6.725847050528533,
+      "cluster2_profile_0": 7.319851917032531,
+      "cluster2_profile_1": 8.114290085087356,
+      "cluster2_profile_2": 6.725847050528538
+     },
+     "percent_above_C": 4.777028392516591,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      13,
+      21
+     ],
+     "risk": 0.08713988808181274,
+     "sum_u_um": 46.59678929167969,
+     "u_um": {
+      "cluster1_profile_0": 7.828380418984307,
+      "cluster1_profile_1": 9.156836281823471,
+      "cluster1_profile_2": 7.7355602855839445,
+      "cluster2_profile_0": 7.155721079472677,
+      "cluster2_profile_1": 8.02947713846501,
+      "cluster2_profile_2": 6.690814087350281
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      13,
+      21
+     ],
+     "risk": 0.08713988808181274,
+     "sum_u_um": 46.59678929167969,
+     "u_um": {
+      "cluster1_profile_0": 7.828380418984307,
+      "cluster1_profile_1": 9.156836281823471,
+      "cluster1_profile_2": 7.7355602855839445,
+      "cluster2_profile_0": 7.155721079472677,
+      "cluster2_profile_1": 8.02947713846501,
+      "cluster2_profile_2": 6.690814087350281
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "marginal_mean_um",
+   "value": 38,
+   "n_stations": 2,
+   "seconds": 37.08244729042053,
+   "n_combinations": 276,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.19898004928089436,
+     "sum_u_um": 44.319978105296805,
+     "u_um": {
+      "cluster1_profile_0": 7.319851917032512,
+      "cluster1_profile_1": 8.114290085087331,
+      "cluster1_profile_2": 6.725847050528533,
+      "cluster2_profile_0": 7.319851917032531,
+      "cluster2_profile_1": 8.114290085087356,
+      "cluster2_profile_2": 6.725847050528538
+     },
+     "percent_above_C": 3.2696176864831727,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.19898004928089436,
+     "sum_u_um": 44.319978105296805,
+     "u_um": {
+      "cluster1_profile_0": 7.319851917032512,
+      "cluster1_profile_1": 8.114290085087331,
+      "cluster1_profile_2": 6.725847050528533,
+      "cluster2_profile_0": 7.319851917032531,
+      "cluster2_profile_1": 8.114290085087356,
+      "cluster2_profile_2": 6.725847050528538
+     },
+     "percent_above_C": 3.2696176864831727,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      13,
+      21
+     ],
+     "risk": 0.19268014517588225,
+     "sum_u_um": 46.59678929167969,
+     "u_um": {
+      "cluster1_profile_0": 7.828380418984307,
+      "cluster1_profile_1": 9.156836281823471,
+      "cluster1_profile_2": 7.7355602855839445,
+      "cluster2_profile_0": 7.155721079472677,
+      "cluster2_profile_1": 8.02947713846501,
+      "cluster2_profile_2": 6.690814087350281
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      13,
+      21
+     ],
+     "risk": 0.19268014517588225,
+     "sum_u_um": 46.59678929167969,
+     "u_um": {
+      "cluster1_profile_0": 7.828380418984307,
+      "cluster1_profile_1": 9.156836281823471,
+      "cluster1_profile_2": 7.7355602855839445,
+      "cluster2_profile_0": 7.155721079472677,
+      "cluster2_profile_1": 8.02947713846501,
+      "cluster2_profile_2": 6.690814087350281
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "marginal_mean_um",
+   "value": 41,
+   "n_stations": 2,
+   "seconds": 39.66013026237488,
+   "n_combinations": 276,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.3872170895731559,
+     "sum_u_um": 44.319978105296805,
+     "u_um": {
+      "cluster1_profile_0": 7.319851917032512,
+      "cluster1_profile_1": 8.114290085087331,
+      "cluster1_profile_2": 6.725847050528533,
+      "cluster2_profile_0": 7.319851917032531,
+      "cluster2_profile_1": 8.114290085087356,
+      "cluster2_profile_2": 6.725847050528538
+     },
+     "percent_above_C": 2.048457049009045,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.3872170895731559,
+     "sum_u_um": 44.319978105296805,
+     "u_um": {
+      "cluster1_profile_0": 7.319851917032512,
+      "cluster1_profile_1": 8.114290085087331,
+      "cluster1_profile_2": 6.725847050528533,
+      "cluster2_profile_0": 7.319851917032531,
+      "cluster2_profile_1": 8.114290085087356,
+      "cluster2_profile_2": 6.725847050528538
+     },
+     "percent_above_C": 2.048457049009045,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      13,
+      21
+     ],
+     "risk": 0.37944433533884186,
+     "sum_u_um": 46.59678929167969,
+     "u_um": {
+      "cluster1_profile_0": 7.828380418984307,
+      "cluster1_profile_1": 9.156836281823471,
+      "cluster1_profile_2": 7.7355602855839445,
+      "cluster2_profile_0": 7.155721079472677,
+      "cluster2_profile_1": 8.02947713846501,
+      "cluster2_profile_2": 6.690814087350281
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      13,
+      21
+     ],
+     "risk": 0.37944433533884186,
+     "sum_u_um": 46.59678929167969,
+     "u_um": {
+      "cluster1_profile_0": 7.828380418984307,
+      "cluster1_profile_1": 9.156836281823471,
+      "cluster1_profile_2": 7.7355602855839445,
+      "cluster2_profile_0": 7.155721079472677,
+      "cluster2_profile_1": 8.02947713846501,
+      "cluster2_profile_2": 6.690814087350281
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "separation_m",
+   "value": 0.25,
+   "n_stations": 2,
+   "seconds": 36.579734563827515,
+   "n_combinations": 276,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.12014276177495416,
+     "sum_u_um": 36.19605746869605,
+     "u_um": {
+      "cluster1_profile_0": 5.436996651196587,
+      "cluster1_profile_1": 7.815578784286506,
+      "cluster1_profile_2": 4.845453298864945,
+      "cluster2_profile_0": 5.436996651196605,
+      "cluster2_profile_1": 7.815578784286439,
+      "cluster2_profile_2": 4.845453298864961
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "A1": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.12014276177495416,
+     "sum_u_um": 36.19605746869605,
+     "u_um": {
+      "cluster1_profile_0": 5.436996651196587,
+      "cluster1_profile_1": 7.815578784286506,
+      "cluster1_profile_2": 4.845453298864945,
+      "cluster2_profile_0": 5.436996651196605,
+      "cluster2_profile_1": 7.815578784286439,
+      "cluster2_profile_2": 4.845453298864961
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "B": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.12014276177495416,
+     "sum_u_um": 36.19605746869605,
+     "u_um": {
+      "cluster1_profile_0": 5.436996651196587,
+      "cluster1_profile_1": 7.815578784286506,
+      "cluster1_profile_2": 4.845453298864945,
+      "cluster2_profile_0": 5.436996651196605,
+      "cluster2_profile_1": 7.815578784286439,
+      "cluster2_profile_2": 4.845453298864961
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.12014276177495416,
+     "sum_u_um": 36.19605746869605,
+     "u_um": {
+      "cluster1_profile_0": 5.436996651196587,
+      "cluster1_profile_1": 7.815578784286506,
+      "cluster1_profile_2": 4.845453298864945,
+      "cluster2_profile_0": 5.436996651196605,
+      "cluster2_profile_1": 7.815578784286439,
+      "cluster2_profile_2": 4.845453298864961
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "separation_m",
+   "value": 0.5,
+   "n_stations": 2,
+   "seconds": 36.598543882369995,
+   "n_combinations": 276,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.12924945303505192,
+     "sum_u_um": 37.381669274873374,
+     "u_um": {
+      "cluster1_profile_0": 5.940162461207659,
+      "cluster1_profile_1": 7.674211728661538,
+      "cluster1_profile_2": 5.076460447567785,
+      "cluster2_profile_0": 5.94016246120741,
+      "cluster2_profile_1": 7.674211728661541,
+      "cluster2_profile_2": 5.076460447567441
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "A1": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.12924945303505192,
+     "sum_u_um": 37.381669274873374,
+     "u_um": {
+      "cluster1_profile_0": 5.940162461207659,
+      "cluster1_profile_1": 7.674211728661538,
+      "cluster1_profile_2": 5.076460447567785,
+      "cluster2_profile_0": 5.94016246120741,
+      "cluster2_profile_1": 7.674211728661541,
+      "cluster2_profile_2": 5.076460447567441
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "B": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.12924945303505192,
+     "sum_u_um": 37.381669274873374,
+     "u_um": {
+      "cluster1_profile_0": 5.940162461207659,
+      "cluster1_profile_1": 7.674211728661538,
+      "cluster1_profile_2": 5.076460447567785,
+      "cluster2_profile_0": 5.94016246120741,
+      "cluster2_profile_1": 7.674211728661541,
+      "cluster2_profile_2": 5.076460447567441
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.12924945303505192,
+     "sum_u_um": 37.381669274873374,
+     "u_um": {
+      "cluster1_profile_0": 5.940162461207659,
+      "cluster1_profile_1": 7.674211728661538,
+      "cluster1_profile_2": 5.076460447567785,
+      "cluster2_profile_0": 5.94016246120741,
+      "cluster2_profile_1": 7.674211728661541,
+      "cluster2_profile_2": 5.076460447567441
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "marginal_mean_um",
+   "value": 44,
+   "n_stations": 2,
+   "seconds": 39.89108109474182,
+   "n_combinations": 276,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.6675566050983643,
+     "sum_u_um": 44.319978105296805,
+     "u_um": {
+      "cluster1_profile_0": 7.319851917032512,
+      "cluster1_profile_1": 8.114290085087331,
+      "cluster1_profile_2": 6.725847050528533,
+      "cluster2_profile_0": 7.319851917032531,
+      "cluster2_profile_1": 8.114290085087356,
+      "cluster2_profile_2": 6.725847050528538
+     },
+     "percent_above_C": 1.1345816292960276,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.6675566050983643,
+     "sum_u_um": 44.319978105296805,
+     "u_um": {
+      "cluster1_profile_0": 7.319851917032512,
+      "cluster1_profile_1": 8.114290085087331,
+      "cluster1_profile_2": 6.725847050528533,
+      "cluster2_profile_0": 7.319851917032531,
+      "cluster2_profile_1": 8.114290085087356,
+      "cluster2_profile_2": 6.725847050528538
+     },
+     "percent_above_C": 1.1345816292960276,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      13,
+      21
+     ],
+     "risk": 0.6600675993749212,
+     "sum_u_um": 46.59678929167969,
+     "u_um": {
+      "cluster1_profile_0": 7.828380418984307,
+      "cluster1_profile_1": 9.156836281823471,
+      "cluster1_profile_2": 7.7355602855839445,
+      "cluster2_profile_0": 7.155721079472677,
+      "cluster2_profile_1": 8.02947713846501,
+      "cluster2_profile_2": 6.690814087350281
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      13,
+      21
+     ],
+     "risk": 0.6600675993749212,
+     "sum_u_um": 46.59678929167969,
+     "u_um": {
+      "cluster1_profile_0": 7.828380418984307,
+      "cluster1_profile_1": 9.156836281823471,
+      "cluster1_profile_2": 7.7355602855839445,
+      "cluster2_profile_0": 7.155721079472677,
+      "cluster2_profile_1": 8.02947713846501,
+      "cluster2_profile_2": 6.690814087350281
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "separation_m",
+   "value": 1.0,
+   "n_stations": 2,
+   "seconds": 35.99127912521362,
+   "n_combinations": 276,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.14469252121166495,
+     "sum_u_um": 39.18275251252271,
+     "u_um": {
+      "cluster1_profile_0": 6.410138095887694,
+      "cluster1_profile_1": 7.5231510386323475,
+      "cluster1_profile_2": 5.658087121741312,
+      "cluster2_profile_0": 6.410138095887691,
+      "cluster2_profile_1": 7.523151038632325,
+      "cluster2_profile_2": 5.658087121741345
+     },
+     "percent_above_C": 0.15075204947370135,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.14469252121166495,
+     "sum_u_um": 39.18275251252271,
+     "u_um": {
+      "cluster1_profile_0": 6.410138095887694,
+      "cluster1_profile_1": 7.5231510386323475,
+      "cluster1_profile_2": 5.658087121741312,
+      "cluster2_profile_0": 6.410138095887691,
+      "cluster2_profile_1": 7.523151038632325,
+      "cluster2_profile_2": 5.658087121741345
+     },
+     "percent_above_C": 0.15075204947370135,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      7,
+      21
+     ],
+     "risk": 0.1444747226063644,
+     "sum_u_um": 39.68402484126955,
+     "u_um": {
+      "cluster1_profile_0": 6.290901002317833,
+      "cluster1_profile_1": 7.914680681937596,
+      "cluster1_profile_2": 5.89436226194954,
+      "cluster2_profile_0": 6.359398700692098,
+      "cluster2_profile_1": 7.531416274282872,
+      "cluster2_profile_2": 5.693265920089607
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      7,
+      21
+     ],
+     "risk": 0.1444747226063644,
+     "sum_u_um": 39.68402484126955,
+     "u_um": {
+      "cluster1_profile_0": 6.290901002317833,
+      "cluster1_profile_1": 7.914680681937596,
+      "cluster1_profile_2": 5.89436226194954,
+      "cluster2_profile_0": 6.359398700692098,
+      "cluster2_profile_1": 7.531416274282872,
+      "cluster2_profile_2": 5.693265920089607
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "separation_m",
+   "value": 2.0,
+   "n_stations": 2,
+   "seconds": 35.04610872268677,
+   "n_combinations": 276,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.19898004928089466,
+     "sum_u_um": 44.319978105296805,
+     "u_um": {
+      "cluster1_profile_0": 7.319851917032512,
+      "cluster1_profile_1": 8.114290085087331,
+      "cluster1_profile_2": 6.725847050528533,
+      "cluster2_profile_0": 7.319851917032531,
+      "cluster2_profile_1": 8.114290085087356,
+      "cluster2_profile_2": 6.725847050528538
+     },
+     "percent_above_C": 3.2696176864831727,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.19898004928089466,
+     "sum_u_um": 44.319978105296805,
+     "u_um": {
+      "cluster1_profile_0": 7.319851917032512,
+      "cluster1_profile_1": 8.114290085087331,
+      "cluster1_profile_2": 6.725847050528533,
+      "cluster2_profile_0": 7.319851917032531,
+      "cluster2_profile_1": 8.114290085087356,
+      "cluster2_profile_2": 6.725847050528538
+     },
+     "percent_above_C": 3.2696176864831727,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      13,
+      21
+     ],
+     "risk": 0.19268014517588256,
+     "sum_u_um": 46.59678929167969,
+     "u_um": {
+      "cluster1_profile_0": 7.828380418984307,
+      "cluster1_profile_1": 9.156836281823471,
+      "cluster1_profile_2": 7.7355602855839445,
+      "cluster2_profile_0": 7.155721079472677,
+      "cluster2_profile_1": 8.02947713846501,
+      "cluster2_profile_2": 6.690814087350281
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      13,
+      21
+     ],
+     "risk": 0.19268014517588256,
+     "sum_u_um": 46.59678929167969,
+     "u_um": {
+      "cluster1_profile_0": 7.828380418984307,
+      "cluster1_profile_1": 9.156836281823471,
+      "cluster1_profile_2": 7.7355602855839445,
+      "cluster2_profile_0": 7.155721079472677,
+      "cluster2_profile_1": 8.02947713846501,
+      "cluster2_profile_2": 6.690814087350281
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "separation_m",
+   "value": 3.0,
+   "n_stations": 2,
+   "seconds": 34.86474609375,
+   "n_combinations": 276,
+   "plans": {
+    "A0": {
+     "candidates": [
+      6,
+      19
+     ],
+     "risk": 0.27602420194150723,
+     "sum_u_um": 51.7520480696824,
+     "u_um": {
+      "cluster1_profile_0": 8.578772461483512,
+      "cluster1_profile_1": 9.432538327200032,
+      "cluster1_profile_2": 8.179049090496239,
+      "cluster2_profile_0": 8.317199783946988,
+      "cluster2_profile_1": 9.260644722507287,
+      "cluster2_profile_2": 7.983843684048345
+     },
+     "percent_above_C": 1.0530889890863593,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      7,
+      19
+     ],
+     "risk": 0.2773037022717895,
+     "sum_u_um": 51.23863681275705,
+     "u_um": {
+      "cluster1_profile_0": 8.304597651358387,
+      "cluster1_profile_1": 9.30709450573404,
+      "cluster1_profile_2": 8.007626280525834,
+      "cluster2_profile_0": 8.304597493659475,
+      "cluster2_profile_1": 9.307094532654375,
+      "cluster2_profile_2": 8.00762634882494
+     },
+     "percent_above_C": 1.5215169741258139,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      19,
+      21
+     ],
+     "risk": 0.27363764212207564,
+     "sum_u_um": 60.597178517515985,
+     "u_um": {
+      "cluster1_profile_0": 11.564694066633308,
+      "cluster1_profile_1": 12.59207371909438,
+      "cluster1_profile_2": 11.052692273608372,
+      "cluster2_profile_0": 8.299803582012913,
+      "cluster2_profile_1": 9.180235461596666,
+      "cluster2_profile_2": 7.907679414570343
+     },
+     "percent_above_C": 0.17936400368852023,
+     "same_stations_as_C": false
+    },
+    "C": {
+     "candidates": [
+      18,
+      19
+     ],
+     "risk": 0.273147713447253,
+     "sum_u_um": 55.47510278057992,
+     "u_um": {
+      "cluster1_profile_0": 9.875750437593634,
+      "cluster1_profile_1": 10.782106907256079,
+      "cluster1_profile_2": 9.395709606828127,
+      "cluster2_profile_0": 8.303791321973911,
+      "cluster2_profile_1": 9.181523594797378,
+      "cluster2_profile_2": 7.936220912130801
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "systematic_um",
+   "value": 0,
+   "n_stations": 2,
+   "seconds": 35.92905950546265,
+   "n_combinations": 276,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.19898004928089466,
+     "sum_u_um": 44.319978105296805,
+     "u_um": {
+      "cluster1_profile_0": 7.319851917032512,
+      "cluster1_profile_1": 8.114290085087331,
+      "cluster1_profile_2": 6.725847050528533,
+      "cluster2_profile_0": 7.319851917032531,
+      "cluster2_profile_1": 8.114290085087356,
+      "cluster2_profile_2": 6.725847050528538
+     },
+     "percent_above_C": 3.2696176864831727,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.19898004928089466,
+     "sum_u_um": 44.319978105296805,
+     "u_um": {
+      "cluster1_profile_0": 7.319851917032512,
+      "cluster1_profile_1": 8.114290085087331,
+      "cluster1_profile_2": 6.725847050528533,
+      "cluster2_profile_0": 7.319851917032531,
+      "cluster2_profile_1": 8.114290085087356,
+      "cluster2_profile_2": 6.725847050528538
+     },
+     "percent_above_C": 3.2696176864831727,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      13,
+      21
+     ],
+     "risk": 0.19268014517588256,
+     "sum_u_um": 46.59678929167969,
+     "u_um": {
+      "cluster1_profile_0": 7.828380418984307,
+      "cluster1_profile_1": 9.156836281823471,
+      "cluster1_profile_2": 7.7355602855839445,
+      "cluster2_profile_0": 7.155721079472677,
+      "cluster2_profile_1": 8.02947713846501,
+      "cluster2_profile_2": 6.690814087350281
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      13,
+      21
+     ],
+     "risk": 0.19268014517588256,
+     "sum_u_um": 46.59678929167969,
+     "u_um": {
+      "cluster1_profile_0": 7.828380418984307,
+      "cluster1_profile_1": 9.156836281823471,
+      "cluster1_profile_2": 7.7355602855839445,
+      "cluster2_profile_0": 7.155721079472677,
+      "cluster2_profile_1": 8.02947713846501,
+      "cluster2_profile_2": 6.690814087350281
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "systematic_um",
+   "value": 2,
+   "n_stations": 2,
+   "seconds": 34.44864273071289,
+   "n_combinations": 276,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.2169179480437836,
+     "sum_u_um": 45.92441662118916,
+     "u_um": {
+      "cluster1_profile_0": 7.58816394704836,
+      "cluster1_profile_1": 8.357134890914862,
+      "cluster1_profile_2": 7.016909472631336,
+      "cluster2_profile_0": 7.588163947048378,
+      "cluster2_profile_1": 8.357134890914889,
+      "cluster2_profile_2": 7.0169094726313395
+     },
+     "percent_above_C": 2.912098319715195,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.2169179480437836,
+     "sum_u_um": 45.92441662118916,
+     "u_um": {
+      "cluster1_profile_0": 7.58816394704836,
+      "cluster1_profile_1": 8.357134890914862,
+      "cluster1_profile_2": 7.016909472631336,
+      "cluster2_profile_0": 7.588163947048378,
+      "cluster2_profile_1": 8.357134890914889,
+      "cluster2_profile_2": 7.0169094726313395
+     },
+     "percent_above_C": 2.912098319715195,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      13,
+      21
+     ],
+     "risk": 0.21077983209504528,
+     "sum_u_um": 48.13056601747127,
+     "u_um": {
+      "cluster1_profile_0": 8.079823016894425,
+      "cluster1_profile_1": 9.372707756679427,
+      "cluster1_profile_2": 7.989924463466696,
+      "cluster2_profile_0": 7.429962595276614,
+      "cluster2_profile_1": 8.27481136444404,
+      "cluster2_profile_2": 6.983336820710067
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      13,
+      21
+     ],
+     "risk": 0.21077983209504528,
+     "sum_u_um": 48.13056601747127,
+     "u_um": {
+      "cluster1_profile_0": 8.079823016894425,
+      "cluster1_profile_1": 9.372707756679427,
+      "cluster1_profile_2": 7.989924463466696,
+      "cluster2_profile_0": 7.429962595276614,
+      "cluster2_profile_1": 8.27481136444404,
+      "cluster2_profile_2": 6.983336820710067
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "systematic_um",
+   "value": 10,
+   "n_stations": 2,
+   "seconds": 32.256025552749634,
+   "n_combinations": 276,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.5249147304902642,
+     "sum_u_um": 74.64427112576884,
+     "u_um": {
+      "cluster1_profile_0": 12.392749173903447,
+      "cluster1_profile_1": 12.877954169236142,
+      "cluster1_profile_2": 12.051432219744813,
+      "cluster2_profile_0": 12.392749173903457,
+      "cluster2_profile_1": 12.87795416923616,
+      "cluster2_profile_2": 12.051432219744814
+     },
+     "percent_above_C": 0.38724865953234655,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.5249147304902642,
+     "sum_u_um": 74.64427112576884,
+     "u_um": {
+      "cluster1_profile_0": 12.392749173903447,
+      "cluster1_profile_1": 12.877954169236142,
+      "cluster1_profile_2": 12.051432219744813,
+      "cluster2_profile_0": 12.392749173903457,
+      "cluster2_profile_1": 12.87795416923616,
+      "cluster2_profile_2": 12.051432219744814
+     },
+     "percent_above_C": 0.38724865953234655,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      13,
+      21
+     ],
+     "risk": 0.5228898465685965,
+     "sum_u_um": 76.05464604236731,
+     "u_um": {
+      "cluster1_profile_0": 12.699745666128,
+      "cluster1_profile_1": 13.559043133352688,
+      "cluster1_profile_2": 12.642740720741825,
+      "cluster2_profile_0": 12.296517562595094,
+      "cluster2_profile_1": 12.824683353484103,
+      "cluster2_profile_2": 12.031915606065601
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      13,
+      21
+     ],
+     "risk": 0.5228898465685965,
+     "sum_u_um": 76.05464604236731,
+     "u_um": {
+      "cluster1_profile_0": 12.699745666128,
+      "cluster1_profile_1": 13.559043133352688,
+      "cluster1_profile_2": 12.642740720741825,
+      "cluster2_profile_0": 12.296517562595094,
+      "cluster2_profile_1": 12.824683353484103,
+      "cluster2_profile_2": 12.031915606065601
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "systematic_um",
+   "value": 5,
+   "n_stations": 2,
+   "seconds": 34.71913695335388,
+   "n_combinations": 276,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.3037109048808772,
+     "sum_u_um": 53.55278690935009,
+     "u_um": {
+      "cluster1_profile_0": 8.864549175636883,
+      "cluster1_profile_1": 9.531091416251687,
+      "cluster1_profile_2": 8.380752862786455,
+      "cluster2_profile_0": 8.864549175636899,
+      "cluster2_profile_1": 9.531091416251707,
+      "cluster2_profile_2": 8.380752862786458
+     },
+     "percent_above_C": 1.7317032723108028,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.3037109048808772,
+     "sum_u_um": 53.55278690935009,
+     "u_um": {
+      "cluster1_profile_0": 8.864549175636883,
+      "cluster1_profile_1": 9.531091416251687,
+      "cluster1_profile_2": 8.380752862786455,
+      "cluster2_profile_0": 8.864549175636899,
+      "cluster2_profile_1": 9.531091416251707,
+      "cluster2_profile_2": 8.380752862786458
+     },
+     "percent_above_C": 1.7317032723108028,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      13,
+      21
+     ],
+     "risk": 0.29854105958288896,
+     "sum_u_um": 55.473868566142286,
+     "u_um": {
+      "cluster1_profile_0": 9.288893367045231,
+      "cluster1_profile_1": 10.433007749068276,
+      "cluster1_profile_2": 9.210803055754887,
+      "cluster2_profile_0": 8.729509961458868,
+      "cluster2_profile_1": 9.458990597158465,
+      "cluster2_profile_2": 8.352663835656562
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      13,
+      21
+     ],
+     "risk": 0.29854105958288896,
+     "sum_u_um": 55.473868566142286,
+     "u_um": {
+      "cluster1_profile_0": 9.288893367045231,
+      "cluster1_profile_1": 10.433007749068276,
+      "cluster1_profile_2": 9.210803055754887,
+      "cluster2_profile_0": 8.729509961458868,
+      "cluster2_profile_1": 9.458990597158465,
+      "cluster2_profile_2": 8.352663835656562
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "systematic_um",
+   "value": 20,
+   "n_stations": 2,
+   "seconds": 35.073636531829834,
+   "n_combinations": 276,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.9531424781039473,
+     "sum_u_um": 127.96285947273495,
+     "u_um": {
+      "cluster1_profile_0": 21.297423132559594,
+      "cluster1_profile_1": 21.58336636358996,
+      "cluster1_profile_2": 21.10064024021791,
+      "cluster2_profile_0": 21.2974231325596,
+      "cluster2_profile_1": 21.58336636358997,
+      "cluster2_profile_2": 21.10064024021791
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "A1": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.9531424781039473,
+     "sum_u_um": 127.96285947273495,
+     "u_um": {
+      "cluster1_profile_0": 21.297423132559594,
+      "cluster1_profile_1": 21.58336636358996,
+      "cluster1_profile_2": 21.10064024021791,
+      "cluster2_profile_0": 21.2974231325596,
+      "cluster2_profile_1": 21.58336636358997,
+      "cluster2_profile_2": 21.10064024021791
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "B": {
+     "candidates": [
+      13,
+      21
+     ],
+     "risk": 0.9585349751837786,
+     "sum_u_um": 128.80059896930507,
+     "u_um": {
+      "cluster1_profile_0": 21.477512425426198,
+      "cluster1_profile_1": 21.996537243214412,
+      "cluster1_profile_2": 21.44385443272509,
+      "cluster2_profile_0": 21.241571132268195,
+      "cluster2_profile_1": 21.551624141050997,
+      "cluster2_profile_2": 21.089499594620186
+     },
+     "percent_above_C": 0.565759810700972,
+     "same_stations_as_C": false
+    },
+    "C": {
+     "candidates": [
+      5,
+      21
+     ],
+     "risk": 0.9531424781039473,
+     "sum_u_um": 127.96285947273495,
+     "u_um": {
+      "cluster1_profile_0": 21.297423132559594,
+      "cluster1_profile_1": 21.58336636358996,
+      "cluster1_profile_2": 21.10064024021791,
+      "cluster2_profile_0": 21.2974231325596,
+      "cluster2_profile_1": 21.58336636358997,
+      "cluster2_profile_2": 21.10064024021791
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "tolerance_um",
+   "value": 25,
+   "n_stations": 3,
+   "seconds": 260.81861114501953,
+   "n_combinations": 2024,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      18,
+      21
+     ],
+     "risk": 0.6421921532949001,
+     "sum_u_um": 44.09625067184673,
+     "u_um": {
+      "cluster1_profile_0": 7.301048652927723,
+      "cluster1_profile_1": 8.085778811473219,
+      "cluster1_profile_2": 6.709028677600569,
+      "cluster2_profile_0": 7.251592688737081,
+      "cluster2_profile_1": 8.06263500023412,
+      "cluster2_profile_2": 6.68616684087402
+     },
+     "percent_above_C": 1.6315721850271858,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      13,
+      21
+     ],
+     "risk": 0.6335220203851274,
+     "sum_u_um": 43.50315291477034,
+     "u_um": {
+      "cluster1_profile_0": 7.1382848293757055,
+      "cluster1_profile_1": 7.98768361375597,
+      "cluster1_profile_2": 6.625608021223837,
+      "cluster2_profile_0": 7.138284771514492,
+      "cluster2_profile_1": 7.987683721538738,
+      "cluster2_profile_2": 6.625607957361592
+     },
+     "percent_above_C": 0.2594606851398451,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      5,
+      15,
+      21
+     ],
+     "risk": 0.6319948635589668,
+     "sum_u_um": 43.549696761858975,
+     "u_um": {
+      "cluster1_profile_0": 7.1900862785889705,
+      "cluster1_profile_1": 8.015840983769456,
+      "cluster1_profile_2": 6.651015222437227,
+      "cluster2_profile_0": 7.105014273503165,
+      "cluster2_profile_1": 7.975903936852449,
+      "cluster2_profile_2": 6.611836066707708
+     },
+     "percent_above_C": 0.01777702641017065,
+     "same_stations_as_C": false
+    },
+    "C": {
+     "candidates": [
+      5,
+      17,
+      21
+     ],
+     "risk": 0.6318825336340814,
+     "sum_u_um": 43.66571509911217,
+     "u_um": {
+      "cluster1_profile_0": 7.251793473150871,
+      "cluster1_profile_1": 8.055120018878554,
+      "cluster1_profile_2": 6.682055506300383,
+      "cluster2_profile_0": 7.085774169579903,
+      "cluster2_profile_1": 7.979710534214971,
+      "cluster2_profile_2": 6.611261396987483
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "tolerance_um",
+   "value": 35,
+   "n_stations": 3,
+   "seconds": 264.34078907966614,
+   "n_combinations": 2024,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      18,
+      21
+     ],
+     "risk": 0.40565491467308357,
+     "sum_u_um": 44.09625067184673,
+     "u_um": {
+      "cluster1_profile_0": 7.301048652927723,
+      "cluster1_profile_1": 8.085778811473219,
+      "cluster1_profile_2": 6.709028677600569,
+      "cluster2_profile_0": 7.251592688737081,
+      "cluster2_profile_1": 8.06263500023412,
+      "cluster2_profile_2": 6.68616684087402
+     },
+     "percent_above_C": 2.566080470350496,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      13,
+      21
+     ],
+     "risk": 0.3980641409453098,
+     "sum_u_um": 43.50315291477034,
+     "u_um": {
+      "cluster1_profile_0": 7.1382848293757055,
+      "cluster1_profile_1": 7.98768361375597,
+      "cluster1_profile_2": 6.625608021223837,
+      "cluster2_profile_0": 7.138284771514492,
+      "cluster2_profile_1": 7.987683721538738,
+      "cluster2_profile_2": 6.625607957361592
+     },
+     "percent_above_C": 0.6468237799132526,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      7,
+      19,
+      21
+     ],
+     "risk": 0.3955059146384648,
+     "sum_u_um": 43.89998417207135,
+     "u_um": {
+      "cluster1_profile_0": 7.103469321168604,
+      "cluster1_profile_1": 8.297143180743328,
+      "cluster1_profile_2": 6.837238257800134,
+      "cluster2_profile_0": 7.083806657803235,
+      "cluster2_profile_1": 7.971371749755164,
+      "cluster2_profile_2": 6.60695500480088
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      7,
+      19,
+      21
+     ],
+     "risk": 0.3955059146384648,
+     "sum_u_um": 43.89998417207135,
+     "u_um": {
+      "cluster1_profile_0": 7.103469321168604,
+      "cluster1_profile_1": 8.297143180743328,
+      "cluster1_profile_2": 6.837238257800134,
+      "cluster2_profile_0": 7.083806657803235,
+      "cluster2_profile_1": 7.971371749755164,
+      "cluster2_profile_2": 6.60695500480088
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "tolerance_um",
+   "value": 50,
+   "n_stations": 3,
+   "seconds": 275.4576325416565,
+   "n_combinations": 2024,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      18,
+      21
+     ],
+     "risk": 0.19542279046854405,
+     "sum_u_um": 44.09625067184673,
+     "u_um": {
+      "cluster1_profile_0": 7.301048652927723,
+      "cluster1_profile_1": 8.085778811473219,
+      "cluster1_profile_2": 6.709028677600569,
+      "cluster2_profile_0": 7.251592688737081,
+      "cluster2_profile_1": 8.06263500023412,
+      "cluster2_profile_2": 6.68616684087402
+     },
+     "percent_above_C": 3.984829543235091,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      13,
+      21
+     ],
+     "risk": 0.1898986965208573,
+     "sum_u_um": 43.50315291477034,
+     "u_um": {
+      "cluster1_profile_0": 7.1382848293757055,
+      "cluster1_profile_1": 7.98768361375597,
+      "cluster1_profile_2": 6.625608021223837,
+      "cluster2_profile_0": 7.138284771514492,
+      "cluster2_profile_1": 7.987683721538738,
+      "cluster2_profile_2": 6.625607957361592
+     },
+     "percent_above_C": 1.0454489000982559,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      7,
+      19,
+      21
+     ],
+     "risk": 0.18793394317898135,
+     "sum_u_um": 43.89998417207135,
+     "u_um": {
+      "cluster1_profile_0": 7.103469321168604,
+      "cluster1_profile_1": 8.297143180743328,
+      "cluster1_profile_2": 6.837238257800134,
+      "cluster2_profile_0": 7.083806657803235,
+      "cluster2_profile_1": 7.971371749755164,
+      "cluster2_profile_2": 6.60695500480088
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      7,
+      19,
+      21
+     ],
+     "risk": 0.18793394317898135,
+     "sum_u_um": 43.89998417207135,
+     "u_um": {
+      "cluster1_profile_0": 7.103469321168604,
+      "cluster1_profile_1": 8.297143180743328,
+      "cluster1_profile_2": 6.837238257800134,
+      "cluster2_profile_0": 7.083806657803235,
+      "cluster2_profile_1": 7.971371749755164,
+      "cluster2_profile_2": 6.60695500480088
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "tolerance_um",
+   "value": 75,
+   "n_stations": 3,
+   "seconds": 275.82009410858154,
+   "n_combinations": 2024,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      18,
+      21
+     ],
+     "risk": 0.055840385522844614,
+     "sum_u_um": 44.09625067184673,
+     "u_um": {
+      "cluster1_profile_0": 7.301048652927723,
+      "cluster1_profile_1": 8.085778811473219,
+      "cluster1_profile_2": 6.709028677600569,
+      "cluster2_profile_0": 7.251592688737081,
+      "cluster2_profile_1": 8.06263500023412,
+      "cluster2_profile_2": 6.68616684087402
+     },
+     "percent_above_C": 5.817878405818355,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      13,
+      21
+     ],
+     "risk": 0.05355817322139871,
+     "sum_u_um": 43.50315291477034,
+     "u_um": {
+      "cluster1_profile_0": 7.1382848293757055,
+      "cluster1_profile_1": 7.98768361375597,
+      "cluster1_profile_2": 6.625608021223837,
+      "cluster2_profile_0": 7.138284771514492,
+      "cluster2_profile_1": 7.987683721538738,
+      "cluster2_profile_2": 6.625607957361592
+     },
+     "percent_above_C": 1.4930718782583563,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      7,
+      19,
+      21
+     ],
+     "risk": 0.05277027508403935,
+     "sum_u_um": 43.89998417207135,
+     "u_um": {
+      "cluster1_profile_0": 7.103469321168604,
+      "cluster1_profile_1": 8.297143180743328,
+      "cluster1_profile_2": 6.837238257800134,
+      "cluster2_profile_0": 7.083806657803235,
+      "cluster2_profile_1": 7.971371749755164,
+      "cluster2_profile_2": 6.60695500480088
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      7,
+      19,
+      21
+     ],
+     "risk": 0.05277027508403935,
+     "sum_u_um": 43.89998417207135,
+     "u_um": {
+      "cluster1_profile_0": 7.103469321168604,
+      "cluster1_profile_1": 8.297143180743328,
+      "cluster1_profile_2": 6.837238257800134,
+      "cluster2_profile_0": 7.083806657803235,
+      "cluster2_profile_1": 7.971371749755164,
+      "cluster2_profile_2": 6.60695500480088
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "tolerance_um",
+   "value": 100,
+   "n_stations": 3,
+   "seconds": 284.8057496547699,
+   "n_combinations": 2024,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      18,
+      21
+     ],
+     "risk": 0.01761854575183136,
+     "sum_u_um": 44.09625067184673,
+     "u_um": {
+      "cluster1_profile_0": 7.301048652927723,
+      "cluster1_profile_1": 8.085778811473219,
+      "cluster1_profile_2": 6.709028677600569,
+      "cluster2_profile_0": 7.251592688737081,
+      "cluster2_profile_1": 8.06263500023412,
+      "cluster2_profile_2": 6.68616684087402
+     },
+     "percent_above_C": 6.726212744137405,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      13,
+      21
+     ],
+     "risk": 0.0167880516005364,
+     "sum_u_um": 43.50315291477034,
+     "u_um": {
+      "cluster1_profile_0": 7.1382848293757055,
+      "cluster1_profile_1": 7.98768361375597,
+      "cluster1_profile_2": 6.625608021223837,
+      "cluster2_profile_0": 7.138284771514492,
+      "cluster2_profile_1": 7.987683721538738,
+      "cluster2_profile_2": 6.625607957361592
+     },
+     "percent_above_C": 1.6954061882300087,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      7,
+      19,
+      21
+     ],
+     "risk": 0.01650817104704127,
+     "sum_u_um": 43.89998417207135,
+     "u_um": {
+      "cluster1_profile_0": 7.103469321168604,
+      "cluster1_profile_1": 8.297143180743328,
+      "cluster1_profile_2": 6.837238257800134,
+      "cluster2_profile_0": 7.083806657803235,
+      "cluster2_profile_1": 7.971371749755164,
+      "cluster2_profile_2": 6.60695500480088
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      7,
+      19,
+      21
+     ],
+     "risk": 0.01650817104704127,
+     "sum_u_um": 43.89998417207135,
+     "u_um": {
+      "cluster1_profile_0": 7.103469321168604,
+      "cluster1_profile_1": 8.297143180743328,
+      "cluster1_profile_2": 6.837238257800134,
+      "cluster2_profile_0": 7.083806657803235,
+      "cluster2_profile_1": 7.971371749755164,
+      "cluster2_profile_2": 6.60695500480088
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "tolerance_um",
+   "value": 150,
+   "n_stations": 3,
+   "seconds": 268.3672728538513,
+   "n_combinations": 2024,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      18,
+      21
+     ],
+     "risk": 0.003006736095225296,
+     "sum_u_um": 44.09625067184673,
+     "u_um": {
+      "cluster1_profile_0": 7.301048652927723,
+      "cluster1_profile_1": 8.085778811473219,
+      "cluster1_profile_2": 6.709028677600569,
+      "cluster2_profile_0": 7.251592688737081,
+      "cluster2_profile_1": 8.06263500023412,
+      "cluster2_profile_2": 6.68616684087402
+     },
+     "percent_above_C": 6.556081475731168,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      13,
+      21
+     ],
+     "risk": 0.0028678327082452887,
+     "sum_u_um": 43.50315291477034,
+     "u_um": {
+      "cluster1_profile_0": 7.1382848293757055,
+      "cluster1_profile_1": 7.98768361375597,
+      "cluster1_profile_2": 6.625608021223837,
+      "cluster2_profile_0": 7.138284771514492,
+      "cluster2_profile_1": 7.987683721538738,
+      "cluster2_profile_2": 6.625607957361592
+     },
+     "percent_above_C": 1.6334676674223392,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      7,
+      19,
+      21
+     ],
+     "risk": 0.002821740489687676,
+     "sum_u_um": 43.89998417207135,
+     "u_um": {
+      "cluster1_profile_0": 7.103469321168604,
+      "cluster1_profile_1": 8.297143180743328,
+      "cluster1_profile_2": 6.837238257800134,
+      "cluster2_profile_0": 7.083806657803235,
+      "cluster2_profile_1": 7.971371749755164,
+      "cluster2_profile_2": 6.60695500480088
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      7,
+      19,
+      21
+     ],
+     "risk": 0.002821740489687676,
+     "sum_u_um": 43.89998417207135,
+     "u_um": {
+      "cluster1_profile_0": 7.103469321168604,
+      "cluster1_profile_1": 8.297143180743328,
+      "cluster1_profile_2": 6.837238257800134,
+      "cluster2_profile_0": 7.083806657803235,
+      "cluster2_profile_1": 7.971371749755164,
+      "cluster2_profile_2": 6.60695500480088
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "marginal_mean_um",
+   "value": 20,
+   "n_stations": 3,
+   "seconds": 256.7805984020233,
+   "n_combinations": 2024,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      18,
+      21
+     ],
+     "risk": 0.00035714203408818856,
+     "sum_u_um": 44.09625067184673,
+     "u_um": {
+      "cluster1_profile_0": 7.301048652927723,
+      "cluster1_profile_1": 8.085778811473219,
+      "cluster1_profile_2": 6.709028677600569,
+      "cluster2_profile_0": 7.251592688737081,
+      "cluster2_profile_1": 8.06263500023412,
+      "cluster2_profile_2": 6.68616684087402
+     },
+     "percent_above_C": 16.300390892448835,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      13,
+      21
+     ],
+     "risk": 0.000313708716637,
+     "sum_u_um": 43.50315291477034,
+     "u_um": {
+      "cluster1_profile_0": 7.1382848293757055,
+      "cluster1_profile_1": 7.98768361375597,
+      "cluster1_profile_2": 6.625608021223837,
+      "cluster2_profile_0": 7.138284771514492,
+      "cluster2_profile_1": 7.987683721538738,
+      "cluster2_profile_2": 6.625607957361592
+     },
+     "percent_above_C": 2.156685265007252,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      7,
+      19,
+      21
+     ],
+     "risk": 0.00030954475672802386,
+     "sum_u_um": 43.89998417207135,
+     "u_um": {
+      "cluster1_profile_0": 7.103469321168604,
+      "cluster1_profile_1": 8.297143180743328,
+      "cluster1_profile_2": 6.837238257800134,
+      "cluster2_profile_0": 7.083806657803235,
+      "cluster2_profile_1": 7.971371749755164,
+      "cluster2_profile_2": 6.60695500480088
+     },
+     "percent_above_C": 0.8007256779180683,
+     "same_stations_as_C": false
+    },
+    "C": {
+     "candidates": [
+      5,
+      15,
+      21
+     ],
+     "risk": 0.0003070858415415499,
+     "sum_u_um": 43.549696761858975,
+     "u_um": {
+      "cluster1_profile_0": 7.1900862785889705,
+      "cluster1_profile_1": 8.015840983769456,
+      "cluster1_profile_2": 6.651015222437227,
+      "cluster2_profile_0": 7.105014273503165,
+      "cluster2_profile_1": 7.975903936852449,
+      "cluster2_profile_2": 6.611836066707708
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "tolerance_um",
+   "value": 250,
+   "n_stations": 3,
+   "seconds": 330.1933743953705,
+   "n_combinations": 2024,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      18,
+      21
+     ],
+     "risk": 0.00047037282847633917,
+     "sum_u_um": 44.09625067184673,
+     "u_um": {
+      "cluster1_profile_0": 7.301048652927723,
+      "cluster1_profile_1": 8.085778811473219,
+      "cluster1_profile_2": 6.709028677600569,
+      "cluster2_profile_0": 7.251592688737081,
+      "cluster2_profile_1": 8.06263500023412,
+      "cluster2_profile_2": 6.68616684087402
+     },
+     "percent_above_C": 4.508442603038909,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      13,
+      21
+     ],
+     "risk": 0.00045520404570995434,
+     "sum_u_um": 43.50315291477034,
+     "u_um": {
+      "cluster1_profile_0": 7.1382848293757055,
+      "cluster1_profile_1": 7.98768361375597,
+      "cluster1_profile_2": 6.625608021223837,
+      "cluster2_profile_0": 7.138284771514492,
+      "cluster2_profile_1": 7.987683721538738,
+      "cluster2_profile_2": 6.625607957361592
+     },
+     "percent_above_C": 1.1382099553883362,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      7,
+      19,
+      21
+     ],
+     "risk": 0.0004500811769466189,
+     "sum_u_um": 43.89998417207135,
+     "u_um": {
+      "cluster1_profile_0": 7.103469321168604,
+      "cluster1_profile_1": 8.297143180743328,
+      "cluster1_profile_2": 6.837238257800134,
+      "cluster2_profile_0": 7.083806657803235,
+      "cluster2_profile_1": 7.971371749755164,
+      "cluster2_profile_2": 6.60695500480088
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      7,
+      19,
+      21
+     ],
+     "risk": 0.0004500811769466189,
+     "sum_u_um": 43.89998417207135,
+     "u_um": {
+      "cluster1_profile_0": 7.103469321168604,
+      "cluster1_profile_1": 8.297143180743328,
+      "cluster1_profile_2": 6.837238257800134,
+      "cluster2_profile_0": 7.083806657803235,
+      "cluster2_profile_1": 7.971371749755164,
+      "cluster2_profile_2": 6.60695500480088
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "marginal_mean_um",
+   "value": 30,
+   "n_stations": 3,
+   "seconds": 257.1896550655365,
+   "n_combinations": 2024,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      18,
+      21
+     ],
+     "risk": 0.018649740008077613,
+     "sum_u_um": 44.09625067184673,
+     "u_um": {
+      "cluster1_profile_0": 7.301048652927723,
+      "cluster1_profile_1": 8.085778811473219,
+      "cluster1_profile_2": 6.709028677600569,
+      "cluster2_profile_0": 7.251592688737081,
+      "cluster2_profile_1": 8.06263500023412,
+      "cluster2_profile_2": 6.68616684087402
+     },
+     "percent_above_C": 9.388350691489023,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      13,
+      21
+     ],
+     "risk": 0.017441192748856565,
+     "sum_u_um": 43.50315291477034,
+     "u_um": {
+      "cluster1_profile_0": 7.1382848293757055,
+      "cluster1_profile_1": 7.98768361375597,
+      "cluster1_profile_2": 6.625608021223837,
+      "cluster2_profile_0": 7.138284771514492,
+      "cluster2_profile_1": 7.987683721538738,
+      "cluster2_profile_2": 6.625607957361592
+     },
+     "percent_above_C": 2.2997268628645706,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      7,
+      19,
+      21
+     ],
+     "risk": 0.01704910979111111,
+     "sum_u_um": 43.89998417207135,
+     "u_um": {
+      "cluster1_profile_0": 7.103469321168604,
+      "cluster1_profile_1": 8.297143180743328,
+      "cluster1_profile_2": 6.837238257800134,
+      "cluster2_profile_0": 7.083806657803235,
+      "cluster2_profile_1": 7.971371749755164,
+      "cluster2_profile_2": 6.60695500480088
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      7,
+      19,
+      21
+     ],
+     "risk": 0.01704910979111111,
+     "sum_u_um": 43.89998417207135,
+     "u_um": {
+      "cluster1_profile_0": 7.103469321168604,
+      "cluster1_profile_1": 8.297143180743328,
+      "cluster1_profile_2": 6.837238257800134,
+      "cluster2_profile_0": 7.083806657803235,
+      "cluster2_profile_1": 7.971371749755164,
+      "cluster2_profile_2": 6.60695500480088
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "marginal_mean_um",
+   "value": 35,
+   "n_stations": 3,
+   "seconds": 258.1604759693146,
+   "n_combinations": 2024,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      18,
+      21
+     ],
+     "risk": 0.0889499074877137,
+     "sum_u_um": 44.09625067184673,
+     "u_um": {
+      "cluster1_profile_0": 7.301048652927723,
+      "cluster1_profile_1": 8.085778811473219,
+      "cluster1_profile_2": 6.709028677600569,
+      "cluster2_profile_0": 7.251592688737081,
+      "cluster2_profile_1": 8.06263500023412,
+      "cluster2_profile_2": 6.68616684087402
+     },
+     "percent_above_C": 5.7785144094319785,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      13,
+      21
+     ],
+     "risk": 0.08534241324019079,
+     "sum_u_um": 43.50315291477034,
+     "u_um": {
+      "cluster1_profile_0": 7.1382848293757055,
+      "cluster1_profile_1": 7.98768361375597,
+      "cluster1_profile_2": 6.625608021223837,
+      "cluster2_profile_0": 7.138284771514492,
+      "cluster2_profile_1": 7.987683721538738,
+      "cluster2_profile_2": 6.625607957361592
+     },
+     "percent_above_C": 1.4885112714719817,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      7,
+      19,
+      21
+     ],
+     "risk": 0.08409071349160702,
+     "sum_u_um": 43.89998417207135,
+     "u_um": {
+      "cluster1_profile_0": 7.103469321168604,
+      "cluster1_profile_1": 8.297143180743328,
+      "cluster1_profile_2": 6.837238257800134,
+      "cluster2_profile_0": 7.083806657803235,
+      "cluster2_profile_1": 7.971371749755164,
+      "cluster2_profile_2": 6.60695500480088
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      7,
+      19,
+      21
+     ],
+     "risk": 0.08409071349160702,
+     "sum_u_um": 43.89998417207135,
+     "u_um": {
+      "cluster1_profile_0": 7.103469321168604,
+      "cluster1_profile_1": 8.297143180743328,
+      "cluster1_profile_2": 6.837238257800134,
+      "cluster2_profile_0": 7.083806657803235,
+      "cluster2_profile_1": 7.971371749755164,
+      "cluster2_profile_2": 6.60695500480088
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "marginal_mean_um",
+   "value": 38,
+   "n_stations": 3,
+   "seconds": 261.30728697776794,
+   "n_combinations": 2024,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      18,
+      21
+     ],
+     "risk": 0.19542279046854352,
+     "sum_u_um": 44.09625067184673,
+     "u_um": {
+      "cluster1_profile_0": 7.301048652927723,
+      "cluster1_profile_1": 8.085778811473219,
+      "cluster1_profile_2": 6.709028677600569,
+      "cluster2_profile_0": 7.251592688737081,
+      "cluster2_profile_1": 8.06263500023412,
+      "cluster2_profile_2": 6.68616684087402
+     },
+     "percent_above_C": 3.9848295432351133,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      13,
+      21
+     ],
+     "risk": 0.18989869652085675,
+     "sum_u_um": 43.50315291477034,
+     "u_um": {
+      "cluster1_profile_0": 7.1382848293757055,
+      "cluster1_profile_1": 7.98768361375597,
+      "cluster1_profile_2": 6.625608021223837,
+      "cluster2_profile_0": 7.138284771514492,
+      "cluster2_profile_1": 7.987683721538738,
+      "cluster2_profile_2": 6.625607957361592
+     },
+     "percent_above_C": 1.0454489000982559,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      7,
+      19,
+      21
+     ],
+     "risk": 0.18793394317898082,
+     "sum_u_um": 43.89998417207135,
+     "u_um": {
+      "cluster1_profile_0": 7.103469321168604,
+      "cluster1_profile_1": 8.297143180743328,
+      "cluster1_profile_2": 6.837238257800134,
+      "cluster2_profile_0": 7.083806657803235,
+      "cluster2_profile_1": 7.971371749755164,
+      "cluster2_profile_2": 6.60695500480088
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      7,
+      19,
+      21
+     ],
+     "risk": 0.18793394317898082,
+     "sum_u_um": 43.89998417207135,
+     "u_um": {
+      "cluster1_profile_0": 7.103469321168604,
+      "cluster1_profile_1": 8.297143180743328,
+      "cluster1_profile_2": 6.837238257800134,
+      "cluster2_profile_0": 7.083806657803235,
+      "cluster2_profile_1": 7.971371749755164,
+      "cluster2_profile_2": 6.60695500480088
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "marginal_mean_um",
+   "value": 41,
+   "n_stations": 3,
+   "seconds": 289.49520683288574,
+   "n_combinations": 2024,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      18,
+      21
+     ],
+     "risk": 0.3828188430327036,
+     "sum_u_um": 44.09625067184673,
+     "u_um": {
+      "cluster1_profile_0": 7.301048652927723,
+      "cluster1_profile_1": 8.085778811473219,
+      "cluster1_profile_2": 6.709028677600569,
+      "cluster2_profile_0": 7.251592688737081,
+      "cluster2_profile_1": 8.06263500023412,
+      "cluster2_profile_2": 6.68616684087402
+     },
+     "percent_above_C": 2.515632159744685,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      13,
+      21
+     ],
+     "risk": 0.37592087928641044,
+     "sum_u_um": 43.50315291477034,
+     "u_um": {
+      "cluster1_profile_0": 7.1382848293757055,
+      "cluster1_profile_1": 7.98768361375597,
+      "cluster1_profile_2": 6.625608021223837,
+      "cluster2_profile_0": 7.138284771514492,
+      "cluster2_profile_1": 7.987683721538738,
+      "cluster2_profile_2": 6.625607957361592
+     },
+     "percent_above_C": 0.6684161019765211,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      7,
+      19,
+      21
+     ],
+     "risk": 0.3734248474770923,
+     "sum_u_um": 43.89998417207135,
+     "u_um": {
+      "cluster1_profile_0": 7.103469321168604,
+      "cluster1_profile_1": 8.297143180743328,
+      "cluster1_profile_2": 6.837238257800134,
+      "cluster2_profile_0": 7.083806657803235,
+      "cluster2_profile_1": 7.971371749755164,
+      "cluster2_profile_2": 6.60695500480088
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      7,
+      19,
+      21
+     ],
+     "risk": 0.3734248474770923,
+     "sum_u_um": 43.89998417207135,
+     "u_um": {
+      "cluster1_profile_0": 7.103469321168604,
+      "cluster1_profile_1": 8.297143180743328,
+      "cluster1_profile_2": 6.837238257800134,
+      "cluster2_profile_0": 7.083806657803235,
+      "cluster2_profile_1": 7.971371749755164,
+      "cluster2_profile_2": 6.60695500480088
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "separation_m",
+   "value": 0.25,
+   "n_stations": 3,
+   "seconds": 258.5204074382782,
+   "n_combinations": 2024,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      18,
+      21
+     ],
+     "risk": 0.11161465188261793,
+     "sum_u_um": 35.2728388066406,
+     "u_um": {
+      "cluster1_profile_0": 5.4154761176248,
+      "cluster1_profile_1": 7.6308763115519245,
+      "cluster1_profile_2": 4.612662900022954,
+      "cluster2_profile_0": 5.4093490047939445,
+      "cluster2_profile_1": 7.596701210175253,
+      "cluster2_profile_2": 4.607773262471728
+     },
+     "percent_above_C": 1.0167540368262173,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      13,
+      21
+     ],
+     "risk": 0.11049122786298221,
+     "sum_u_um": 35.014686415083055,
+     "u_um": {
+      "cluster1_profile_0": 5.169368430262307,
+      "cluster1_profile_1": 7.701037038653679,
+      "cluster1_profile_2": 4.636937736662444,
+      "cluster2_profile_0": 5.169368272394018,
+      "cluster2_profile_1": 7.701037186656636,
+      "cluster2_profile_2": 4.636937750453975
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "B": {
+     "candidates": [
+      5,
+      13,
+      21
+     ],
+     "risk": 0.11049122786298221,
+     "sum_u_um": 35.014686415083055,
+     "u_um": {
+      "cluster1_profile_0": 5.169368430262307,
+      "cluster1_profile_1": 7.701037038653679,
+      "cluster1_profile_2": 4.636937736662444,
+      "cluster2_profile_0": 5.169368272394018,
+      "cluster2_profile_1": 7.701037186656636,
+      "cluster2_profile_2": 4.636937750453975
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      5,
+      13,
+      21
+     ],
+     "risk": 0.11049122786298221,
+     "sum_u_um": 35.014686415083055,
+     "u_um": {
+      "cluster1_profile_0": 5.169368430262307,
+      "cluster1_profile_1": 7.701037038653679,
+      "cluster1_profile_2": 4.636937736662444,
+      "cluster2_profile_0": 5.169368272394018,
+      "cluster2_profile_1": 7.701037186656636,
+      "cluster2_profile_2": 4.636937750453975
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "separation_m",
+   "value": 0.5,
+   "n_stations": 3,
+   "seconds": 263.44733572006226,
+   "n_combinations": 2024,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      18,
+      21
+     ],
+     "risk": 0.124664440787534,
+     "sum_u_um": 36.936305639004885,
+     "u_um": {
+      "cluster1_profile_0": 5.922976240709882,
+      "cluster1_profile_1": 7.589438375016383,
+      "cluster1_profile_2": 4.978849521149154,
+      "cluster2_profile_0": 5.912612501615686,
+      "cluster2_profile_1": 7.566670150858453,
+      "cluster2_profile_2": 4.9657588496553275
+     },
+     "percent_above_C": 3.8713098914678223,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      13,
+      21
+     ],
+     "risk": 0.12001816566845294,
+     "sum_u_um": 36.367696257736576,
+     "u_um": {
+      "cluster1_profile_0": 5.711872210834521,
+      "cluster1_profile_1": 7.557334119549895,
+      "cluster1_profile_2": 4.914641796480718,
+      "cluster2_profile_0": 5.711872005711004,
+      "cluster2_profile_1": 7.5573342688975655,
+      "cluster2_profile_2": 4.914641856262875
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "B": {
+     "candidates": [
+      5,
+      13,
+      21
+     ],
+     "risk": 0.12001816566845294,
+     "sum_u_um": 36.367696257736576,
+     "u_um": {
+      "cluster1_profile_0": 5.711872210834521,
+      "cluster1_profile_1": 7.557334119549895,
+      "cluster1_profile_2": 4.914641796480718,
+      "cluster2_profile_0": 5.711872005711004,
+      "cluster2_profile_1": 7.5573342688975655,
+      "cluster2_profile_2": 4.914641856262875
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      5,
+      13,
+      21
+     ],
+     "risk": 0.12001816566845294,
+     "sum_u_um": 36.367696257736576,
+     "u_um": {
+      "cluster1_profile_0": 5.711872210834521,
+      "cluster1_profile_1": 7.557334119549895,
+      "cluster1_profile_2": 4.914641796480718,
+      "cluster2_profile_0": 5.711872005711004,
+      "cluster2_profile_1": 7.5573342688975655,
+      "cluster2_profile_2": 4.914641856262875
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "marginal_mean_um",
+   "value": 44,
+   "n_stations": 3,
+   "seconds": 289.58098888397217,
+   "n_combinations": 2024,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      18,
+      21
+     ],
+     "risk": 0.663303788400792,
+     "sum_u_um": 44.09625067184673,
+     "u_um": {
+      "cluster1_profile_0": 7.301048652927723,
+      "cluster1_profile_1": 8.085778811473219,
+      "cluster1_profile_2": 6.709028677600569,
+      "cluster2_profile_0": 7.251592688737081,
+      "cluster2_profile_1": 8.06263500023412,
+      "cluster2_profile_2": 6.68616684087402
+     },
+     "percent_above_C": 1.4028187685247273,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      13,
+      21
+     ],
+     "risk": 0.6565857838236785,
+     "sum_u_um": 43.50315291477034,
+     "u_um": {
+      "cluster1_profile_0": 7.1382848293757055,
+      "cluster1_profile_1": 7.98768361375597,
+      "cluster1_profile_2": 6.625608021223837,
+      "cluster2_profile_0": 7.138284771514492,
+      "cluster2_profile_1": 7.987683721538738,
+      "cluster2_profile_2": 6.625607957361592
+     },
+     "percent_above_C": 0.3758012653357845,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      7,
+      19,
+      21
+     ],
+     "risk": 0.6541275641606527,
+     "sum_u_um": 43.89998417207135,
+     "u_um": {
+      "cluster1_profile_0": 7.103469321168604,
+      "cluster1_profile_1": 8.297143180743328,
+      "cluster1_profile_2": 6.837238257800134,
+      "cluster2_profile_0": 7.083806657803235,
+      "cluster2_profile_1": 7.971371749755164,
+      "cluster2_profile_2": 6.60695500480088
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      7,
+      19,
+      21
+     ],
+     "risk": 0.6541275641606527,
+     "sum_u_um": 43.89998417207135,
+     "u_um": {
+      "cluster1_profile_0": 7.103469321168604,
+      "cluster1_profile_1": 8.297143180743328,
+      "cluster1_profile_2": 6.837238257800134,
+      "cluster2_profile_0": 7.083806657803235,
+      "cluster2_profile_1": 7.971371749755164,
+      "cluster2_profile_2": 6.60695500480088
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "separation_m",
+   "value": 1.0,
+   "n_stations": 3,
+   "seconds": 248.93500995635986,
+   "n_combinations": 2024,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      6,
+      21
+     ],
+     "risk": 0.14365459785480922,
+     "sum_u_um": 39.02999145846046,
+     "u_um": {
+      "cluster1_profile_0": 6.376993580762694,
+      "cluster1_profile_1": 7.4856202878578575,
+      "cluster1_profile_2": 5.626835756081939,
+      "cluster2_profile_0": 6.39638733128702,
+      "cluster2_profile_1": 7.503376272643496,
+      "cluster2_profile_2": 5.640778229827453
+     },
+     "percent_above_C": 6.150608091572796,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      13,
+      21
+     ],
+     "risk": 0.13563234470361124,
+     "sum_u_um": 38.28538804233892,
+     "u_um": {
+      "cluster1_profile_0": 6.208459813246096,
+      "cluster1_profile_1": 7.395894857346643,
+      "cluster1_profile_2": 5.538339353770326,
+      "cluster2_profile_0": 6.208459977492626,
+      "cluster2_profile_1": 7.395894746850409,
+      "cluster2_profile_2": 5.538339293632825
+     },
+     "percent_above_C": 0.22272925594459814,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      5,
+      15,
+      21
+     ],
+     "risk": 0.13533092314542647,
+     "sum_u_um": 38.33263458004403,
+     "u_um": {
+      "cluster1_profile_0": 6.240931648856819,
+      "cluster1_profile_1": 7.411351867589025,
+      "cluster1_profile_2": 5.55296080351037,
+      "cluster2_profile_0": 6.196633564666697,
+      "cluster2_profile_1": 7.394750197347388,
+      "cluster2_profile_2": 5.5360064980737285
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      5,
+      15,
+      21
+     ],
+     "risk": 0.13533092314542647,
+     "sum_u_um": 38.33263458004403,
+     "u_um": {
+      "cluster1_profile_0": 6.240931648856819,
+      "cluster1_profile_1": 7.411351867589025,
+      "cluster1_profile_2": 5.55296080351037,
+      "cluster2_profile_0": 6.196633564666697,
+      "cluster2_profile_1": 7.394750197347388,
+      "cluster2_profile_2": 5.5360064980737285
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "separation_m",
+   "value": 2.0,
+   "n_stations": 3,
+   "seconds": 252.10007739067078,
+   "n_combinations": 2024,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      18,
+      21
+     ],
+     "risk": 0.19542279046854383,
+     "sum_u_um": 44.09625067184673,
+     "u_um": {
+      "cluster1_profile_0": 7.301048652927723,
+      "cluster1_profile_1": 8.085778811473219,
+      "cluster1_profile_2": 6.709028677600569,
+      "cluster2_profile_0": 7.251592688737081,
+      "cluster2_profile_1": 8.06263500023412,
+      "cluster2_profile_2": 6.68616684087402
+     },
+     "percent_above_C": 3.984829543235091,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      13,
+      21
+     ],
+     "risk": 0.18989869652085709,
+     "sum_u_um": 43.50315291477034,
+     "u_um": {
+      "cluster1_profile_0": 7.1382848293757055,
+      "cluster1_profile_1": 7.98768361375597,
+      "cluster1_profile_2": 6.625608021223837,
+      "cluster2_profile_0": 7.138284771514492,
+      "cluster2_profile_1": 7.987683721538738,
+      "cluster2_profile_2": 6.625607957361592
+     },
+     "percent_above_C": 1.0454489000982559,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      7,
+      19,
+      21
+     ],
+     "risk": 0.18793394317898113,
+     "sum_u_um": 43.89998417207135,
+     "u_um": {
+      "cluster1_profile_0": 7.103469321168604,
+      "cluster1_profile_1": 8.297143180743328,
+      "cluster1_profile_2": 6.837238257800134,
+      "cluster2_profile_0": 7.083806657803235,
+      "cluster2_profile_1": 7.971371749755164,
+      "cluster2_profile_2": 6.60695500480088
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      7,
+      19,
+      21
+     ],
+     "risk": 0.18793394317898113,
+     "sum_u_um": 43.89998417207135,
+     "u_um": {
+      "cluster1_profile_0": 7.103469321168604,
+      "cluster1_profile_1": 8.297143180743328,
+      "cluster1_profile_2": 6.837238257800134,
+      "cluster2_profile_0": 7.083806657803235,
+      "cluster2_profile_1": 7.971371749755164,
+      "cluster2_profile_2": 6.60695500480088
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "separation_m",
+   "value": 3.0,
+   "n_stations": 3,
+   "seconds": 251.00058960914612,
+   "n_combinations": 2024,
+   "plans": {
+    "A0": {
+     "candidates": [
+      6,
+      7,
+      19
+     ],
+     "risk": 0.27422581121376005,
+     "sum_u_um": 50.83891994323424,
+     "u_um": {
+      "cluster1_profile_0": 8.292685257300482,
+      "cluster1_profile_1": 9.157798969673868,
+      "cluster1_profile_2": 7.9045431631884115,
+      "cluster2_profile_0": 8.303057136498037,
+      "cluster2_profile_1": 9.22687633425884,
+      "cluster2_profile_2": 7.953959082314604
+     },
+     "percent_above_C": 1.9602005088057872,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      6,
+      7,
+      19
+     ],
+     "risk": 0.27422581121376005,
+     "sum_u_um": 50.83891994323424,
+     "u_um": {
+      "cluster1_profile_0": 8.292685257300482,
+      "cluster1_profile_1": 9.157798969673868,
+      "cluster1_profile_2": 7.9045431631884115,
+      "cluster2_profile_0": 8.303057136498037,
+      "cluster2_profile_1": 9.22687633425884,
+      "cluster2_profile_2": 7.953959082314604
+     },
+     "percent_above_C": 1.9602005088057872,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      18,
+      19,
+      21
+     ],
+     "risk": 0.2689537778910866,
+     "sum_u_um": 54.303709188717896,
+     "u_um": {
+      "cluster1_profile_0": 9.602128458614064,
+      "cluster1_profile_1": 10.425018297098363,
+      "cluster1_profile_2": 9.034586600642532,
+      "cluster2_profile_0": 8.284831343898809,
+      "cluster2_profile_1": 9.101775025907484,
+      "cluster2_profile_2": 7.855369462556643
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      18,
+      19,
+      21
+     ],
+     "risk": 0.2689537778910866,
+     "sum_u_um": 54.303709188717896,
+     "u_um": {
+      "cluster1_profile_0": 9.602128458614064,
+      "cluster1_profile_1": 10.425018297098363,
+      "cluster1_profile_2": 9.034586600642532,
+      "cluster2_profile_0": 8.284831343898809,
+      "cluster2_profile_1": 9.101775025907484,
+      "cluster2_profile_2": 7.855369462556643
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "systematic_um",
+   "value": 0,
+   "n_stations": 3,
+   "seconds": 254.07491397857666,
+   "n_combinations": 2024,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      18,
+      21
+     ],
+     "risk": 0.19542279046854383,
+     "sum_u_um": 44.09625067184673,
+     "u_um": {
+      "cluster1_profile_0": 7.301048652927723,
+      "cluster1_profile_1": 8.085778811473219,
+      "cluster1_profile_2": 6.709028677600569,
+      "cluster2_profile_0": 7.251592688737081,
+      "cluster2_profile_1": 8.06263500023412,
+      "cluster2_profile_2": 6.68616684087402
+     },
+     "percent_above_C": 3.984829543235091,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      13,
+      21
+     ],
+     "risk": 0.18989869652085709,
+     "sum_u_um": 43.50315291477034,
+     "u_um": {
+      "cluster1_profile_0": 7.1382848293757055,
+      "cluster1_profile_1": 7.98768361375597,
+      "cluster1_profile_2": 6.625608021223837,
+      "cluster2_profile_0": 7.138284771514492,
+      "cluster2_profile_1": 7.987683721538738,
+      "cluster2_profile_2": 6.625607957361592
+     },
+     "percent_above_C": 1.0454489000982559,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      7,
+      19,
+      21
+     ],
+     "risk": 0.18793394317898113,
+     "sum_u_um": 43.89998417207135,
+     "u_um": {
+      "cluster1_profile_0": 7.103469321168604,
+      "cluster1_profile_1": 8.297143180743328,
+      "cluster1_profile_2": 6.837238257800134,
+      "cluster2_profile_0": 7.083806657803235,
+      "cluster2_profile_1": 7.971371749755164,
+      "cluster2_profile_2": 6.60695500480088
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      7,
+      19,
+      21
+     ],
+     "risk": 0.18793394317898113,
+     "sum_u_um": 43.89998417207135,
+     "u_um": {
+      "cluster1_profile_0": 7.103469321168604,
+      "cluster1_profile_1": 8.297143180743328,
+      "cluster1_profile_2": 6.837238257800134,
+      "cluster2_profile_0": 7.083806657803235,
+      "cluster2_profile_1": 7.971371749755164,
+      "cluster2_profile_2": 6.60695500480088
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "systematic_um",
+   "value": 2,
+   "n_stations": 3,
+   "seconds": 254.1781439781189,
+   "n_combinations": 2024,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      18,
+      21
+     ],
+     "risk": 0.21344267765009034,
+     "sum_u_um": 45.70848666377651,
+     "u_um": {
+      "cluster1_profile_0": 7.570027175143938,
+      "cluster1_profile_1": 8.329454903417705,
+      "cluster1_profile_2": 7.000790369441642,
+      "cluster2_profile_0": 7.522339830354987,
+      "cluster2_profile_1": 8.306990017268605,
+      "cluster2_profile_2": 6.9788843681496315
+     },
+     "percent_above_C": 3.553108676653838,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      13,
+      21
+     ],
+     "risk": 0.20804061711889654,
+     "sum_u_um": 45.13664377903026,
+     "u_um": {
+      "cluster1_profile_0": 7.413171406712201,
+      "cluster1_profile_1": 8.234263143321668,
+      "cluster1_profile_2": 6.920887345630302,
+      "cluster2_profile_0": 7.413171350996529,
+      "cluster2_profile_1": 8.234263247876822,
+      "cluster2_profile_2": 6.920887284492737
+     },
+     "percent_above_C": 0.9322637386905308,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      7,
+      19,
+      21
+     ],
+     "risk": 0.2061190440130275,
+     "sum_u_um": 45.520391498332934,
+     "u_um": {
+      "cluster1_profile_0": 7.379652864246634,
+      "cluster1_profile_1": 8.534786755493982,
+      "cluster1_profile_2": 7.123750907627653,
+      "cluster2_profile_0": 7.3607280051050274,
+      "cluster2_profile_1": 8.21844070203069,
+      "cluster2_profile_2": 6.903032263828948
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      7,
+      19,
+      21
+     ],
+     "risk": 0.2061190440130275,
+     "sum_u_um": 45.520391498332934,
+     "u_um": {
+      "cluster1_profile_0": 7.379652864246634,
+      "cluster1_profile_1": 8.534786755493982,
+      "cluster1_profile_2": 7.123750907627653,
+      "cluster2_profile_0": 7.3607280051050274,
+      "cluster2_profile_1": 8.21844070203069,
+      "cluster2_profile_2": 6.903032263828948
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "systematic_um",
+   "value": 10,
+   "n_stations": 3,
+   "seconds": 235.16769218444824,
+   "n_combinations": 2024,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      18,
+      21
+     ],
+     "risk": 0.5231596095135364,
+     "sum_u_um": 74.51107033370037,
+     "u_um": {
+      "cluster1_profile_0": 12.3816522093143,
+      "cluster1_profile_1": 12.860008514307804,
+      "cluster1_profile_2": 12.042054052231572,
+      "cluster2_profile_0": 12.352554250977612,
+      "cluster2_profile_1": 12.845469362658578,
+      "cluster2_profile_2": 12.029331944210504
+     },
+     "percent_above_C": 0.6900499669194815,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      13,
+      21
+     ],
+     "risk": 0.5203549559284464,
+     "sum_u_um": 74.16142963455573,
+     "u_um": {
+      "cluster1_profile_0": 12.286379055901513,
+      "cluster1_profile_1": 12.798558102906187,
+      "cluster1_profile_2": 11.99577765928102,
+      "cluster2_profile_0": 12.286379022284624,
+      "cluster2_profile_1": 12.798558170174283,
+      "cluster2_profile_2": 11.995777624008092
+     },
+     "percent_above_C": 0.15025158706136743,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      7,
+      19,
+      21
+     ],
+     "risk": 0.5195742873157916,
+     "sum_u_um": 74.40275732670516,
+     "u_um": {
+      "cluster1_profile_0": 12.26618426393406,
+      "cluster1_profile_1": 12.993944164946818,
+      "cluster1_profile_2": 12.113951749694474,
+      "cluster2_profile_0": 12.25480790404882,
+      "cluster2_profile_1": 12.788384087631819,
+      "cluster2_profile_2": 11.98548515644917
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      7,
+      19,
+      21
+     ],
+     "risk": 0.5195742873157916,
+     "sum_u_um": 74.40275732670516,
+     "u_um": {
+      "cluster1_profile_0": 12.26618426393406,
+      "cluster1_profile_1": 12.993944164946818,
+      "cluster1_profile_2": 12.113951749694474,
+      "cluster2_profile_0": 12.25480790404882,
+      "cluster2_profile_1": 12.788384087631819,
+      "cluster2_profile_2": 11.98548515644917
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "systematic_um",
+   "value": 5,
+   "n_stations": 3,
+   "seconds": 263.7773132324219,
+   "n_combinations": 2024,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      18,
+      21
+     ],
+     "risk": 0.30071903732733696,
+     "sum_u_um": 53.36748441231359,
+     "u_um": {
+      "cluster1_profile_0": 8.8490288412016,
+      "cluster1_profile_1": 9.50683012302572,
+      "cluster1_profile_2": 8.367261547057486,
+      "cluster2_profile_0": 8.808268645048532,
+      "cluster2_profile_1": 9.487153585085478,
+      "cluster2_profile_2": 8.348941670894776
+     },
+     "percent_above_C": 2.1428336258204395,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      13,
+      21
+     ],
+     "risk": 0.2960541617406315,
+     "sum_u_um": 52.87856999106881,
+     "u_um": {
+      "cluster1_profile_0": 8.715222906231105,
+      "cluster1_profile_1": 9.423539118264733,
+      "cluster1_profile_2": 8.300522974542366,
+      "cluster2_profile_0": 8.715222858839338,
+      "cluster2_profile_1": 9.423539209624742,
+      "cluster2_profile_2": 8.300522923566518
+     },
+     "percent_above_C": 0.5583525927179256,
+     "same_stations_as_C": false
+    },
+    "B": {
+     "candidates": [
+      7,
+      19,
+      21
+     ],
+     "risk": 0.2944103141185217,
+     "sum_u_um": 53.21039355913969,
+     "u_um": {
+      "cluster1_profile_0": 8.686729902373134,
+      "cluster1_profile_1": 9.687238252554517,
+      "cluster1_profile_2": 8.470408903584632,
+      "cluster2_profile_0": 8.670658381295935,
+      "cluster2_profile_1": 9.409716657412948,
+      "cluster2_profile_2": 8.285641461918528
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "C": {
+     "candidates": [
+      7,
+      19,
+      21
+     ],
+     "risk": 0.2944103141185217,
+     "sum_u_um": 53.21039355913969,
+     "u_um": {
+      "cluster1_profile_0": 8.686729902373134,
+      "cluster1_profile_1": 9.687238252554517,
+      "cluster1_profile_2": 8.470408903584632,
+      "cluster2_profile_0": 8.670658381295935,
+      "cluster2_profile_1": 9.409716657412948,
+      "cluster2_profile_2": 8.285641461918528
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  },
+  {
+   "axis": "systematic_um",
+   "value": 20,
+   "n_stations": 3,
+   "seconds": 256.03002071380615,
+   "n_combinations": 2024,
+   "plans": {
+    "A0": {
+     "candidates": [
+      5,
+      18,
+      21
+     ],
+     "risk": 0.9525096780920816,
+     "sum_u_um": 127.88500154673567,
+     "u_um": {
+      "cluster1_profile_0": 21.290967836911918,
+      "cluster1_profile_1": 21.572663697097518,
+      "cluster1_profile_2": 21.095285392638488,
+      "cluster2_profile_0": 21.27405923944335,
+      "cluster2_profile_1": 21.563999701980155,
+      "cluster2_profile_2": 21.08802567866426
+     },
+     "percent_above_C": 0.15989372093745402,
+     "same_stations_as_C": false
+    },
+    "A1": {
+     "candidates": [
+      5,
+      13,
+      21
+     ],
+     "risk": 0.9509891062244296,
+     "sum_u_um": 127.68138986605858,
+     "u_um": {
+      "cluster1_profile_0": 21.23570366871075,
+      "cluster1_profile_1": 21.53608807359093,
+      "cluster1_profile_2": 21.068903190505804,
+      "cluster2_profile_0": 21.23570364926097,
+      "cluster2_profile_1": 21.536088113567303,
+      "cluster2_profile_2": 21.068903170422832
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    },
+    "B": {
+     "candidates": [
+      7,
+      19,
+      21
+     ],
+     "risk": 0.9518632237961935,
+     "sum_u_um": 127.82375029931714,
+     "u_um": {
+      "cluster1_profile_0": 21.224025923391242,
+      "cluster1_profile_1": 21.652773147145737,
+      "cluster1_profile_2": 21.13640998357871,
+      "cluster2_profile_0": 21.217453116836086,
+      "cluster2_profile_1": 21.530043371363526,
+      "cluster2_profile_2": 21.063044757001855
+     },
+     "percent_above_C": 0.09191667560044525,
+     "same_stations_as_C": false
+    },
+    "C": {
+     "candidates": [
+      5,
+      13,
+      21
+     ],
+     "risk": 0.9509891062244296,
+     "sum_u_um": 127.68138986605858,
+     "u_um": {
+      "cluster1_profile_0": 21.23570366871075,
+      "cluster1_profile_1": 21.53608807359093,
+      "cluster1_profile_2": 21.068903190505804,
+      "cluster2_profile_0": 21.23570364926097,
+      "cluster2_profile_1": 21.536088113567303,
+      "cluster2_profile_2": 21.068903170422832
+     },
+     "percent_above_C": 0.0,
+     "same_stations_as_C": true
+    }
+   }
+  }
+ ]
+}
