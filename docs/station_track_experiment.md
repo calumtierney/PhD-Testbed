@@ -297,6 +297,77 @@ itself unchanged); the grid at 0.5 m confirms the GA's ordering (ratios 0.93,
 Yes, all of them, exclusively (§6, finding 2): in 12 of 12 plans, at 3 and 4
 stations, every added station is on an end loop; none is on a row.
 
+## 6b. Variable station count: risk-based planning against A1, A0 and the TUR rule
+
+**Question.** If industry already plans against uncertainty *along each
+tolerance* (A1) or a TUR rule, does risk-based planning need fewer stations than
+those, rather than than A0? Here each plan chooses its own number of added
+stations (3-6; 1-2 are infeasible, more than 6 not searched), every
+characteristic is measured, and the station count is the result
+(`python -m viz.run_station_track_station_count`, about 40 min; design as in the
+wing-box experiment):
+
+* **A1-knee / A0-knee**: the A1 (or A0) layouts at each count; the count is the
+  knee of the criterion's curve (smallest K where one more station improves it by
+  < 10%; also 20% and 5%). Tolerance-blind.
+* **T**: TUR 4:1, every characteristic's u ≤ tolerance half-width / 8 (Z540.3
+  convention, as in the wing-box experiment); layouts minimising the worst u.
+* **R**: the fewest stations whose risk-optimal layout is no riskier than a
+  reference: R-A1 (A1-knee plan's realised risk), R-A0, R-TUR (what the TUR rule
+  guarantees: every characteristic exactly at the limit), R-T (the T plan's
+  realised risk).
+
+Priors scale with the tolerance so Cpk keeps its meaning (offset style: at ±50 µm
+exactly the repo's clusters). At ±50 µm the layouts are the existing GA winners;
+at other tolerances C is re-searched with the same GA seeded with every known
+layout, using tabulated risk (within 3% of the integral) inside the search and
+the exact integral for every reported number. In 6 of 15 cases a known layout
+beat the GA's own winner in exact risk (the table's few-percent error at work)
+and was used instead; this is recorded per case.
+
+Knees: **A1 → 4 stations** (5% gain: 6); **A0 → 6** (its trace keeps falling
+30-57% per station, so it never flattens within 6: read as "≥ 6"). T's best
+worst-case u: 49.8, 32.0, 29.7, 28.1 µm at 3-6 stations.
+
+| Tolerance | TUR limit u | A1-knee | R-A1 | A0-knee | R-A0 | T (TUR 4:1) | R-TUR | R-T |
+|---|---|---|---|---|---|---|---|---|
+| ±25 µm | 3.1 µm | 4 (risk 1.81) | **4** | 6 (1.70) | **5** | not met ≤ 6 | not met ≤ 6 | – |
+| ±50 µm | 6.3 µm | 4 (1.05) | **4** | 6 (1.02) | **5** | not met ≤ 6 | not met ≤ 6 | – |
+| ±100 µm | 12.5 µm | 4 (0.644) | **4** | 6 (0.609) | **5** | not met ≤ 6 | not met ≤ 6 | – |
+| ±250 µm | 31.3 µm | 4 (0.109) | **4** | 6 (0.092) | **5** | 5 (0.090) | **4** | 5 |
+
+**Against A1 risk-based planning saves nothing here, at any tolerance from ±25
+to ±250 µm.** The risk-optimal layouts are the same as the A1 layouts at every
+count and tolerance (to the GA's precision), so A1's knee lands where R would.
+Against A0 it saves one station (5 vs ≥ 6), and against the TUR rule one station
+at ±250 µm (4 vs 5) where TUR can be met at all; at ±25-100 µm no layout of up
+to 6 stations meets TUR 4:1 (the best worst-case u is 28 µm).
+
+Why this scene cannot show a saving against A1:
+
+1. **The station count is pinned by the network, not the measurement.** Every
+   target, ties included, must be seen and tied, so 3 stations is the floor and
+   all feasible layouts sit on the end loops. A plan can only choose 3, 4, 5 or 6;
+   3 is far riskier than 4 for every objective (1.71 vs 1.05 at ±50 µm), so
+   anything that cares about either uncertainty or risk picks 4.
+2. **R has to measure every characteristic.** In the wing-box experiment the
+   saving against an A1-like plan (U, which already projects onto the surface
+   normal: 9 → 3 stations) came from leaving capable features unmeasured or
+   loosely measured, priced at their process's escape risk. With six
+   characteristics, all of which must be seen anyway for the network, that
+   lever does not exist here.
+3. **No geometric trade between the clusters** (§6): every loop station serves
+   both, so reweighting has nothing to redistribute, at any tolerance.
+
+One number worth noting for later: at ±50 µm, a marginal characteristic measured
+at the 28-32 µm this cell achieves carries ~0.34 expected wrong decisions (almost
+all false rejections), while accepting it on process evidence alone carries its
+nonconformance rate, ~3e-5 (Cpk 1.33). With uncertainty this large relative to
+the tolerance, measuring creates more wrong decisions than it prevents. That is
+what a risk planner would act on (measure it better, or not use this cell for
+it), and what neither A1 nor TUR can express; it is not tested here because the
+scene requires every characteristic to be measured.
+
 ## 7. How to reproduce
 
 ```
@@ -305,6 +376,8 @@ python -m viz.make_figures                       # panels 1-8, must leave git di
 python -m viz.make_station_track_figure          # results/station_track_cell.png (seconds)
 python -m viz.run_station_track_experiment       # results/station_track_results.json (about 1.5-2 h, 4 cores)
 python -m viz.make_station_track_experiment_figures   # results/panel11a-c*.png/.svg (a few minutes)
+python -m viz.run_station_track_iso_risk          # 5 and 6 added stations (about 2.5 h)
+python -m viz.run_station_track_station_count     # variable station count vs A1/A0/TUR (about 40 min)
 ```
 
 The runner pins BLAS threads before `workers=-1` (see its docstring) and writes

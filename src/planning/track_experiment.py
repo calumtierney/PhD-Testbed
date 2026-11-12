@@ -196,3 +196,98 @@ def time_evaluations(
             objective_fn(evaluation, scenario)
         objective_ms[name] = 1e3 * (time.time() - start) / len(evaluations)
     return {"n_plans": len(evaluations), "evaluate_plan_ms": evaluation_ms, "objective_ms": objective_ms}
+
+
+# -- variable station count: plans that choose how many stations to use --------------
+# The fixed-count comparison above cannot say anything about measurement time:
+# every plan gets the same number of stations. The functions below support the
+# variable-count comparison of `viz/run_station_track_station_count.py`, which
+# mirrors the wing-box experiment (`planning.inspection`, docs/wingbox_experiment.md):
+#   A1-knee / A0-knee  minimise uncertainty; how many stations is read off the
+#                      knee of the criterion's station-count curve (a trace never
+#                      says when to stop);
+#   T                  the TUR 4:1 rule, every characteristic's u <= tolerance/8;
+#   R                  the fewest stations whose risk-optimal layout is no riskier
+#                      than a reference (the A1 plan's own realised risk, or what
+#                      the TUR rule guarantees).
+def with_tolerance(scenario: PlanningScenario, tolerance_half_m: float) -> PlanningScenario:
+    """The same scene at a different tolerance (+-`tolerance_half_m` on every
+    characteristic), with the two clusters' priors scaled with it so Cpk keeps
+    its meaning (`planning.inspection.cluster_priors`, "offset" style: at +-50 um
+    this is exactly the repo's marginal mean 38 um / std 3 um and high-capability
+    std 8.33 um). Geometry, stations and uncertainties are untouched; only the
+    risk side changes."""
+    from dataclasses import replace
+
+    from characteristics.characteristic import Characteristic
+    from characteristics.tolerances import ProfileTolerance
+    from planning.inspection import cluster_priors
+    from risk.jcgm106 import ClusterAssignment, DecisionRule
+
+    marginal, high = cluster_priors(tolerance_half_m, "offset")
+    by_name = {"marginal": marginal, "high-capability": high}
+    characteristics, assignments, rules = [], {}, {}
+    for c in scenario.characteristics:
+        characteristics.append(Characteristic(
+            name=c.name, target_indices=list(c.target_indices),
+            tolerance=ProfileTolerance(zone_width_m=2.0 * tolerance_half_m, surface_normal=c.tolerance.surface_normal),
+        ))
+        old = scenario.assignments[c.name]
+        assignments[c.name] = ClusterAssignment(c.name, by_name[old.cluster.name], confidence=old.confidence)
+        rules[c.name] = DecisionRule.from_zone_width(2.0 * tolerance_half_m)
+    return replace(scenario, characteristics=characteristics, assignments=assignments, decision_rules=rules)
+
+
+@dataclass(frozen=True)
+class TabulatedRiskObjective:
+    """Objective C (summed PFA + PFR) read from per-characteristic tables of
+    risk against uncertainty instead of integrating each time: risk depends on
+    a characteristic only through its u, so ~140 integrations up front replace
+    ~4 per characteristic per plan, which makes C as cheap as A0. The same
+    log-log interpolation as `planning.inspection.RiskTable`; checked against
+    `objective_c_direct_risk` in tests. Used only *inside* searches; every
+    reported risk is recomputed exactly. Picklable (no closures)."""
+
+    names: Tuple[str, ...]
+    log_u_m: np.ndarray
+    log_risk: np.ndarray  # (n_characteristics, n_grid)
+
+    @classmethod
+    def build(cls, scenario: PlanningScenario, n_points: int = 140, u_min_m: float = 0.2e-6, u_max_m: float = 1e-3):
+        from risk.jcgm106 import evaluate_conformity_risk
+
+        grid = np.geomspace(u_min_m, u_max_m, n_points)
+        rows = []
+        for c in scenario.characteristics:
+            assignment, rule = scenario.assignments[c.name], scenario.decision_rules[c.name]
+            risks = [evaluate_conformity_risk(assignment, u, rule) for u in grid]
+            rows.append([max(r.probability_false_acceptance + r.probability_false_rejection, 1e-30) for r in risks])
+        return cls(tuple(c.name for c in scenario.characteristics), np.log(grid), np.log(np.array(rows)))
+
+    def risk_at(self, u_by_name: Dict[str, float]) -> float:
+        return float(sum(
+            np.exp(np.interp(np.log(u_by_name[name]), self.log_u_m, self.log_risk[i]))
+            for i, name in enumerate(self.names)
+        ))
+
+    def __call__(self, evaluation: PlanEvaluation, scenario: PlanningScenario) -> float:
+        return self.risk_at(evaluation.per_characteristic_uncertainty_m)
+
+
+def objective_max_projected_uncertainty(evaluation: PlanEvaluation, scenario: PlanningScenario) -> float:
+    """The TUR plan's search criterion: the worst characteristic's projected
+    uncertainty (m). A layout meets a TUR k:1 rule iff this is <= the limit, so
+    minimising it at each station count finds the fewest stations that can."""
+    return float(max(evaluation.per_characteristic_uncertainty_m.values()))
+
+
+def risk_at_uniform_uncertainty(scenario: PlanningScenario, u_m: float) -> float:
+    """Summed PFA + PFR if every characteristic were measured at exactly `u_m`
+    -- what a uniform uncertainty rule (e.g. TUR 4:1) *guarantees* at most."""
+    from risk.jcgm106 import evaluate_conformity_risk
+
+    total = 0.0
+    for c in scenario.characteristics:
+        r = evaluate_conformity_risk(scenario.assignments[c.name], u_m, scenario.decision_rules[c.name])
+        total += r.probability_false_acceptance + r.probability_false_rejection
+    return total

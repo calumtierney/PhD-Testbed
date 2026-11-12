@@ -251,3 +251,37 @@ def test_track_ga_seeded_with_the_grid_winner_is_never_worse_and_stays_on_the_tr
     with pytest.raises(ValueError):
         track_genetic_algorithm_station_placement(scenario, TRACK, 3, objective_a0_trace_covariance,
                                                   orientation_mode="nonsense", maxiter=1)
+
+
+# -- variable-station-count support (planning.track_experiment) -----------------------------
+def test_with_tolerance_at_50um_reproduces_the_scene_and_scales_priors_with_the_tolerance():
+    from planning.track_experiment import with_tolerance
+
+    scenario = long_part_two_cluster_scenario()
+    same = with_tolerance(scenario, 50e-6)
+    for c in scenario.characteristics:
+        a, b = scenario.assignments[c.name].cluster.prior, same.assignments[c.name].cluster.prior
+        assert a.mean_m == pytest.approx(b.mean_m) and a.std_m == pytest.approx(b.std_m)
+        assert same.decision_rules[c.name] == scenario.decision_rules[c.name]
+    wide = with_tolerance(scenario, 250e-6)
+    marginal = wide.assignments["cluster2_profile_0"].cluster.prior
+    assert marginal.mean_m == pytest.approx(5 * 38e-6) and marginal.std_m == pytest.approx(5 * 3e-6)
+    assert marginal.cpk(-250e-6, 250e-6) == pytest.approx(4.0 / 3.0)
+    assert np.allclose(wide.target_points_m, scenario.target_points_m)
+
+
+def test_tabulated_risk_matches_the_direct_integral_and_max_u_picks_the_worst_characteristic():
+    from planning.objectives import objective_c_direct_risk
+    from planning.track_experiment import (
+        TabulatedRiskObjective, objective_max_projected_uncertainty, risk_at_uniform_uncertainty, with_tolerance,
+    )
+
+    for tolerance in (25e-6, 50e-6, 250e-6):
+        scenario = with_tolerance(long_part_two_cluster_scenario(), tolerance)
+        poses = _few_candidates()
+        plan = grid_search_station_placement(poses, 3, scenario, objective_a0_trace_covariance, prefilter_visibility=True).best
+        table = TabulatedRiskObjective.build(scenario)
+        assert table(plan, scenario) == pytest.approx(objective_c_direct_risk(plan, scenario), rel=0.03, abs=1e-9)
+        assert objective_max_projected_uncertainty(plan, scenario) == max(plan.per_characteristic_uncertainty_m.values())
+        uniform = risk_at_uniform_uncertainty(scenario, tolerance / 8)
+        assert table.risk_at({n: tolerance / 8 for n in table.names}) == pytest.approx(uniform, rel=0.03, abs=1e-9)
