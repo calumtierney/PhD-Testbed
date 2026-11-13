@@ -58,7 +58,7 @@ def main():
                     xytext=(14, -26 if cluster.name == "marginal" else 10), fontsize=9.5, color=COLOURS[cluster.name])
     ax.axvspan(5, 9, color="0.88", zorder=0)
     ax.axvline(REFERENCE_UM, color="k", linewidth=1, linestyle=":")
-    ax.text(5.1, 2e-9, "one tracker at 2.5 m:\nlateral 5-9 µm\n(CLAUDE.md §4b)", fontsize=9, color="0.3")
+    ax.text(5.1, 2e-9, "one tracker at 2.5 m:\nlateral 5-9 µm\n(Hughes et al. 2011)", fontsize=9, color="0.3")
     ax.set_xlabel("measurement uncertainty along the tolerance, u (µm)")
     ax.set_ylabel("decision risk per characteristic, PFA + PFR")
     ax.set_ylim(1e-10, 1)
