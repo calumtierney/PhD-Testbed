@@ -191,6 +191,16 @@ complete:
   (not simple acceptance) a measurement at 3+ µm adds almost nothing against a Cpk 1.33 prior.
   Needs a doubt-propagating prior before it goes in a paper.
 
+- **the factory-cell experiment and draft paper** (`docs/cell_experiment.md`,
+  `docs/paper/README.md`) — the long part on its track with a reference network on the
+  cell structure, uncertainty referenced to the part's datum targets (S-transformation),
+  process knowledge from n builds and JCGM 106 conformance-probability decision rules
+  (`planning.cell`, `risk.decision`, `network.design`). On the synthetic cell the network
+  lowers risk 50-140x for the same stations; with it, planning for risk reaches a given
+  risk with one to two stations fewer than planning for uncertainty along the tolerances
+  (about a third of the risk at equal stations, narrowing to 15-90% with a 4 um
+  uncertainty floor); the decision rule and the number of builds matter as much as the plan.
+
 **Visualization** (`src/visualization`, not one of the six steps — see
 its module docstring): matplotlib plotting for scenes, per-point error
 ellipsoids, visibility results and network-solve outcomes, so a
