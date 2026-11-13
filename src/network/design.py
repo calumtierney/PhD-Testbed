@@ -61,7 +61,7 @@ scaling, so the test is scale-free) and reported as `connected=False`
 rather than returned as a number that looks fine.
 """
 from dataclasses import dataclass
-from typing import Sequence
+from typing import Optional, Sequence
 
 import numpy as np
 
@@ -273,3 +273,135 @@ def projected_uncertainty_m(
     points) give NaN."""
     variance = np.einsum("ti,tij,tj->t", directions, point_covariance_m2, directions)
     return np.sqrt(variance + systematic_std_m**2)
+
+
+def design_joint_covariance(
+    target_points_m: np.ndarray,
+    station_poses: Sequence[InstrumentPose],
+    tracker: LaserTracker,
+    visible: np.ndarray,
+    subset: Sequence[int],
+    anchor_index: int = 0,
+):
+    """Joint design covariance of a *subset* of targets, cross-covariances
+    included: `(covariance (3n x 3n), observed (n,), connected)` for the n
+    targets in `subset`, in that order.
+
+    `design_point_covariances` returns each target's own 3x3 block only, which
+    is all a quantity defined at one point in the anchor's frame needs. A
+    quantity defined *relative to other measured points* -- a deviation from a
+    datum frame fitted to datum targets (`datum_referenced_functional`) --
+    needs the covariances between targets too: two targets seen from the same
+    uncertain station move together, and much of that common motion cancels
+    in a relative quantity. By the same block elimination as the module
+    docstring,
+
+        Cov(t, s) = [t == s] A_t^-1  +  (A_t^-1 B_t) D'^-1 (A_s^-1 B_s)^T
+
+    Rows and columns of unobserved targets are NaN. Matches the corresponding
+    blocks of `network.solve.solve_network`'s full covariance (tests).
+    """
+    targets = np.asarray(target_points_m, dtype=float)
+    positions = np.array([p.position_m for p in station_poses])
+    orientations = np.array([p.orientation for p in station_poses])
+    visible = np.asarray(visible, dtype=bool)
+    n_stations, n_targets = visible.shape
+    subset = np.asarray(list(subset), dtype=int)
+    n_sub = len(subset)
+    out = np.full((3 * n_sub, 3 * n_sub), np.nan)
+    observed = visible.any(axis=0)
+    obs_sub = observed[subset]
+    s_idx, t_idx = np.nonzero(visible)
+    if len(s_idx) == 0:
+        return out, obs_sub, True
+
+    delta = targets[t_idx] - positions[s_idx]
+    lam = shot_information_global(delta, orientations[s_idx], tracker)
+    a_info = np.zeros((n_targets, 3, 3))
+    np.add.at(a_info, t_idx, lam)
+    a_inv = np.zeros((n_targets, 3, 3))
+    a_inv[observed] = np.linalg.inv(a_info[observed])
+
+    free = [s for s in range(n_stations) if s != anchor_index]
+    n_cols = 6 * len(free)
+    keep = np.repeat(obs_sub, 3)
+    block = np.zeros((3 * n_sub, 3 * n_sub))
+    for i, t in enumerate(subset):
+        block[3 * i:3 * i + 3, 3 * i:3 * i + 3] = a_inv[t]
+    if n_cols == 0:
+        out[np.ix_(keep, keep)] = block[np.ix_(keep, keep)]
+        return out, obs_sub, True
+
+    g_station = np.concatenate([np.broadcast_to(np.eye(3), (len(s_idx), 3, 3)), -_skew(delta)], axis=2)
+    lam_g = np.einsum("oij,ojk->oik", lam, g_station)
+    b_full = np.zeros((n_targets, 3, n_cols))
+    d_info = np.zeros((n_cols, n_cols))
+    for k, s in enumerate(free):
+        sel = s_idx == s
+        cols = slice(6 * k, 6 * k + 6)
+        b_full[t_idx[sel], :, cols] = -lam_g[sel]
+        d_info[cols, cols] = np.einsum("oji,ojk->ik", g_station[sel], lam_g[sel])
+    m = np.matmul(a_inv[observed], b_full[observed])
+    d_prime = d_info - b_full[observed].reshape(-1, n_cols).T @ m.reshape(-1, n_cols)
+    diag = np.diag(d_prime)
+    if np.any(diag <= 0.0):
+        return out, obs_sub, False
+    scale = 1.0 / np.sqrt(diag)
+    if np.linalg.eigvalsh(d_prime * scale[:, None] * scale[None, :]).min() < CONNECTIVITY_EIGENVALUE_FLOOR:
+        return out, obs_sub, False
+    m_sub = np.matmul(a_inv[subset], b_full[subset]).reshape(3 * n_sub, n_cols)  # zero rows for unobserved targets
+    full = block + m_sub @ np.linalg.inv(d_prime) @ m_sub.T
+    out[np.ix_(keep, keep)] = full[np.ix_(keep, keep)]
+    return out, obs_sub, True
+
+
+def datum_referenced_functional(
+    points_m: np.ndarray, point_index: int, datum_indices: Sequence[int], direction: Optional[np.ndarray] = None
+):
+    """Coefficients `a` (3 x 3n, or 1 x 3n with a `direction`) such that
+    `a @ displacements` is the displacement of point `point_index` *relative to
+    the frame fitted to the datum points*, to first order.
+
+    A deviation of a toleranced point is defined in the part's datum frame, not
+    in a tracker's. That frame is realised by measuring datum targets and
+    best-fitting their measured positions to their nominal ones with a rigid
+    motion (translation t, small rotation w; unweighted least squares, the usual
+    best-fit). An error dx_i in each measured datum target moves the fitted
+    frame by (t, w) = (G^T G)^-1 G^T dx_D, with G_i = [I, -[x_i - c]_x] and c
+    the datum centroid, and so moves the nominal position of the toleranced
+    point by G_p (t, w). What the inspection sees is the difference:
+
+        deviation error = dx_p - G_p (G^T G)^-1 G^T dx_D
+
+    This is the geodetic S-transformation to the datum defined by the datum
+    points: the result does not depend on which station's frame the network
+    covariance happens to be expressed in (tests check that invariance).
+
+    `points_m` (n, 3) are the nominal positions of the subset the covariance
+    is over; `datum_indices` index into it. Returns `None` if the datum points
+    cannot fix six degrees of freedom (fewer than three, or collinear)."""
+    points = np.asarray(points_m, dtype=float)
+    datum = list(datum_indices)
+    if len(datum) < 3:
+        return None
+    centre = points[datum].mean(axis=0)
+
+    def g_rows(x):
+        return np.concatenate([np.eye(3), -_skew((x - centre)[None, :])[0]], axis=1)  # 3 x 6
+
+    g = np.vstack([g_rows(points[i]) for i in datum])  # 3m x 6
+    normal = g.T @ g
+    if np.any(np.diag(normal) <= 1e-12):  # a rotation no datum point resists (points on one line through the centroid)
+        return None
+    scale = 1.0 / np.sqrt(np.diag(normal))
+    if np.linalg.eigvalsh(normal * scale[:, None] * scale[None, :]).min() < 1e-9:
+        return None
+    fit = np.linalg.solve(normal, g.T)  # 6 x 3m: datum displacements -> (t, w)
+    transfer = g_rows(points[point_index]) @ fit  # 3 x 3m
+    a = np.zeros((3, 3 * len(points)))
+    a[:, 3 * point_index:3 * point_index + 3] += np.eye(3)
+    for k, i in enumerate(datum):
+        a[:, 3 * i:3 * i + 3] -= transfer[:, 3 * k:3 * k + 3]
+    if direction is None:
+        return a
+    return np.asarray(direction, dtype=float)[None, :] @ a

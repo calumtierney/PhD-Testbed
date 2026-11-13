@@ -47,7 +47,9 @@ import numpy as np
 from geometry.pose import InstrumentPose
 from geometry.station_track import StationTrack
 from geometry.visibility import visibility_matrix
-from network.design import count_untied_stations, design_covariances_for_poses, projected_uncertainty_m
+from network.design import (
+    _skew, count_untied_stations, design_covariances_for_poses, design_joint_covariance, projected_uncertainty_m,
+)
 from planning.experiment import long_part_track, long_part_two_cluster_scenario
 from planning.objectives import MIN_TARGETS_PER_NON_ANCHOR_STATION, PlanningScenario, risk_derived_weights
 from planning.search import INFEASIBLE_PENALTY, TrackStationCost, run_station_search
@@ -153,6 +155,102 @@ class CellLayoutScorer:
         u = projected_uncertainty_m(covariance, directions, s.tracker.systematic_std_m)
         trace = np.einsum("tii->t", covariance) + 3.0 * s.tracker.systematic_std_m ** 2
         return LayoutScore(True, 0.0, u, trace, int(visible.sum()), len(station_poses))
+
+
+def part_datum_indices(scenario: PlanningScenario, n_part_targets: int = 26) -> List[int]:
+    """The part's own tie points (targets on the part that are not toleranced
+    characteristics): the datum features that define the part frame. The
+    reference nests on the cell structure (indices >= `n_part_targets`) are not
+    part of it."""
+    used = {i for c in scenario.characteristics for i in c.target_indices}
+    return [i for i in range(min(n_part_targets, len(scenario.target_points_m))) if i not in used]
+
+
+@dataclass(frozen=True)
+class DatumCellScorer:
+    """Scores a layout by each characteristic's uncertainty **relative to the
+    part's datum frame**, with every station planned.
+
+    `CellLayoutScorer` reports uncertainty in the frame of a fixed anchor station
+    (the convention of the earlier experiments): a characteristic far from the
+    anchor inherits the anchor's long-range angular error, however well the
+    station in front of it measures. But a deviation is toleranced against the
+    part's datums, not against a tracker. Here the part frame is the rigid best
+    fit to the *datum targets* the plan observes (`part_datum_indices`: the
+    part's own tie points), and a characteristic's uncertainty is that of its
+    position relative to that fitted frame (`network.design.
+    datum_referenced_functional`, the geodetic S-transformation). The result
+    does not depend on which station the network happens to be solved in, so
+    no station is special: the scenario's anchor is not used, and
+    `n_stations` in the score is the *total* number of stations.
+
+    A layout is feasible if every station is tied to the first by >= 3 shared
+    targets, at least three non-collinear datum targets are observed, and (when
+    `require_all_characteristics`) every characteristic is observed.
+    """
+
+    scenario: PlanningScenario
+    require_all_characteristics: bool = True
+    n_part_targets: int = 26
+
+    def visible(self, station_poses: Sequence[InstrumentPose]) -> np.ndarray:
+        s = self.scenario
+        positions = np.array([p.position_m for p in station_poses])
+        return visibility_matrix(positions, s.target_points_m, s.visibility_limits, s.target_normals_m, s.obstacles, 0.0)
+
+    def score(self, station_poses: Sequence[InstrumentPose]) -> LayoutScore:
+        s = self.scenario
+        n_char = len(s.characteristics)
+        nan = np.full(n_char, np.nan)
+        if len(station_poses) == 0:
+            return LayoutScore(False, 1.0, nan, nan, 0, 0)
+        visible = self.visible(station_poses)
+        n_shots = int(visible.sum())
+        counts = visible.sum(axis=1)
+        n_thin = sum(1 for i in range(1, visible.shape[0]) if counts[i] < MIN_TARGETS_PER_NON_ANCHOR_STATION)
+        n_untied = count_untied_stations(visible, 0, MIN_TARGETS_PER_NON_ANCHOR_STATION)
+        seen = visible.any(axis=0)
+        char_targets = [c.target_indices[0] for c in s.characteristics]
+        n_missing = int(sum(not seen[t] for t in char_targets)) if self.require_all_characteristics else 0
+        datum = [i for i in part_datum_indices(s, self.n_part_targets) if seen[i]]
+        deficit = float(max(n_thin, n_untied) + n_missing + max(0, 3 - len(datum)))
+        if deficit > 0.0:
+            return LayoutScore(False, deficit, nan, nan, n_shots, len(station_poses))
+        measured = [t for t in char_targets if seen[t]]
+        subset = measured + datum
+        joint, _, connected = design_joint_covariance(s.target_points_m, list(station_poses), s.tracker, visible, subset, 0)
+        if not connected:
+            return LayoutScore(False, 1.0, nan, nan, n_shots, len(station_poses))
+        points = s.target_points_m
+        centre = points[datum].mean(axis=0)
+        g_rows = lambda x: np.concatenate([np.eye(3), -_skew((x - centre)[None, :])[0]], axis=1)
+        g = np.vstack([g_rows(points[i]) for i in datum])
+        normal = g.T @ g
+        collinear = bool(np.any(np.diag(normal) <= 1e-12))
+        if not collinear:
+            scale = 1.0 / np.sqrt(np.diag(normal))
+            collinear = np.linalg.eigvalsh(normal * scale[:, None] * scale[None, :]).min() < 1e-9
+        if collinear:  # the observed datum targets cannot fix six degrees of freedom
+            return LayoutScore(False, 1.0, nan, nan, n_shots, len(station_poses))
+        fit = np.linalg.solve(normal, g.T)  # datum displacements -> rigid motion of the fitted frame
+        n_m = len(measured)
+        d = slice(3 * n_m, 3 * len(subset))
+        cov_dd = joint[d, d]
+        u, trace = nan.copy(), nan.copy()
+        sys2 = s.tracker.systematic_std_m ** 2
+        for k, c in enumerate(s.characteristics):
+            t = c.target_indices[0]
+            if not seen[t]:
+                continue
+            j = measured.index(t)
+            p = slice(3 * j, 3 * j + 3)
+            transfer = g_rows(points[t]) @ fit
+            cross = joint[p, d] @ transfer.T
+            cov = joint[p, p] - cross - cross.T + transfer @ cov_dd @ transfer.T
+            n = np.asarray(c.tolerance.surface_normal, dtype=float)
+            u[k] = np.sqrt(max(float(n @ cov @ n), 0.0) + sys2)
+            trace[k] = float(np.trace(cov)) + 3.0 * sys2
+        return LayoutScore(True, 0.0, u, trace, n_shots, len(station_poses))
 
 
 # -- risk as a function of uncertainty ------------------------------------------------------

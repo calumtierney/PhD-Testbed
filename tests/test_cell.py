@@ -133,3 +133,91 @@ def test_time_model_reproduces_its_one_data_point():
     times = measurement_time_minutes(5, 126)
     assert times["per_station_model_min"] == pytest.approx(55.0) and times["per_observation_model_min"] == pytest.approx(55.0)
     assert measurement_time_minutes(3, 126)["per_station_model_min"] == pytest.approx(33.0)
+
+
+# -- datum-referenced uncertainty ------------------------------------------------------------
+def test_joint_design_covariance_matches_the_full_network_solve(bare):
+    from network.design import design_joint_covariance
+
+    poses = layout_poses(LOOPS_4, bare, TRACK)
+    all_poses = [bare.anchor_pose] + poses
+    visible = CellLayoutScorer(bare).visible(poses)
+    subset = [0, 3, 7, 12, 20]
+    joint, observed, connected = design_joint_covariance(bare.target_points_m, all_poses, bare.tracker, visible, subset, 0)
+    full = evaluate_plan(poses, bare).network_solve.target_covariance_m2
+    index = np.concatenate([[3 * i, 3 * i + 1, 3 * i + 2] for i in subset])
+    reference = full[np.ix_(index, index)]
+    assert connected and observed.all()
+    assert np.abs(joint - reference).max() < 1e-5 * np.abs(reference).max()  # cross-covariances included
+    assert np.abs(joint[:3, 3:6]).max() > 0  # and they are not zero: targets share uncertain stations
+
+
+def test_datum_referenced_uncertainty_does_not_depend_on_which_station_is_the_anchor(bare):
+    """The S-transformation property: a deviation relative to the datum targets is the same
+    whichever station's frame the network is solved in."""
+    from network.design import datum_referenced_functional, design_joint_covariance
+
+    poses = layout_poses(LOOPS_4, bare, TRACK)
+    all_poses = [bare.anchor_pose] + poses
+    visible = CellLayoutScorer(bare).visible(poses)
+    subset = list(range(26))
+    datum = list(range(6, 26))
+    results = []
+    for anchor in (0, 1, 3):
+        joint, _, _ = design_joint_covariance(bare.target_points_m, all_poses, bare.tracker, visible, subset, anchor)
+        u = []
+        for c in bare.characteristics:
+            a = datum_referenced_functional(bare.target_points_m[subset], c.target_indices[0], datum, c.tolerance.surface_normal)
+            u.append(np.sqrt((a @ joint @ a.T).item()))
+        results.append(u)
+    assert np.allclose(results[0], results[1], rtol=1e-6) and np.allclose(results[0], results[2], rtol=1e-6)
+    # in the anchor's own frame the same layout looks 1.5-3 times worse: the anchor's long-range
+    # angular error is common to a characteristic and the datum targets next to it, and cancels
+    anchor_frame = CellLayoutScorer(bare).score(poses).u_m
+    assert np.all(np.array(results[0]) < anchor_frame)
+
+
+def test_datum_functional_removes_rigid_motion_and_needs_three_non_collinear_datums():
+    from network.design import datum_referenced_functional
+
+    rng = np.random.default_rng(0)
+    points = rng.uniform(-5, 5, size=(8, 3))
+    a = datum_referenced_functional(points, 0, [2, 3, 4, 5, 6, 7])
+    translation = np.tile([1e-5, -2e-5, 3e-5], 8)
+    assert np.allclose(a @ translation, 0.0, atol=1e-18)  # moving everything together is invisible
+    omega = np.array([1e-6, 2e-6, -1e-6])
+    rotation = np.cross(omega, points).ravel()
+    assert np.allclose(a @ rotation, 0.0, atol=1e-16)  # so is rotating everything together
+    alone = np.zeros(24)
+    alone[:3] = [1e-5, 0.0, 0.0]
+    assert np.allclose(a @ alone, [1e-5, 0.0, 0.0])  # moving only the toleranced point is seen in full
+    assert datum_referenced_functional(points, 0, [2, 3]) is None
+    line = np.array([[0.0, 0, 0], [1, 0, 0], [2, 0, 0], [3, 0, 0], [0, 1, 1]])
+    assert datum_referenced_functional(line, 4, [0, 1, 2, 3]) is None  # collinear datums leave a rotation free
+
+
+def test_datum_scorer_agrees_with_the_functional_and_plans_every_station(cell):
+    from network.design import datum_referenced_functional, design_joint_covariance
+    from planning.cell import DatumCellScorer, part_datum_indices
+
+    assert part_datum_indices(cell) == list(range(6, 26))
+    scorer = DatumCellScorer(cell)
+    poses = layout_poses(LOOPS_4, cell, TRACK)
+    score = scorer.score(poses)
+    assert score.feasible and score.n_stations == 4
+    visible = scorer.visible(poses)
+    seen = visible.any(axis=0)
+    datum = [i for i in range(6, 26) if seen[i]]
+    subset = list(range(6)) + datum
+    joint, _, _ = design_joint_covariance(cell.target_points_m, poses, cell.tracker, visible, subset, 0)
+    for k, c in enumerate(cell.characteristics):
+        a = datum_referenced_functional(cell.target_points_m[subset], k, list(range(6, len(subset))), c.tolerance.surface_normal)
+        assert score.u_m[k] == pytest.approx(np.sqrt((a @ joint @ a.T).item()), rel=1e-9)
+    # reordering the stations (a different station defines the solve frame) changes nothing
+    reordered = scorer.score(poses[::-1])
+    assert np.allclose(reordered.u_m, score.u_m, rtol=1e-6) and np.allclose(reordered.trace_m2, score.trace_m2, rtol=1e-6)
+    # one station alone is a valid plan for the face it stands in front of
+    one = DatumCellScorer(cell, require_all_characteristics=False).score(layout_poses([(11.0, 1.25)], cell, TRACK))
+    assert one.feasible and np.isnan(one.u_m[:3]).all() and np.all(one.u_m[3:] < 10e-6)
+    assert not scorer.score(layout_poses([(11.0, 1.25)], cell, TRACK)).feasible
+    assert not scorer.score([]).feasible
