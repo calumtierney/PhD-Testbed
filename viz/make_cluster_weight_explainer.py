@@ -55,7 +55,7 @@ def main():
         r0 = total_risk(cluster, REFERENCE_UM / UM)
         ax.scatter([REFERENCE_UM], [r0], color=COLOURS[cluster.name], s=60, zorder=5, edgecolors="white")
         ax.annotate(f"slope at 8 µm:\n{slope:.2g} per µm", (REFERENCE_UM, r0), textcoords="offset points",
-                    xytext=(14, -26 if cluster.name == "marginal" else 10), fontsize=9.5, color=COLOURS[cluster.name])
+                    xytext=(14, -26 if cluster.name == "marginal" else -34), fontsize=9.5, color=COLOURS[cluster.name])
     ax.axvspan(5, 9, color="0.88", zorder=0)
     ax.axvline(REFERENCE_UM, color="k", linewidth=1, linestyle=":")
     ax.text(5.1, 2e-9, "one tracker at 2.5 m:\nlateral 5-9 µm\n(Hughes et al. 2011)", fontsize=9, color="0.3")
