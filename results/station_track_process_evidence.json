@@ -1,0 +1,3101 @@
+{
+ "settings": {
+  "de": {
+   "seed": 0,
+   "maxiter": 60,
+   "popsize": 15,
+   "tol": 1e-08,
+   "workers": -1,
+   "updating": "deferred"
+  },
+  "counts": [
+   1,
+   2,
+   3,
+   4,
+   5,
+   6
+  ],
+  "floors": [
+   3,
+   6
+  ],
+  "prices": [
+   100.0,
+   1000.0,
+   10000.0,
+   100000.0
+  ],
+  "reference_a1_knee": {
+   "stations": 4,
+   "risk": 1.051081938882683
+  }
+ },
+ "configs": {
+  "ties_required|floor_3|price_x1": {
+   "ties_required": true,
+   "floor": 3,
+   "price_multiplier": 1.0,
+   "measure_nothing_risk": 9.501964502522982e-05,
+   "by_count": {
+    "1": {
+     "feasible": false,
+     "seconds": 18.364354848861694
+    },
+    "2": {
+     "feasible": false,
+     "seconds": 6.094074964523315
+    },
+    "3": {
+     "feasible": true,
+     "risk": 0.1678070388701005,
+     "risk_exact": 0.16805704161393692,
+     "risk_measured": 0.16771202514460115,
+     "risk_unmeasured": 9.501372549935958e-05,
+     "measured": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2"
+     ],
+     "accepted_on_evidence": [
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 22.51547299371184,
+      "cluster1_profile_1": 22.936673132264563,
+      "cluster1_profile_2": 28.30914662781153,
+      "cluster2_profile_0": 124.6910742575273,
+      "cluster2_profile_1": 115.36406669961316,
+      "cluster2_profile_2": 109.81018060229711
+     },
+     "stations": [
+      [
+       26.78854520716249,
+       1.379482731798792,
+       "+x loop"
+      ],
+      [
+       46.988183450647554,
+       1.1996314273270787,
+       "-x loop"
+      ],
+      [
+       16.572810795896473,
+       1.9542882432931585,
+       "+x loop"
+      ]
+     ],
+     "seconds": 27.60105800628662
+    },
+    "4": {
+     "feasible": true,
+     "risk": 0.013215790567331825,
+     "risk_exact": 0.013244076714617907,
+     "risk_measured": 0.013120776841832466,
+     "risk_unmeasured": 9.501372549935958e-05,
+     "measured": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2"
+     ],
+     "accepted_on_evidence": [
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 13.674587208422162,
+      "cluster1_profile_1": 14.559127799675727,
+      "cluster1_profile_2": 17.068140568200505,
+      "cluster2_profile_0": 28.422297207504045,
+      "cluster2_profile_1": 29.08570419130937,
+      "cluster2_profile_2": 31.995395714896336
+     },
+     "stations": [
+      [
+       15.936824390039941,
+       1.2764485966908055,
+       "+x loop"
+      ],
+      [
+       27.46658562613262,
+       1.450313755438428,
+       "+x loop"
+      ],
+      [
+       45.037657530116014,
+       1.17226421495444,
+       "-x loop"
+      ],
+      [
+       54.409817308511826,
+       1.182964407651866,
+       "-x loop"
+      ]
+     ],
+     "seconds": 65.89689612388611
+    },
+    "5": {
+     "feasible": true,
+     "risk": 0.00459303967445331,
+     "risk_exact": 0.004601475075008178,
+     "risk_measured": 0.00449802594895395,
+     "risk_unmeasured": 9.501372549935958e-05,
+     "measured": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2"
+     ],
+     "accepted_on_evidence": [
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 11.59787351473208,
+      "cluster1_profile_1": 12.573614954550445,
+      "cluster1_profile_2": 14.725388173633618,
+      "cluster2_profile_0": 26.96669379550536,
+      "cluster2_profile_1": 27.52059026287343,
+      "cluster2_profile_2": 29.70345446501227
+     },
+     "stations": [
+      [
+       16.220549114751137,
+       1.6986366294005673,
+       "+x loop"
+      ],
+      [
+       27.46066548535064,
+       1.3492370193610737,
+       "+x loop"
+      ],
+      [
+       44.4525910896914,
+       1.223749499792509,
+       "-x loop"
+      ],
+      [
+       46.120457186666336,
+       1.1232828156783423,
+       "-x loop"
+      ],
+      [
+       54.41308132068967,
+       1.1354022991209465,
+       "-x loop"
+      ]
+     ],
+     "seconds": 67.1331524848938
+    },
+    "6": {
+     "feasible": true,
+     "risk": 0.0032385769617356832,
+     "risk_exact": 0.0032463275147727568,
+     "risk_measured": 0.0031435632362363237,
+     "risk_unmeasured": 9.501372549935958e-05,
+     "measured": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2"
+     ],
+     "accepted_on_evidence": [
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 11.042804662596486,
+      "cluster1_profile_1": 12.031771881424302,
+      "cluster1_profile_2": 14.056665567980486,
+      "cluster2_profile_0": 26.410294681539277,
+      "cluster2_profile_1": 26.984372015582927,
+      "cluster2_profile_2": 29.07041079202308
+     },
+     "stations": [
+      [
+       16.18347444941278,
+       1.7686214788037196,
+       "+x loop"
+      ],
+      [
+       27.262436729179992,
+       1.5349234601877415,
+       "+x loop"
+      ],
+      [
+       44.23435502833707,
+       1.32752311927047,
+       "-x loop"
+      ],
+      [
+       46.91036157755983,
+       1.1551255890666186,
+       "-x loop"
+      ],
+      [
+       45.827910401654286,
+       1.0464466961859356,
+       "-x loop"
+      ],
+      [
+       54.42198846252465,
+       1.1974292185320254,
+       "-x loop"
+      ]
+     ],
+     "seconds": 105.74206829071045
+    }
+   }
+  },
+  "ties_required|floor_6|price_x1": {
+   "ties_required": true,
+   "floor": 6,
+   "price_multiplier": 1.0,
+   "measure_nothing_risk": 9.501964502522982e-05,
+   "by_count": {
+    "1": {
+     "feasible": false,
+     "seconds": 19.470263719558716
+    },
+    "2": {
+     "feasible": false,
+     "seconds": 7.235334157943726
+    },
+    "3": {
+     "feasible": true,
+     "risk": 1.7100829046858228,
+     "risk_exact": 1.710527475623781,
+     "risk_measured": 1.7100829046858228,
+     "risk_unmeasured": 0.0,
+     "measured": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "accepted_on_evidence": [],
+     "u_um": {
+      "cluster1_profile_0": 29.446334365303724,
+      "cluster1_profile_1": 32.52535401515724,
+      "cluster1_profile_2": 35.93113426012204,
+      "cluster2_profile_0": 45.91412022956922,
+      "cluster2_profile_1": 46.43080655400885,
+      "cluster2_profile_2": 49.83479804052315
+     },
+     "stations": [
+      [
+       16.683603893452613,
+       1.2285463148525326,
+       "+x loop"
+      ],
+      [
+       44.232930299000635,
+       1.1563891322271118,
+       "-x loop"
+      ],
+      [
+       54.40977469528772,
+       1.182948316541753,
+       "-x loop"
+      ]
+     ],
+     "seconds": 25.40731143951416
+    },
+    "4": {
+     "feasible": true,
+     "risk": 1.050966789808986,
+     "risk_exact": 1.0510582140975595,
+     "risk_measured": 1.050966789808986,
+     "risk_unmeasured": 0.0,
+     "measured": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "accepted_on_evidence": [],
+     "u_um": {
+      "cluster1_profile_0": 13.674318386817472,
+      "cluster1_profile_1": 14.55929676599946,
+      "cluster1_profile_2": 17.068592993961307,
+      "cluster2_profile_0": 28.422113976853066,
+      "cluster2_profile_1": 29.0863516071694,
+      "cluster2_profile_2": 31.996754045686362
+     },
+     "stations": [
+      [
+       15.936904710396158,
+       1.27644758554726,
+       "+x loop"
+      ],
+      [
+       27.46655258665255,
+       1.450248160086882,
+       "+x loop"
+      ],
+      [
+       45.03728318339333,
+       1.1725638624397674,
+       "-x loop"
+      ],
+      [
+       54.409874435000035,
+       1.1833546178607421,
+       "-x loop"
+      ]
+     ],
+     "seconds": 44.84907841682434
+    },
+    "5": {
+     "feasible": true,
+     "risk": 1.0096165699167239,
+     "risk_exact": 1.0097583204847385,
+     "risk_measured": 1.0096165699167239,
+     "risk_unmeasured": 0.0,
+     "measured": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "accepted_on_evidence": [],
+     "u_um": {
+      "cluster1_profile_0": 11.89044890240439,
+      "cluster1_profile_1": 12.850249982514176,
+      "cluster1_profile_2": 15.159005798761626,
+      "cluster2_profile_0": 26.514494493176255,
+      "cluster2_profile_1": 27.256623346139467,
+      "cluster2_profile_2": 29.76556029162894
+     },
+     "stations": [
+      [
+       15.89202062405881,
+       1.1985590957429795,
+       "+x loop"
+      ],
+      [
+       27.468895480505495,
+       1.345506501292592,
+       "+x loop"
+      ],
+      [
+       45.03699750754867,
+       1.2204186854216226,
+       "-x loop"
+      ],
+      [
+       46.12022297397541,
+       1.198391340199465,
+       "-x loop"
+      ],
+      [
+       54.41011250294807,
+       1.171652964802646,
+       "-x loop"
+      ]
+     ],
+     "seconds": 90.9959568977356
+    },
+    "6": {
+     "feasible": true,
+     "risk": 0.9765519389165453,
+     "risk_exact": 0.9767389099890644,
+     "risk_measured": 0.9765519389165453,
+     "risk_unmeasured": 0.0,
+     "measured": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "accepted_on_evidence": [],
+     "u_um": {
+      "cluster1_profile_0": 11.526614283626106,
+      "cluster1_profile_1": 12.467695993953633,
+      "cluster1_profile_2": 14.625483111986437,
+      "cluster2_profile_0": 24.66145975058048,
+      "cluster2_profile_1": 25.62627331354033,
+      "cluster2_profile_2": 28.100703010431392
+     },
+     "stations": [
+      [
+       16.220152066276103,
+       1.087408145800851,
+       "+x loop"
+      ],
+      [
+       27.46512635601665,
+       1.48844609689703,
+       "+x loop"
+      ],
+      [
+       44.71899774794803,
+       1.2589937706587673,
+       "-x loop"
+      ],
+      [
+       46.06161308378917,
+       1.1477631932192285,
+       "-x loop"
+      ],
+      [
+       53.95517913161902,
+       1.094972184933623,
+       "-x loop"
+      ],
+      [
+       54.43893732777563,
+       1.301164371091728,
+       "-x loop"
+      ]
+     ],
+     "seconds": 98.56457901000977
+    }
+   }
+  },
+  "ties_required|floor_0|price_x100": {
+   "ties_required": true,
+   "floor": 0,
+   "price_multiplier": 100.0,
+   "measure_nothing_risk": 0.009501964502522981,
+   "by_count": {
+    "1": {
+     "feasible": false,
+     "seconds": 19.370745182037354
+    },
+    "2": {
+     "feasible": false,
+     "seconds": 8.097967863082886
+    },
+    "3": {
+     "feasible": true,
+     "risk": 0.009501964502522981,
+     "risk_exact": 0.009501964502522981,
+     "risk_measured": 0.0,
+     "risk_unmeasured": 0.009501964502522981,
+     "measured": [],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 28.637771042149122,
+      "cluster1_profile_1": 31.967581056446793,
+      "cluster1_profile_2": 35.651586040674786,
+      "cluster2_profile_0": 64.70939719456027,
+      "cluster2_profile_1": 63.21826151739199,
+      "cluster2_profile_2": 68.22439070278563
+     },
+     "stations": [
+      [
+       16.514473208434485,
+       2.708062449105206,
+       "+x loop"
+      ],
+      [
+       44.6575545076586,
+       1.8991597092009045,
+       "-x loop"
+      ],
+      [
+       53.994364460773184,
+       1.9033869887163375,
+       "-x loop"
+      ]
+     ],
+     "seconds": 18.035545110702515
+    },
+    "4": {
+     "feasible": true,
+     "risk": 0.009501964502522981,
+     "risk_exact": 0.009501964502522981,
+     "risk_measured": 0.0,
+     "risk_unmeasured": 0.009501964502522981,
+     "measured": [],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 20.23911849965968,
+      "cluster1_profile_1": 21.97597596309157,
+      "cluster1_profile_2": 25.713726932103324,
+      "cluster2_profile_0": 55.79575899273378,
+      "cluster2_profile_1": 56.16183996666956,
+      "cluster2_profile_2": 59.8192898727522
+     },
+     "stations": [
+      [
+       16.225263603086745,
+       1.862968079319448,
+       "+x loop"
+      ],
+      [
+       27.32305964986116,
+       1.6680432373485836,
+       "+x loop"
+      ],
+      [
+       45.85678497595707,
+       1.3128398023952483,
+       "-x loop"
+      ],
+      [
+       52.66895227403147,
+       1.5812160782064428,
+       "-x loop"
+      ]
+     ],
+     "seconds": 34.57207250595093
+    },
+    "5": {
+     "feasible": true,
+     "risk": 0.009501964502522981,
+     "risk_exact": 0.009501964502522981,
+     "risk_measured": 0.0,
+     "risk_unmeasured": 0.009501964502522981,
+     "measured": [],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 18.408218335658983,
+      "cluster1_profile_1": 21.611983148992348,
+      "cluster1_profile_2": 23.733841670372115,
+      "cluster2_profile_0": 69.60484046459584,
+      "cluster2_profile_1": 64.8294819955736,
+      "cluster2_profile_2": 68.65504181249736
+     },
+     "stations": [
+      [
+       16.106275166398582,
+       0.8560978759502933,
+       "+x loop"
+      ],
+      [
+       25.12325997105011,
+       2.260802523497054,
+       "+x loop"
+      ],
+      [
+       44.41040122426881,
+       2.569007369317103,
+       "-x loop"
+      ],
+      [
+       48.42953715677839,
+       2.211783585118753,
+       "-x loop"
+      ],
+      [
+       47.36021429885625,
+       0.9033411007694481,
+       "-x loop"
+      ]
+     ],
+     "seconds": 50.57999658584595
+    },
+    "6": {
+     "feasible": true,
+     "risk": 0.009501964502522981,
+     "risk_exact": 0.009501964502522981,
+     "risk_measured": 0.0,
+     "risk_unmeasured": 0.009501964502522981,
+     "measured": [],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 64.85590538135322,
+      "cluster1_profile_1": 72.0468037567277,
+      "cluster1_profile_2": 79.82140237724725,
+      "cluster2_profile_0": 194.1623892052013,
+      "cluster2_profile_1": 200.25725709560209,
+      "cluster2_profile_2": 207.52697710925113
+     },
+     "stations": [
+      [
+       43.33481468675781,
+       1.4723150762507533,
+       "+y row"
+      ],
+      [
+       12.412810188466755,
+       1.377478081163746,
+       "-y row"
+      ],
+      [
+       18.232142040618523,
+       1.5110526511573148,
+       "+x loop"
+      ],
+      [
+       27.356272137368713,
+       1.655572357251209,
+       "+x loop"
+      ],
+      [
+       44.13528499869739,
+       2.268156693213792,
+       "-x loop"
+      ],
+      [
+       22.27484767033855,
+       1.9960735106769503,
+       "+x loop"
+      ]
+     ],
+     "seconds": 69.09083294868469
+    }
+   }
+  },
+  "ties_required|floor_0|price_x1000": {
+   "ties_required": true,
+   "floor": 0,
+   "price_multiplier": 1000.0,
+   "measure_nothing_risk": 0.0950196450252298,
+   "by_count": {
+    "1": {
+     "feasible": false,
+     "seconds": 19.96928119659424
+    },
+    "2": {
+     "feasible": false,
+     "seconds": 8.356273174285889
+    },
+    "3": {
+     "feasible": true,
+     "risk": 0.0950196450252298,
+     "risk_exact": 0.0950196450252298,
+     "risk_measured": 0.0,
+     "risk_unmeasured": 0.0950196450252298,
+     "measured": [],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 28.637771042149122,
+      "cluster1_profile_1": 31.967581056446793,
+      "cluster1_profile_2": 35.651586040674786,
+      "cluster2_profile_0": 64.70939719456027,
+      "cluster2_profile_1": 63.21826151739199,
+      "cluster2_profile_2": 68.22439070278563
+     },
+     "stations": [
+      [
+       16.514473208434485,
+       2.708062449105206,
+       "+x loop"
+      ],
+      [
+       44.6575545076586,
+       1.8991597092009045,
+       "-x loop"
+      ],
+      [
+       53.994364460773184,
+       1.9033869887163375,
+       "-x loop"
+      ]
+     ],
+     "seconds": 18.355706453323364
+    },
+    "4": {
+     "feasible": true,
+     "risk": 0.0950196450252298,
+     "risk_exact": 0.0950196450252298,
+     "risk_measured": 0.0,
+     "risk_unmeasured": 0.0950196450252298,
+     "measured": [],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 20.23911849965968,
+      "cluster1_profile_1": 21.97597596309157,
+      "cluster1_profile_2": 25.713726932103324,
+      "cluster2_profile_0": 55.79575899273378,
+      "cluster2_profile_1": 56.16183996666956,
+      "cluster2_profile_2": 59.8192898727522
+     },
+     "stations": [
+      [
+       16.225263603086745,
+       1.862968079319448,
+       "+x loop"
+      ],
+      [
+       27.32305964986116,
+       1.6680432373485836,
+       "+x loop"
+      ],
+      [
+       45.85678497595707,
+       1.3128398023952483,
+       "-x loop"
+      ],
+      [
+       52.66895227403147,
+       1.5812160782064428,
+       "-x loop"
+      ]
+     ],
+     "seconds": 35.13852405548096
+    },
+    "5": {
+     "feasible": true,
+     "risk": 0.0950196450252298,
+     "risk_exact": 0.0950196450252298,
+     "risk_measured": 0.0,
+     "risk_unmeasured": 0.0950196450252298,
+     "measured": [],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 18.408218335658983,
+      "cluster1_profile_1": 21.611983148992348,
+      "cluster1_profile_2": 23.733841670372115,
+      "cluster2_profile_0": 69.60484046459584,
+      "cluster2_profile_1": 64.8294819955736,
+      "cluster2_profile_2": 68.65504181249736
+     },
+     "stations": [
+      [
+       16.106275166398582,
+       0.8560978759502933,
+       "+x loop"
+      ],
+      [
+       25.12325997105011,
+       2.260802523497054,
+       "+x loop"
+      ],
+      [
+       44.41040122426881,
+       2.569007369317103,
+       "-x loop"
+      ],
+      [
+       48.42953715677839,
+       2.211783585118753,
+       "-x loop"
+      ],
+      [
+       47.36021429885625,
+       0.9033411007694481,
+       "-x loop"
+      ]
+     ],
+     "seconds": 51.232460737228394
+    },
+    "6": {
+     "feasible": true,
+     "risk": 0.0950196450252298,
+     "risk_exact": 0.0950196450252298,
+     "risk_measured": 0.0,
+     "risk_unmeasured": 0.0950196450252298,
+     "measured": [],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 64.85590538135322,
+      "cluster1_profile_1": 72.0468037567277,
+      "cluster1_profile_2": 79.82140237724725,
+      "cluster2_profile_0": 194.1623892052013,
+      "cluster2_profile_1": 200.25725709560209,
+      "cluster2_profile_2": 207.52697710925113
+     },
+     "stations": [
+      [
+       43.33481468675781,
+       1.4723150762507533,
+       "+y row"
+      ],
+      [
+       12.412810188466755,
+       1.377478081163746,
+       "-y row"
+      ],
+      [
+       18.232142040618523,
+       1.5110526511573148,
+       "+x loop"
+      ],
+      [
+       27.356272137368713,
+       1.655572357251209,
+       "+x loop"
+      ],
+      [
+       44.13528499869739,
+       2.268156693213792,
+       "-x loop"
+      ],
+      [
+       22.27484767033855,
+       1.9960735106769503,
+       "+x loop"
+      ]
+     ],
+     "seconds": 72.38165521621704
+    }
+   }
+  },
+  "ties_required|floor_0|price_x10000": {
+   "ties_required": true,
+   "floor": 0,
+   "price_multiplier": 10000.0,
+   "measure_nothing_risk": 0.9501964502522982,
+   "by_count": {
+    "1": {
+     "feasible": false,
+     "seconds": 20.47073197364807
+    },
+    "2": {
+     "feasible": false,
+     "seconds": 8.408206462860107
+    },
+    "3": {
+     "feasible": true,
+     "risk": 0.9501964502522982,
+     "risk_exact": 0.9501964502522982,
+     "risk_measured": 0.0,
+     "risk_unmeasured": 0.9501964502522982,
+     "measured": [],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 28.637771042149122,
+      "cluster1_profile_1": 31.967581056446793,
+      "cluster1_profile_2": 35.651586040674786,
+      "cluster2_profile_0": 64.70939719456027,
+      "cluster2_profile_1": 63.21826151739199,
+      "cluster2_profile_2": 68.22439070278563
+     },
+     "stations": [
+      [
+       16.514473208434485,
+       2.708062449105206,
+       "+x loop"
+      ],
+      [
+       44.6575545076586,
+       1.8991597092009045,
+       "-x loop"
+      ],
+      [
+       53.994364460773184,
+       1.9033869887163375,
+       "-x loop"
+      ]
+     ],
+     "seconds": 19.44184422492981
+    },
+    "4": {
+     "feasible": true,
+     "risk": 0.9501964502522982,
+     "risk_exact": 0.9501964502522982,
+     "risk_measured": 0.0,
+     "risk_unmeasured": 0.9501964502522982,
+     "measured": [],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 20.23911849965968,
+      "cluster1_profile_1": 21.97597596309157,
+      "cluster1_profile_2": 25.713726932103324,
+      "cluster2_profile_0": 55.79575899273378,
+      "cluster2_profile_1": 56.16183996666956,
+      "cluster2_profile_2": 59.8192898727522
+     },
+     "stations": [
+      [
+       16.225263603086745,
+       1.862968079319448,
+       "+x loop"
+      ],
+      [
+       27.32305964986116,
+       1.6680432373485836,
+       "+x loop"
+      ],
+      [
+       45.85678497595707,
+       1.3128398023952483,
+       "-x loop"
+      ],
+      [
+       52.66895227403147,
+       1.5812160782064428,
+       "-x loop"
+      ]
+     ],
+     "seconds": 37.128161907196045
+    },
+    "5": {
+     "feasible": true,
+     "risk": 0.9501964502522982,
+     "risk_exact": 0.9501964502522982,
+     "risk_measured": 0.0,
+     "risk_unmeasured": 0.9501964502522982,
+     "measured": [],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 18.408218335658983,
+      "cluster1_profile_1": 21.611983148992348,
+      "cluster1_profile_2": 23.733841670372115,
+      "cluster2_profile_0": 69.60484046459584,
+      "cluster2_profile_1": 64.8294819955736,
+      "cluster2_profile_2": 68.65504181249736
+     },
+     "stations": [
+      [
+       16.106275166398582,
+       0.8560978759502933,
+       "+x loop"
+      ],
+      [
+       25.12325997105011,
+       2.260802523497054,
+       "+x loop"
+      ],
+      [
+       44.41040122426881,
+       2.569007369317103,
+       "-x loop"
+      ],
+      [
+       48.42953715677839,
+       2.211783585118753,
+       "-x loop"
+      ],
+      [
+       47.36021429885625,
+       0.9033411007694481,
+       "-x loop"
+      ]
+     ],
+     "seconds": 52.641979455947876
+    },
+    "6": {
+     "feasible": true,
+     "risk": 0.948133341594769,
+     "risk_exact": 0.9482195251417873,
+     "risk_measured": 0.3146493096736696,
+     "risk_unmeasured": 0.6334840319210995,
+     "measured": [
+      "cluster2_profile_0"
+     ],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 11.526614283626106,
+      "cluster1_profile_1": 12.467695993953633,
+      "cluster1_profile_2": 14.625483111986437,
+      "cluster2_profile_0": 24.66145975058048,
+      "cluster2_profile_1": 25.62627331354033,
+      "cluster2_profile_2": 28.100703010431392
+     },
+     "stations": [
+      [
+       16.220152066276103,
+       1.087408145800851,
+       "+x loop"
+      ],
+      [
+       27.46512635601665,
+       1.48844609689703,
+       "+x loop"
+      ],
+      [
+       44.71899774794803,
+       1.2589937706587673,
+       "-x loop"
+      ],
+      [
+       46.06161308378917,
+       1.1477631932192285,
+       "-x loop"
+      ],
+      [
+       53.95517913161902,
+       1.094972184933623,
+       "-x loop"
+      ],
+      [
+       54.43893732777563,
+       1.301164371091728,
+       "-x loop"
+      ]
+     ],
+     "seconds": 117.06059408187866
+    }
+   }
+  },
+  "ties_required|floor_0|price_x100000": {
+   "ties_required": true,
+   "floor": 0,
+   "price_multiplier": 100000.0,
+   "measure_nothing_risk": 3.0005919525870226,
+   "by_count": {
+    "1": {
+     "feasible": false,
+     "seconds": 20.24487280845642
+    },
+    "2": {
+     "feasible": false,
+     "seconds": 8.611606121063232
+    },
+    "3": {
+     "feasible": true,
+     "risk": 1.2970035815109513,
+     "risk_exact": 1.2969301212684432,
+     "risk_measured": 1.2964116289239287,
+     "risk_unmeasured": 0.0005919525870226167,
+     "measured": [
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 29.479626198951745,
+      "cluster1_profile_1": 32.54256667899693,
+      "cluster1_profile_2": 35.93083380654209,
+      "cluster2_profile_0": 45.89859893042159,
+      "cluster2_profile_1": 46.415399231727186,
+      "cluster2_profile_2": 49.82110769582268
+     },
+     "stations": [
+      [
+       16.675052135774916,
+       1.2169894856754877,
+       "+x loop"
+      ],
+      [
+       44.23269086285346,
+       1.1072950513128004,
+       "-x loop"
+      ],
+      [
+       54.40974393599889,
+       1.1901507951427304,
+       "-x loop"
+      ]
+     ],
+     "seconds": 27.213760137557983
+    },
+    "4": {
+     "feasible": true,
+     "risk": 1.0383439614583327,
+     "risk_exact": 1.0384108419231175,
+     "risk_measured": 1.0377520088713101,
+     "risk_unmeasured": 0.0005919525870226167,
+     "measured": [
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 13.633226579155561,
+      "cluster1_profile_1": 14.582935191366694,
+      "cluster1_profile_2": 17.169944517137733,
+      "cluster2_profile_0": 28.389040785374913,
+      "cluster2_profile_1": 29.10015704665399,
+      "cluster2_profile_2": 32.001332514553546
+     },
+     "stations": [
+      [
+       16.352140637578128,
+       1.2170565552397712,
+       "+x loop"
+      ],
+      [
+       27.470858994523002,
+       1.057337077001728,
+       "+x loop"
+      ],
+      [
+       45.03766327363279,
+       1.1751812033302718,
+       "-x loop"
+      ],
+      [
+       54.409732930119205,
+       1.1864834755853826,
+       "-x loop"
+      ]
+     ],
+     "seconds": 46.67858695983887
+    },
+    "5": {
+     "feasible": true,
+     "risk": 1.000170126485951,
+     "risk_exact": 1.0002830532936289,
+     "risk_measured": 0.9995781738989284,
+     "risk_unmeasured": 0.0005919525870226167,
+     "measured": [
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 13.340108696443023,
+      "cluster1_profile_1": 14.176579743069198,
+      "cluster1_profile_2": 16.552008596909396,
+      "cluster2_profile_0": 26.132873446901172,
+      "cluster2_profile_1": 26.92883289288912,
+      "cluster2_profile_2": 29.737930972599035
+     },
+     "stations": [
+      [
+       16.193726396748797,
+       1.148004939540552,
+       "+x loop"
+      ],
+      [
+       27.31378942206129,
+       1.3606937486645865,
+       "+x loop"
+      ],
+      [
+       45.01740008184011,
+       1.1490939039234387,
+       "-x loop"
+      ],
+      [
+       53.9363456665381,
+       1.4104115247991957,
+       "-x loop"
+      ],
+      [
+       54.41539782664182,
+       0.9459630741727829,
+       "-x loop"
+      ]
+     ],
+     "seconds": 80.46459984779358
+    },
+    "6": {
+     "feasible": true,
+     "risk": 0.9728790724467751,
+     "risk_exact": 0.9730615539898422,
+     "risk_measured": 0.9722871198597525,
+     "risk_unmeasured": 0.0005919525870226167,
+     "measured": [
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 11.526614283626106,
+      "cluster1_profile_1": 12.467695993953633,
+      "cluster1_profile_2": 14.625483111986437,
+      "cluster2_profile_0": 24.66145975058048,
+      "cluster2_profile_1": 25.62627331354033,
+      "cluster2_profile_2": 28.100703010431392
+     },
+     "stations": [
+      [
+       16.220152066276103,
+       1.087408145800851,
+       "+x loop"
+      ],
+      [
+       27.46512635601665,
+       1.48844609689703,
+       "+x loop"
+      ],
+      [
+       44.71899774794803,
+       1.2589937706587673,
+       "-x loop"
+      ],
+      [
+       46.06161308378917,
+       1.1477631932192285,
+       "-x loop"
+      ],
+      [
+       53.95517913161902,
+       1.094972184933623,
+       "-x loop"
+      ],
+      [
+       54.43893732777563,
+       1.301164371091728,
+       "-x loop"
+      ]
+     ],
+     "seconds": 107.1409523487091
+    }
+   }
+  },
+  "ties_relaxed|floor_3|price_x1": {
+   "ties_required": false,
+   "floor": 3,
+   "price_multiplier": 1.0,
+   "measure_nothing_risk": 9.501964502522982e-05,
+   "by_count": {
+    "1": {
+     "feasible": true,
+     "risk": 0.227930093727478,
+     "risk_exact": 0.22831768282136072,
+     "risk_measured": 0.22783508000197863,
+     "risk_unmeasured": 9.501372549935958e-05,
+     "measured": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2"
+     ],
+     "accepted_on_evidence": [
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 24.71887791291286,
+      "cluster1_profile_1": 26.690864239778843,
+      "cluster1_profile_2": 29.1591548107941,
+      "cluster2_profile_0": NaN,
+      "cluster2_profile_1": NaN,
+      "cluster2_profile_2": NaN
+     },
+     "stations": [
+      [
+       47.20797265167065,
+       1.1935062464383983,
+       "-x loop"
+      ]
+     ],
+     "seconds": 22.380340814590454
+    },
+    "2": {
+     "feasible": true,
+     "risk": 0.01831714220791678,
+     "risk_exact": 0.018351605861145717,
+     "risk_measured": 0.01822212848241742,
+     "risk_unmeasured": 9.501372549935958e-05,
+     "measured": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2"
+     ],
+     "accepted_on_evidence": [
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 14.430185286051866,
+      "cluster1_profile_1": 15.61992862995904,
+      "cluster1_profile_2": 17.762667552512287,
+      "cluster2_profile_0": NaN,
+      "cluster2_profile_1": NaN,
+      "cluster2_profile_2": NaN
+     },
+     "stations": [
+      [
+       44.233678233584286,
+       1.2531576870831955,
+       "-x loop"
+      ],
+      [
+       46.98922596062084,
+       1.225444614372151,
+       "-x loop"
+      ]
+     ],
+     "seconds": 13.54792857170105
+    },
+    "3": {
+     "feasible": true,
+     "risk": 0.00882938144024927,
+     "risk_exact": 0.008852782946464436,
+     "risk_measured": 0.00873436771474991,
+     "risk_unmeasured": 9.501372549935958e-05,
+     "measured": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2"
+     ],
+     "accepted_on_evidence": [
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 12.930543776575218,
+      "cluster1_profile_1": 13.98485985931109,
+      "cluster1_profile_2": 15.955152841678927,
+      "cluster2_profile_0": NaN,
+      "cluster2_profile_1": NaN,
+      "cluster2_profile_2": NaN
+     },
+     "stations": [
+      [
+       46.98655166862427,
+       1.171945256492223,
+       "-x loop"
+      ],
+      [
+       46.9872383075655,
+       1.2827926332087647,
+       "-x loop"
+      ],
+      [
+       44.24432912967393,
+       1.2869844882471693,
+       "-x loop"
+      ]
+     ],
+     "seconds": 30.10697340965271
+    },
+    "4": {
+     "feasible": true,
+     "risk": 0.005757531142103818,
+     "risk_exact": 0.005773238902122587,
+     "risk_measured": 0.005662517416604458,
+     "risk_unmeasured": 9.501372549935958e-05,
+     "measured": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2"
+     ],
+     "accepted_on_evidence": [
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 11.997332942410255,
+      "cluster1_profile_1": 13.158458768697585,
+      "cluster1_profile_2": 15.09409757146267,
+      "cluster2_profile_0": NaN,
+      "cluster2_profile_1": NaN,
+      "cluster2_profile_2": NaN
+     },
+     "stations": [
+      [
+       44.232481918764286,
+       0.983460726301425,
+       "-x loop"
+      ],
+      [
+       46.98144480773448,
+       1.172473308100963,
+       "-x loop"
+      ],
+      [
+       46.96565080844815,
+       1.313275558166603,
+       "-x loop"
+      ],
+      [
+       44.237969759706566,
+       1.5109856305597975,
+       "-x loop"
+      ]
+     ],
+     "seconds": 54.79884672164917
+    },
+    "5": {
+     "feasible": true,
+     "risk": 0.00459303967445331,
+     "risk_exact": 0.004601475075008178,
+     "risk_measured": 0.00449802594895395,
+     "risk_unmeasured": 9.501372549935958e-05,
+     "measured": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2"
+     ],
+     "accepted_on_evidence": [
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 11.59787351473208,
+      "cluster1_profile_1": 12.573614954550445,
+      "cluster1_profile_2": 14.725388173633618,
+      "cluster2_profile_0": 26.96669379550536,
+      "cluster2_profile_1": 27.52059026287343,
+      "cluster2_profile_2": 29.70345446501227
+     },
+     "stations": [
+      [
+       16.220549114751137,
+       1.6986366294005673,
+       "+x loop"
+      ],
+      [
+       27.46066548535064,
+       1.3492370193610737,
+       "+x loop"
+      ],
+      [
+       44.4525910896914,
+       1.223749499792509,
+       "-x loop"
+      ],
+      [
+       46.120457186666336,
+       1.1232828156783423,
+       "-x loop"
+      ],
+      [
+       54.41308132068967,
+       1.1354022991209465,
+       "-x loop"
+      ]
+     ],
+     "seconds": 69.32957935333252
+    },
+    "6": {
+     "feasible": true,
+     "risk": 0.0038512621811168353,
+     "risk_exact": 0.003858426179893318,
+     "risk_measured": 0.003756248455617476,
+     "risk_unmeasured": 9.501372549935958e-05,
+     "measured": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2"
+     ],
+     "accepted_on_evidence": [
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 11.300246908753586,
+      "cluster1_profile_1": 12.285201792089154,
+      "cluster1_profile_2": 14.388191737565805,
+      "cluster2_profile_0": 24.874568902220677,
+      "cluster2_profile_1": 25.71667634940307,
+      "cluster2_profile_2": 28.047764555578897
+     },
+     "stations": [
+      [
+       16.183053934385388,
+       1.3090907482570189,
+       "+x loop"
+      ],
+      [
+       27.26416386683089,
+       1.4238796577975523,
+       "+x loop"
+      ],
+      [
+       44.38994394450652,
+       1.2221500962594005,
+       "-x loop"
+      ],
+      [
+       46.12041717453035,
+       1.139585912627904,
+       "-x loop"
+      ],
+      [
+       54.040285803696115,
+       1.0266079128184227,
+       "-x loop"
+      ],
+      [
+       54.41590819868048,
+       1.2941175846166626,
+       "-x loop"
+      ]
+     ],
+     "seconds": 119.05328106880188
+    }
+   }
+  },
+  "ties_relaxed|floor_6|price_x1": {
+   "ties_required": false,
+   "floor": 6,
+   "price_multiplier": 1.0,
+   "measure_nothing_risk": 9.501964502522982e-05,
+   "by_count": {
+    "1": {
+     "feasible": false,
+     "seconds": 20.206968307495117
+    },
+    "2": {
+     "feasible": true,
+     "risk": 1.7847989080775144,
+     "risk_exact": 1.7852296884248793,
+     "risk_measured": 1.7847989080775144,
+     "risk_unmeasured": 0.0,
+     "measured": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "accepted_on_evidence": [],
+     "u_um": {
+      "cluster1_profile_0": 23.157146574358162,
+      "cluster1_profile_1": 25.09539020315831,
+      "cluster1_profile_2": 27.53239449057104,
+      "cluster2_profile_0": 66.76650590580543,
+      "cluster2_profile_1": 69.38107007901529,
+      "cluster2_profile_2": 72.16277680527244
+     },
+     "stations": [
+      [
+       54.40953831145237,
+       1.2201385431094884,
+       "-x loop"
+      ],
+      [
+       46.28680594120283,
+       1.1743020405357234,
+       "-x loop"
+      ]
+     ],
+     "seconds": 14.01589298248291
+    },
+    "3": {
+     "feasible": true,
+     "risk": 1.3475141785893296,
+     "risk_exact": 1.3474592814081214,
+     "risk_measured": 1.3475141785893296,
+     "risk_unmeasured": 0.0,
+     "measured": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "accepted_on_evidence": [],
+     "u_um": {
+      "cluster1_profile_0": 14.1661747637064,
+      "cluster1_profile_1": 15.501909569249817,
+      "cluster1_profile_2": 17.703403567715167,
+      "cluster2_profile_0": 47.67927665209642,
+      "cluster2_profile_1": 49.62230370954719,
+      "cluster2_profile_2": 51.79300393626374
+     },
+     "stations": [
+      [
+       46.98882321807072,
+       1.1862966351941528,
+       "-x loop"
+      ],
+      [
+       44.234254259808196,
+       1.1454193272723696,
+       "-x loop"
+      ],
+      [
+       54.41024069976965,
+       1.1989687535539617,
+       "-x loop"
+      ]
+     ],
+     "seconds": 33.42413520812988
+    },
+    "4": {
+     "feasible": true,
+     "risk": 1.050966789808986,
+     "risk_exact": 1.0510582140975595,
+     "risk_measured": 1.050966789808986,
+     "risk_unmeasured": 0.0,
+     "measured": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "accepted_on_evidence": [],
+     "u_um": {
+      "cluster1_profile_0": 13.674318386817472,
+      "cluster1_profile_1": 14.55929676599946,
+      "cluster1_profile_2": 17.068592993961307,
+      "cluster2_profile_0": 28.422113976853066,
+      "cluster2_profile_1": 29.0863516071694,
+      "cluster2_profile_2": 31.996754045686362
+     },
+     "stations": [
+      [
+       15.936904710396158,
+       1.27644758554726,
+       "+x loop"
+      ],
+      [
+       27.46655258665255,
+       1.450248160086882,
+       "+x loop"
+      ],
+      [
+       45.03728318339333,
+       1.1725638624397674,
+       "-x loop"
+      ],
+      [
+       54.409874435000035,
+       1.1833546178607421,
+       "-x loop"
+      ]
+     ],
+     "seconds": 50.251853227615356
+    },
+    "5": {
+     "feasible": true,
+     "risk": 1.0096165699167239,
+     "risk_exact": 1.0097583204847385,
+     "risk_measured": 1.0096165699167239,
+     "risk_unmeasured": 0.0,
+     "measured": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "accepted_on_evidence": [],
+     "u_um": {
+      "cluster1_profile_0": 11.89044890240439,
+      "cluster1_profile_1": 12.850249982514176,
+      "cluster1_profile_2": 15.159005798761626,
+      "cluster2_profile_0": 26.514494493176255,
+      "cluster2_profile_1": 27.256623346139467,
+      "cluster2_profile_2": 29.76556029162894
+     },
+     "stations": [
+      [
+       15.89202062405881,
+       1.1985590957429795,
+       "+x loop"
+      ],
+      [
+       27.468895480505495,
+       1.345506501292592,
+       "+x loop"
+      ],
+      [
+       45.03699750754867,
+       1.2204186854216226,
+       "-x loop"
+      ],
+      [
+       46.12022297397541,
+       1.198391340199465,
+       "-x loop"
+      ],
+      [
+       54.41011250294807,
+       1.171652964802646,
+       "-x loop"
+      ]
+     ],
+     "seconds": 106.27468752861023
+    },
+    "6": {
+     "feasible": true,
+     "risk": 0.9765519389165453,
+     "risk_exact": 0.9767389099890644,
+     "risk_measured": 0.9765519389165453,
+     "risk_unmeasured": 0.0,
+     "measured": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "accepted_on_evidence": [],
+     "u_um": {
+      "cluster1_profile_0": 11.526614283626106,
+      "cluster1_profile_1": 12.467695993953633,
+      "cluster1_profile_2": 14.625483111986437,
+      "cluster2_profile_0": 24.66145975058048,
+      "cluster2_profile_1": 25.62627331354033,
+      "cluster2_profile_2": 28.100703010431392
+     },
+     "stations": [
+      [
+       16.220152066276103,
+       1.087408145800851,
+       "+x loop"
+      ],
+      [
+       27.46512635601665,
+       1.48844609689703,
+       "+x loop"
+      ],
+      [
+       44.71899774794803,
+       1.2589937706587673,
+       "-x loop"
+      ],
+      [
+       46.06161308378917,
+       1.1477631932192285,
+       "-x loop"
+      ],
+      [
+       53.95517913161902,
+       1.094972184933623,
+       "-x loop"
+      ],
+      [
+       54.43893732777563,
+       1.301164371091728,
+       "-x loop"
+      ]
+     ],
+     "seconds": 101.86657428741455
+    }
+   }
+  },
+  "ties_relaxed|floor_0|price_x100": {
+   "ties_required": false,
+   "floor": 0,
+   "price_multiplier": 100.0,
+   "measure_nothing_risk": 0.009501964502522981,
+   "by_count": {
+    "1": {
+     "feasible": true,
+     "risk": 0.009501964502522981,
+     "risk_exact": 0.009501964502522981,
+     "risk_measured": 0.0,
+     "risk_unmeasured": 0.009501964502522981,
+     "measured": [],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 27.428724044997644,
+      "cluster1_profile_1": NaN,
+      "cluster1_profile_2": NaN,
+      "cluster2_profile_0": NaN,
+      "cluster2_profile_1": NaN,
+      "cluster2_profile_2": NaN
+     },
+     "stations": [
+      [
+       47.2701096040561,
+       2.8741600904692293,
+       "-x loop"
+      ]
+     ],
+     "seconds": 19.480239868164062
+    },
+    "2": {
+     "feasible": true,
+     "risk": 0.009501964502522981,
+     "risk_exact": 0.009501964502522981,
+     "risk_measured": 0.0,
+     "risk_unmeasured": 0.009501964502522981,
+     "measured": [],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 27.097358267547985,
+      "cluster1_profile_1": 30.845173650933653,
+      "cluster1_profile_2": 34.983118492423124,
+      "cluster2_profile_0": NaN,
+      "cluster2_profile_1": NaN,
+      "cluster2_profile_2": NaN
+     },
+     "stations": [
+      [
+       54.04540536569223,
+       0.8220372730762175,
+       "-x loop"
+      ],
+      [
+       46.29863763049336,
+       2.843915094018576,
+       "-x loop"
+      ]
+     ],
+     "seconds": 4.099227428436279
+    },
+    "3": {
+     "feasible": true,
+     "risk": 0.009501964502522981,
+     "risk_exact": 0.009501964502522981,
+     "risk_measured": 0.0,
+     "risk_unmeasured": 0.009501964502522981,
+     "measured": [],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 26.12267246095063,
+      "cluster1_profile_1": 28.64805787870965,
+      "cluster1_profile_2": 32.26750452864152,
+      "cluster2_profile_0": 71.7176494070675,
+      "cluster2_profile_1": 75.58554500257246,
+      "cluster2_profile_2": 79.56905356454374
+     },
+     "stations": [
+      [
+       33.539263491064496,
+       1.3662306387549457,
+       "+y row"
+      ],
+      [
+       44.735656796714196,
+       1.0040660665726397,
+       "-x loop"
+      ],
+      [
+       54.49315052991906,
+       2.699179635859905,
+       "-x loop"
+      ]
+     ],
+     "seconds": 7.285570859909058
+    },
+    "4": {
+     "feasible": true,
+     "risk": 0.009501964502522981,
+     "risk_exact": 0.009501964502522981,
+     "risk_measured": 0.0,
+     "risk_unmeasured": 0.009501964502522981,
+     "measured": [],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 29.767775788226157,
+      "cluster1_profile_1": 33.29495790708258,
+      "cluster1_profile_2": 37.15846226923226,
+      "cluster2_profile_0": NaN,
+      "cluster2_profile_1": NaN,
+      "cluster2_profile_2": NaN
+     },
+     "stations": [
+      [
+       52.17018279853477,
+       1.4712517563911423,
+       "-x loop"
+      ],
+      [
+       44.482651126223296,
+       2.370586094474569,
+       "-x loop"
+      ],
+      [
+       49.93613328888691,
+       1.2853290033621936,
+       "-x loop"
+      ],
+      [
+       25.381010225850964,
+       1.9903981611843031,
+       "+x loop"
+      ]
+     ],
+     "seconds": 17.386334657669067
+    },
+    "5": {
+     "feasible": true,
+     "risk": 0.009501964502522981,
+     "risk_exact": 0.009501964502522981,
+     "risk_measured": 0.0,
+     "risk_unmeasured": 0.009501964502522981,
+     "measured": [],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 29.20557148139944,
+      "cluster1_profile_1": 32.15116091143806,
+      "cluster1_profile_2": 35.7351794108456,
+      "cluster2_profile_0": NaN,
+      "cluster2_profile_1": NaN,
+      "cluster2_profile_2": NaN
+     },
+     "stations": [
+      [
+       26.918992100974553,
+       1.2346468265049975,
+       "+x loop"
+      ],
+      [
+       38.62442810416604,
+       1.8745600862054517,
+       "+y row"
+      ],
+      [
+       44.41008769572497,
+       0.9197107856901724,
+       "-x loop"
+      ],
+      [
+       38.683645186093294,
+       2.0586425578344487,
+       "+y row"
+      ],
+      [
+       28.662091867140596,
+       1.2559384342206732,
+       "+y row"
+      ]
+     ],
+     "seconds": 19.62847328186035
+    },
+    "6": {
+     "feasible": true,
+     "risk": 0.009501964502522981,
+     "risk_exact": 0.009501964502522981,
+     "risk_measured": 0.0,
+     "risk_unmeasured": 0.009501964502522981,
+     "measured": [],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 20.41964600443249,
+      "cluster1_profile_1": 21.660184145481047,
+      "cluster1_profile_2": 26.71517770159376,
+      "cluster2_profile_0": NaN,
+      "cluster2_profile_1": NaN,
+      "cluster2_profile_2": NaN
+     },
+     "stations": [
+      [
+       22.367260503123347,
+       1.0348550379826156,
+       "+x loop"
+      ],
+      [
+       47.09915953634997,
+       1.7306574067861922,
+       "-x loop"
+      ],
+      [
+       38.846294535617865,
+       1.7312998335165295,
+       "+y row"
+      ],
+      [
+       27.373103913568606,
+       2.1048027598946306,
+       "+x loop"
+      ],
+      [
+       52.454890650951995,
+       1.8516529371063697,
+       "-x loop"
+      ],
+      [
+       38.31411808912645,
+       2.610236461482093,
+       "+y row"
+      ]
+     ],
+     "seconds": 31.233358144760132
+    }
+   }
+  },
+  "ties_relaxed|floor_0|price_x1000": {
+   "ties_required": false,
+   "floor": 0,
+   "price_multiplier": 1000.0,
+   "measure_nothing_risk": 0.0950196450252298,
+   "by_count": {
+    "1": {
+     "feasible": true,
+     "risk": 0.0950196450252298,
+     "risk_exact": 0.0950196450252298,
+     "risk_measured": 0.0,
+     "risk_unmeasured": 0.0950196450252298,
+     "measured": [],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 27.428724044997644,
+      "cluster1_profile_1": NaN,
+      "cluster1_profile_2": NaN,
+      "cluster2_profile_0": NaN,
+      "cluster2_profile_1": NaN,
+      "cluster2_profile_2": NaN
+     },
+     "stations": [
+      [
+       47.2701096040561,
+       2.8741600904692293,
+       "-x loop"
+      ]
+     ],
+     "seconds": 18.912476778030396
+    },
+    "2": {
+     "feasible": true,
+     "risk": 0.0950196450252298,
+     "risk_exact": 0.0950196450252298,
+     "risk_measured": 0.0,
+     "risk_unmeasured": 0.0950196450252298,
+     "measured": [],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 27.097358267547985,
+      "cluster1_profile_1": 30.845173650933653,
+      "cluster1_profile_2": 34.983118492423124,
+      "cluster2_profile_0": NaN,
+      "cluster2_profile_1": NaN,
+      "cluster2_profile_2": NaN
+     },
+     "stations": [
+      [
+       54.04540536569223,
+       0.8220372730762175,
+       "-x loop"
+      ],
+      [
+       46.29863763049336,
+       2.843915094018576,
+       "-x loop"
+      ]
+     ],
+     "seconds": 3.928513288497925
+    },
+    "3": {
+     "feasible": true,
+     "risk": 0.0950196450252298,
+     "risk_exact": 0.0950196450252298,
+     "risk_measured": 0.0,
+     "risk_unmeasured": 0.0950196450252298,
+     "measured": [],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 26.12267246095063,
+      "cluster1_profile_1": 28.64805787870965,
+      "cluster1_profile_2": 32.26750452864152,
+      "cluster2_profile_0": 71.7176494070675,
+      "cluster2_profile_1": 75.58554500257246,
+      "cluster2_profile_2": 79.56905356454374
+     },
+     "stations": [
+      [
+       33.539263491064496,
+       1.3662306387549457,
+       "+y row"
+      ],
+      [
+       44.735656796714196,
+       1.0040660665726397,
+       "-x loop"
+      ],
+      [
+       54.49315052991906,
+       2.699179635859905,
+       "-x loop"
+      ]
+     ],
+     "seconds": 7.203736305236816
+    },
+    "4": {
+     "feasible": true,
+     "risk": 0.0950196450252298,
+     "risk_exact": 0.0950196450252298,
+     "risk_measured": 0.0,
+     "risk_unmeasured": 0.0950196450252298,
+     "measured": [],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 29.767775788226157,
+      "cluster1_profile_1": 33.29495790708258,
+      "cluster1_profile_2": 37.15846226923226,
+      "cluster2_profile_0": NaN,
+      "cluster2_profile_1": NaN,
+      "cluster2_profile_2": NaN
+     },
+     "stations": [
+      [
+       52.17018279853477,
+       1.4712517563911423,
+       "-x loop"
+      ],
+      [
+       44.482651126223296,
+       2.370586094474569,
+       "-x loop"
+      ],
+      [
+       49.93613328888691,
+       1.2853290033621936,
+       "-x loop"
+      ],
+      [
+       25.381010225850964,
+       1.9903981611843031,
+       "+x loop"
+      ]
+     ],
+     "seconds": 16.72588324546814
+    },
+    "5": {
+     "feasible": true,
+     "risk": 0.0950196450252298,
+     "risk_exact": 0.0950196450252298,
+     "risk_measured": 0.0,
+     "risk_unmeasured": 0.0950196450252298,
+     "measured": [],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 29.20557148139944,
+      "cluster1_profile_1": 32.15116091143806,
+      "cluster1_profile_2": 35.7351794108456,
+      "cluster2_profile_0": NaN,
+      "cluster2_profile_1": NaN,
+      "cluster2_profile_2": NaN
+     },
+     "stations": [
+      [
+       26.918992100974553,
+       1.2346468265049975,
+       "+x loop"
+      ],
+      [
+       38.62442810416604,
+       1.8745600862054517,
+       "+y row"
+      ],
+      [
+       44.41008769572497,
+       0.9197107856901724,
+       "-x loop"
+      ],
+      [
+       38.683645186093294,
+       2.0586425578344487,
+       "+y row"
+      ],
+      [
+       28.662091867140596,
+       1.2559384342206732,
+       "+y row"
+      ]
+     ],
+     "seconds": 18.824681282043457
+    },
+    "6": {
+     "feasible": true,
+     "risk": 0.0950196450252298,
+     "risk_exact": 0.0950196450252298,
+     "risk_measured": 0.0,
+     "risk_unmeasured": 0.0950196450252298,
+     "measured": [],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 20.41964600443249,
+      "cluster1_profile_1": 21.660184145481047,
+      "cluster1_profile_2": 26.71517770159376,
+      "cluster2_profile_0": NaN,
+      "cluster2_profile_1": NaN,
+      "cluster2_profile_2": NaN
+     },
+     "stations": [
+      [
+       22.367260503123347,
+       1.0348550379826156,
+       "+x loop"
+      ],
+      [
+       47.09915953634997,
+       1.7306574067861922,
+       "-x loop"
+      ],
+      [
+       38.846294535617865,
+       1.7312998335165295,
+       "+y row"
+      ],
+      [
+       27.373103913568606,
+       2.1048027598946306,
+       "+x loop"
+      ],
+      [
+       52.454890650951995,
+       1.8516529371063697,
+       "-x loop"
+      ],
+      [
+       38.31411808912645,
+       2.610236461482093,
+       "+y row"
+      ]
+     ],
+     "seconds": 32.254806995391846
+    }
+   }
+  },
+  "ties_relaxed|floor_0|price_x10000": {
+   "ties_required": false,
+   "floor": 0,
+   "price_multiplier": 10000.0,
+   "measure_nothing_risk": 0.9501964502522982,
+   "by_count": {
+    "1": {
+     "feasible": true,
+     "risk": 0.9501964502522982,
+     "risk_exact": 0.9501964502522982,
+     "risk_measured": 0.0,
+     "risk_unmeasured": 0.9501964502522982,
+     "measured": [],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 27.428724044997644,
+      "cluster1_profile_1": NaN,
+      "cluster1_profile_2": NaN,
+      "cluster2_profile_0": NaN,
+      "cluster2_profile_1": NaN,
+      "cluster2_profile_2": NaN
+     },
+     "stations": [
+      [
+       47.2701096040561,
+       2.8741600904692293,
+       "-x loop"
+      ]
+     ],
+     "seconds": 19.6201012134552
+    },
+    "2": {
+     "feasible": true,
+     "risk": 0.9501964502522982,
+     "risk_exact": 0.9501964502522982,
+     "risk_measured": 0.0,
+     "risk_unmeasured": 0.9501964502522982,
+     "measured": [],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 27.097358267547985,
+      "cluster1_profile_1": 30.845173650933653,
+      "cluster1_profile_2": 34.983118492423124,
+      "cluster2_profile_0": NaN,
+      "cluster2_profile_1": NaN,
+      "cluster2_profile_2": NaN
+     },
+     "stations": [
+      [
+       54.04540536569223,
+       0.8220372730762175,
+       "-x loop"
+      ],
+      [
+       46.29863763049336,
+       2.843915094018576,
+       "-x loop"
+      ]
+     ],
+     "seconds": 3.986478805541992
+    },
+    "3": {
+     "feasible": true,
+     "risk": 0.9501964502522982,
+     "risk_exact": 0.9501964502522982,
+     "risk_measured": 0.0,
+     "risk_unmeasured": 0.9501964502522982,
+     "measured": [],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 26.12267246095063,
+      "cluster1_profile_1": 28.64805787870965,
+      "cluster1_profile_2": 32.26750452864152,
+      "cluster2_profile_0": 71.7176494070675,
+      "cluster2_profile_1": 75.58554500257246,
+      "cluster2_profile_2": 79.56905356454374
+     },
+     "stations": [
+      [
+       33.539263491064496,
+       1.3662306387549457,
+       "+y row"
+      ],
+      [
+       44.735656796714196,
+       1.0040660665726397,
+       "-x loop"
+      ],
+      [
+       54.49315052991906,
+       2.699179635859905,
+       "-x loop"
+      ]
+     ],
+     "seconds": 7.241888999938965
+    },
+    "4": {
+     "feasible": true,
+     "risk": 0.9501964502522982,
+     "risk_exact": 0.9501964502522982,
+     "risk_measured": 0.0,
+     "risk_unmeasured": 0.9501964502522982,
+     "measured": [],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 29.767775788226157,
+      "cluster1_profile_1": 33.29495790708258,
+      "cluster1_profile_2": 37.15846226923226,
+      "cluster2_profile_0": NaN,
+      "cluster2_profile_1": NaN,
+      "cluster2_profile_2": NaN
+     },
+     "stations": [
+      [
+       52.17018279853477,
+       1.4712517563911423,
+       "-x loop"
+      ],
+      [
+       44.482651126223296,
+       2.370586094474569,
+       "-x loop"
+      ],
+      [
+       49.93613328888691,
+       1.2853290033621936,
+       "-x loop"
+      ],
+      [
+       25.381010225850964,
+       1.9903981611843031,
+       "+x loop"
+      ]
+     ],
+     "seconds": 17.711013793945312
+    },
+    "5": {
+     "feasible": true,
+     "risk": 0.9501964502522982,
+     "risk_exact": 0.9501964502522982,
+     "risk_measured": 0.0,
+     "risk_unmeasured": 0.9501964502522982,
+     "measured": [],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 29.20557148139944,
+      "cluster1_profile_1": 32.15116091143806,
+      "cluster1_profile_2": 35.7351794108456,
+      "cluster2_profile_0": NaN,
+      "cluster2_profile_1": NaN,
+      "cluster2_profile_2": NaN
+     },
+     "stations": [
+      [
+       26.918992100974553,
+       1.2346468265049975,
+       "+x loop"
+      ],
+      [
+       38.62442810416604,
+       1.8745600862054517,
+       "+y row"
+      ],
+      [
+       44.41008769572497,
+       0.9197107856901724,
+       "-x loop"
+      ],
+      [
+       38.683645186093294,
+       2.0586425578344487,
+       "+y row"
+      ],
+      [
+       28.662091867140596,
+       1.2559384342206732,
+       "+y row"
+      ]
+     ],
+     "seconds": 21.463640451431274
+    },
+    "6": {
+     "feasible": true,
+     "risk": 0.948133341594769,
+     "risk_exact": 0.9482195251417873,
+     "risk_measured": 0.3146493096736696,
+     "risk_unmeasured": 0.6334840319210995,
+     "measured": [
+      "cluster2_profile_0"
+     ],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 11.526614283626106,
+      "cluster1_profile_1": 12.467695993953633,
+      "cluster1_profile_2": 14.625483111986437,
+      "cluster2_profile_0": 24.66145975058048,
+      "cluster2_profile_1": 25.62627331354033,
+      "cluster2_profile_2": 28.100703010431392
+     },
+     "stations": [
+      [
+       16.220152066276103,
+       1.087408145800851,
+       "+x loop"
+      ],
+      [
+       27.46512635601665,
+       1.48844609689703,
+       "+x loop"
+      ],
+      [
+       44.71899774794803,
+       1.2589937706587673,
+       "-x loop"
+      ],
+      [
+       46.06161308378917,
+       1.1477631932192285,
+       "-x loop"
+      ],
+      [
+       53.95517913161902,
+       1.094972184933623,
+       "-x loop"
+      ],
+      [
+       54.43893732777563,
+       1.301164371091728,
+       "-x loop"
+      ]
+     ],
+     "seconds": 129.27046847343445
+    }
+   }
+  },
+  "ties_relaxed|floor_0|price_x100000": {
+   "ties_required": false,
+   "floor": 0,
+   "price_multiplier": 100000.0,
+   "measure_nothing_risk": 3.0005919525870226,
+   "by_count": {
+    "1": {
+     "feasible": true,
+     "risk": 1.7232087096903905,
+     "risk_exact": 1.723355505194373,
+     "risk_measured": 1.722616757103368,
+     "risk_unmeasured": 0.0005919525870226167,
+     "measured": [
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": NaN,
+      "cluster1_profile_1": NaN,
+      "cluster1_profile_2": NaN,
+      "cluster2_profile_0": 76.48892282334995,
+      "cluster2_profile_1": 79.4554192273901,
+      "cluster2_profile_2": 82.57256197367558
+     },
+     "stations": [
+      [
+       54.40922155458275,
+       1.2845682077118252,
+       "-x loop"
+      ]
+     ],
+     "seconds": 25.703660011291504
+    },
+    "2": {
+     "feasible": true,
+     "risk": 1.2829875540176887,
+     "risk_exact": 1.2828838695903633,
+     "risk_measured": 1.282395601430666,
+     "risk_unmeasured": 0.0005919525870226167,
+     "measured": [
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": NaN,
+      "cluster1_profile_1": NaN,
+      "cluster1_profile_2": NaN,
+      "cluster2_profile_0": 44.408874905297665,
+      "cluster2_profile_1": 46.340536880660856,
+      "cluster2_profile_2": 48.481594799668315
+     },
+     "stations": [
+      [
+       55.82255859313588,
+       1.1830470446997476,
+       "-x loop"
+      ],
+      [
+       53.06604410526635,
+       1.2399995331616087,
+       "-x loop"
+      ]
+     ],
+     "seconds": 13.7018301486969
+    },
+    "3": {
+     "feasible": true,
+     "risk": 1.1525138096459369,
+     "risk_exact": 1.1524326226180863,
+     "risk_measured": 1.1519218570589143,
+     "risk_unmeasured": 0.0005919525870226167,
+     "measured": [
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": NaN,
+      "cluster1_profile_1": NaN,
+      "cluster1_profile_2": NaN,
+      "cluster2_profile_0": 35.57513586905134,
+      "cluster2_profile_1": 37.2699743964724,
+      "cluster2_profile_2": 39.29979209088043
+     },
+     "stations": [
+      [
+       53.09150061575167,
+       1.2879028682617415,
+       "-x loop"
+      ],
+      [
+       55.80091996669178,
+       1.1070716841831618,
+       "-x loop"
+      ],
+      [
+       54.40989999501721,
+       1.2500742172697565,
+       "-x loop"
+      ]
+     ],
+     "seconds": 31.536916255950928
+    },
+    "4": {
+     "feasible": true,
+     "risk": 1.0383439614583327,
+     "risk_exact": 1.0384108419231175,
+     "risk_measured": 1.0377520088713101,
+     "risk_unmeasured": 0.0005919525870226167,
+     "measured": [
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 13.633226579155561,
+      "cluster1_profile_1": 14.582935191366694,
+      "cluster1_profile_2": 17.169944517137733,
+      "cluster2_profile_0": 28.389040785374913,
+      "cluster2_profile_1": 29.10015704665399,
+      "cluster2_profile_2": 32.001332514553546
+     },
+     "stations": [
+      [
+       16.352140637578128,
+       1.2170565552397712,
+       "+x loop"
+      ],
+      [
+       27.470858994523002,
+       1.057337077001728,
+       "+x loop"
+      ],
+      [
+       45.03766327363279,
+       1.1751812033302718,
+       "-x loop"
+      ],
+      [
+       54.409732930119205,
+       1.1864834755853826,
+       "-x loop"
+      ]
+     ],
+     "seconds": 46.681172609329224
+    },
+    "5": {
+     "feasible": true,
+     "risk": 1.000170126485951,
+     "risk_exact": 1.0002830532936289,
+     "risk_measured": 0.9995781738989284,
+     "risk_unmeasured": 0.0005919525870226167,
+     "measured": [
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 13.340108696443023,
+      "cluster1_profile_1": 14.176579743069198,
+      "cluster1_profile_2": 16.552008596909396,
+      "cluster2_profile_0": 26.132873446901172,
+      "cluster2_profile_1": 26.92883289288912,
+      "cluster2_profile_2": 29.737930972599035
+     },
+     "stations": [
+      [
+       16.193726396748797,
+       1.148004939540552,
+       "+x loop"
+      ],
+      [
+       27.31378942206129,
+       1.3606937486645865,
+       "+x loop"
+      ],
+      [
+       45.01740008184011,
+       1.1490939039234387,
+       "-x loop"
+      ],
+      [
+       53.9363456665381,
+       1.4104115247991957,
+       "-x loop"
+      ],
+      [
+       54.41539782664182,
+       0.9459630741727829,
+       "-x loop"
+      ]
+     ],
+     "seconds": 77.73226976394653
+    },
+    "6": {
+     "feasible": true,
+     "risk": 0.9728790724467751,
+     "risk_exact": 0.9730615539898422,
+     "risk_measured": 0.9722871198597525,
+     "risk_unmeasured": 0.0005919525870226167,
+     "measured": [
+      "cluster2_profile_0",
+      "cluster2_profile_1",
+      "cluster2_profile_2"
+     ],
+     "accepted_on_evidence": [
+      "cluster1_profile_0",
+      "cluster1_profile_1",
+      "cluster1_profile_2"
+     ],
+     "u_um": {
+      "cluster1_profile_0": 11.526614283626106,
+      "cluster1_profile_1": 12.467695993953633,
+      "cluster1_profile_2": 14.625483111986437,
+      "cluster2_profile_0": 24.66145975058048,
+      "cluster2_profile_1": 25.62627331354033,
+      "cluster2_profile_2": 28.100703010431392
+     },
+     "stations": [
+      [
+       16.220152066276103,
+       1.087408145800851,
+       "+x loop"
+      ],
+      [
+       27.46512635601665,
+       1.48844609689703,
+       "+x loop"
+      ],
+      [
+       44.71899774794803,
+       1.2589937706587673,
+       "-x loop"
+      ],
+      [
+       46.06161308378917,
+       1.1477631932192285,
+       "-x loop"
+      ],
+      [
+       53.95517913161902,
+       1.094972184933623,
+       "-x loop"
+      ],
+      [
+       54.43893732777563,
+       1.301164371091728,
+       "-x loop"
+      ]
+     ],
+     "seconds": 107.24341487884521
+    }
+   }
+  }
+ },
+ "measure_nothing_risk": 9.501964502522982e-05,
+ "escape_price_model": {
+  "cluster1_profile_0": 1.973175290075389e-09,
+  "cluster1_profile_1": 1.973175290075389e-09,
+  "cluster1_profile_2": 1.973175290075389e-09,
+  "cluster2_profile_0": 3.167124183311986e-05,
+  "cluster2_profile_1": 3.167124183311986e-05,
+  "cluster2_profile_2": 3.167124183311986e-05
+ },
+ "break_even_multiplier_a1_4_stations": {
+  "cluster1_profile_0": 897218.4234599133,
+  "cluster1_profile_1": 1456561.2033404044,
+  "cluster1_profile_2": 4328318.282811927,
+  "cluster2_profile_0": 10677.767759634771,
+  "cluster2_profile_1": 10800.532195055319,
+  "cluster2_profile_2": 11292.659702351271
+ },
+ "acceptance_rule_analysis": {
+  "cluster1_profile_0": {
+   "unmeasured_price": 1.973175290075389e-09,
+   "by_u": [
+    {
+     "u_um": 1,
+     "simple_acceptance_risk": 1.3778965050803362e-09,
+     "best_symmetric_acceptance_risk": 1.3778965050803362e-09,
+     "best_half_width_um": 50.0
+    },
+    {
+     "u_um": 2,
+     "simple_acceptance_risk": 4.588762084816285e-09,
+     "best_symmetric_acceptance_risk": 1.8516701368293556e-09,
+     "best_half_width_um": 54.960220400134794
+    },
+    {
+     "u_um": 3,
+     "simple_acceptance_risk": 1.5882097616346294e-08,
+     "best_symmetric_acceptance_risk": 1.965256554589695e-09,
+     "best_half_width_um": 60.41251652862785
+    },
+    {
+     "u_um": 5,
+     "simple_acceptance_risk": 2.671887104907947e-07,
+     "best_symmetric_acceptance_risk": 1.9731338684680535e-09,
+     "best_half_width_um": 72.99344306643466
+    },
+    {
+     "u_um": 8,
+     "simple_acceptance_risk": 1.5024584215977718e-05,
+     "best_symmetric_acceptance_risk": 1.973175282617542e-09,
+     "best_half_width_um": 96.94362016568208
+    },
+    {
+     "u_um": 13,
+     "simple_acceptance_risk": 0.0012037219094679856,
+     "best_symmetric_acceptance_risk": 1.9731752900754164e-09,
+     "best_half_width_um": 155.5648734873435
+    },
+    {
+     "u_um": 20,
+     "simple_acceptance_risk": 0.0210162561239748,
+     "best_symmetric_acceptance_risk": 1.9731752900754173e-09,
+     "best_half_width_um": 227.1043147207104
+    },
+    {
+     "u_um": 30,
+     "simple_acceptance_risk": 0.10830397443878054,
+     "best_symmetric_acceptance_risk": 1.9731752900754173e-09,
+     "best_half_width_um": 301.6204401295883
+    },
+    {
+     "u_um": 60,
+     "simple_acceptance_risk": 0.40913873007547596,
+     "best_symmetric_acceptance_risk": 1.9731752900754173e-09,
+     "best_half_width_um": 584.8035476425732
+    }
+   ]
+  },
+  "cluster2_profile_0": {
+   "unmeasured_price": 3.167124183311986e-05,
+   "by_u": [
+    {
+     "u_um": 1,
+     "simple_acceptance_risk": 6.057565143735121e-05,
+     "best_symmetric_acceptance_risk": 3.163039032681453e-05,
+     "best_half_width_um": 54.960220400134794
+    },
+    {
+     "u_um": 2,
+     "simple_acceptance_risk": 0.00042919021175677865,
+     "best_symmetric_acceptance_risk": 3.154016094115252e-05,
+     "best_half_width_um": 54.960220400134794
+    },
+    {
+     "u_um": 3,
+     "simple_acceptance_risk": 0.0023333971893854067,
+     "best_symmetric_acceptance_risk": 3.167123367229064e-05,
+     "best_half_width_um": 66.40570446680346
+    },
+    {
+     "u_um": 5,
+     "simple_acceptance_risk": 0.019792514183648583,
+     "best_symmetric_acceptance_risk": 3.167124183312695e-05,
+     "best_half_width_um": 88.1943517146488
+    },
+    {
+     "u_um": 8,
+     "simple_acceptance_risk": 0.08008380872434907,
+     "best_symmetric_acceptance_risk": 3.167124183312877e-05,
+     "best_half_width_um": 117.13216111208578
+    },
+    {
+     "u_um": 13,
+     "simple_acceptance_risk": 0.18420838345971072,
+     "best_symmetric_acceptance_risk": 3.167124183312877e-05,
+     "best_half_width_um": 170.99759466766972
+    },
+    {
+     "u_um": 20,
+     "simple_acceptance_risk": 0.27647543178591427,
+     "best_symmetric_acceptance_risk": 3.167124183312877e-05,
+     "best_half_width_um": 227.1043147207104
+    },
+    {
+     "u_um": 30,
+     "simple_acceptance_risk": 0.34706605967668347,
+     "best_symmetric_acceptance_risk": 3.167124183312877e-05,
+     "best_half_width_um": 301.6204401295883
+    },
+    {
+     "u_um": 60,
+     "simple_acceptance_risk": 0.49231735785629466,
+     "best_symmetric_acceptance_risk": 3.167124183312877e-05,
+     "best_half_width_um": 584.8035476425732
+    }
+   ]
+  }
+ }
+}

@@ -181,6 +181,16 @@ complete:
   A1 at ±25-250 µm. Risk-based planning's case rests on what to measure, the
   stopping rule and pricing a plan, not on reweighting a fixed station count.
 
+- **the process-evidence experiment** (`docs/process_evidence_experiment.md`) —
+  on the station track, a plan may accept characteristics on their process evidence
+  instead of measuring them (`planning.process_evidence`). That is the only thing that
+  saves stations against the A1 plan (4 stations): measure-everything saves none, and
+  a plan that does not measure the marginal cluster needs 1-3. But it rests entirely on
+  the placeholder priors: the real marginal process would have to be failing ~1/3 of parts
+  (1.1e4 × the elicited rate) before measuring from this cell beats accepting it, and with the risk-optimal acceptance rule
+  (not simple acceptance) a measurement at 3+ µm adds almost nothing against a Cpk 1.33 prior.
+  Needs a doubt-propagating prior before it goes in a paper.
+
 **Visualization** (`src/visualization`, not one of the six steps — see
 its module docstring): matplotlib plotting for scenes, per-point error
 ellipsoids, visibility results and network-solve outcomes, so a
