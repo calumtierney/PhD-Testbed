@@ -200,6 +200,15 @@ complete:
   risk with one to two stations fewer than planning for uncertainty along the tolerances
   (about a third of the risk at equal stations, narrowing to 15-90% with a 4 um
   uncertainty floor); the decision rule and the number of builds matter as much as the plan.
+- **planning from a QIF file** (`docs/qif_integration.md`) — an input route, not a
+  step: `python -m viz.plan_from_qif file.qif` reads a QIF (ISO 23952) document
+  (`interchange.qif`), sizes a cell round the part or assembly and plans it
+  (`planning.qif_cell`). Point profiles map exactly; hole positions are a flagged
+  one-dimensional approximation; everything else is listed as skipped with its reason.
+  Process statistics come from the file's earlier inspections, pooled per cluster.
+  Checked by sending the long-part cell through QIF and back, and against a public
+  sample file (`scenes/qif/`), which is a small sheet-metal part: no large-volume QIF
+  file has been tried yet.
 
 **Visualization** (`src/visualization`, not one of the six steps — see
 its module docstring): matplotlib plotting for scenes, per-point error

@@ -1,0 +1,1528 @@
+{
+ "cell": {
+  "part_extent_m": [
+   0.16237841796874974,
+   0.06356158447265603,
+   0.13666674804687495
+  ],
+  "track": {
+   "perimeter_m": 19.37399736430608,
+   "row_length_m": 0.16237841796874974,
+   "rows_y_m": [
+    -3.031780792236328,
+    3.031780792236328
+   ],
+   "standoff_m": 3.0
+  },
+  "n_part_targets": 21,
+  "n_reference_nests": 20,
+  "alignment": "best fit through all the planned points (the file gives no usable datum points)",
+  "n_datum_targets": 21,
+  "part_to_cell": [
+   [
+    1.0,
+    0.0,
+    0.0,
+    -2.4033608398437503
+   ],
+   [
+    0.0,
+    1.0,
+    0.0,
+    -0.786951568603516
+   ],
+   [
+    0.0,
+    0.0,
+    1.0,
+    -0.354999694824219
+   ],
+   [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ]
+  ],
+  "planned": [
+   {
+    "name": "W1RFTMRA02V",
+    "kind": "PointProfile",
+    "feature": "W1RFTMRA02",
+    "cluster": "PointProfile +-2000 um [no datums]",
+    "tolerance_half_width_um": 2000.0,
+    "approximate": false
+   },
+   {
+    "name": "W1RFSMRA05V",
+    "kind": "PointProfile",
+    "feature": "W1RFSMRA05",
+    "cluster": "PointProfile +-750 um [no datums]",
+    "tolerance_half_width_um": 750.0,
+    "approximate": false
+   },
+   {
+    "name": "W1RHSMRA06V",
+    "kind": "PointProfile",
+    "feature": "W1RHSMRA06",
+    "cluster": "PointProfile +-750 um [no datums]",
+    "tolerance_half_width_um": 750.0,
+    "approximate": false
+   },
+   {
+    "name": "W1RISMRA09V",
+    "kind": "PointProfile",
+    "feature": "W1RISMRA09",
+    "cluster": "PointProfile +-250 um [no datums]",
+    "tolerance_half_width_um": 250.0,
+    "approximate": false
+   },
+   {
+    "name": "W1RFSMRA11V",
+    "kind": "PointProfile",
+    "feature": "W1RFSMRA11",
+    "cluster": "PointProfile +-1000 um [no datums]",
+    "tolerance_half_width_um": 1000.0,
+    "approximate": false
+   },
+   {
+    "name": "W1RISMRA14V",
+    "kind": "PointProfile",
+    "feature": "W1RISMRA14",
+    "cluster": "PointProfile +-500 um [no datums]",
+    "tolerance_half_width_um": 500.0,
+    "approximate": false
+   },
+   {
+    "name": "W1RISMRA15V",
+    "kind": "PointProfile",
+    "feature": "W1RISMRA15",
+    "cluster": "PointProfile +-1000 um [no datums]",
+    "tolerance_half_width_um": 1000.0,
+    "approximate": false
+   },
+   {
+    "name": "W1RFTMRA17V",
+    "kind": "PointProfile",
+    "feature": "W1RFTMRA17",
+    "cluster": "PointProfile +-1500 um [no datums]",
+    "tolerance_half_width_um": 1500.0,
+    "approximate": false
+   },
+   {
+    "name": "W1RISMRA10V",
+    "kind": "PointProfile",
+    "feature": "W1RISMRA10",
+    "cluster": "PointProfile +-250 um [no datums]",
+    "tolerance_half_width_um": 250.0,
+    "approximate": false
+   },
+   {
+    "name": "W1RFSMRA12V",
+    "kind": "PointProfile",
+    "feature": "W1RFSMRA12",
+    "cluster": "PointProfile +-750 um [no datums]",
+    "tolerance_half_width_um": 750.0,
+    "approximate": false
+   },
+   {
+    "name": "W1RISMRA13V",
+    "kind": "PointProfile",
+    "feature": "W1RISMRA13",
+    "cluster": "PointProfile +-500 um [no datums]",
+    "tolerance_half_width_um": 500.0,
+    "approximate": false
+   },
+   {
+    "name": "W1RISMRA16V",
+    "kind": "PointProfile",
+    "feature": "W1RISMRA16",
+    "cluster": "PointProfile +-1000 um [no datums]",
+    "tolerance_half_width_um": 1000.0,
+    "approximate": false
+   },
+   {
+    "name": "W1RFTMRA18V",
+    "kind": "PointProfile",
+    "feature": "W1RFTMRA18",
+    "cluster": "PointProfile +-1000 um [no datums]",
+    "tolerance_half_width_um": 1000.0,
+    "approximate": false
+   },
+   {
+    "name": "W1RISMRA07V",
+    "kind": "PointProfile",
+    "feature": "W1RISMRA07",
+    "cluster": "PointProfile +-250 um [no datums]",
+    "tolerance_half_width_um": 250.0,
+    "approximate": false
+   },
+   {
+    "name": "W1RFSMRA04V",
+    "kind": "PointProfile",
+    "feature": "W1RFSMRA04",
+    "cluster": "PointProfile +-750 um [no datums]",
+    "tolerance_half_width_um": 750.0,
+    "approximate": false
+   },
+   {
+    "name": "W1RFTMRA01V",
+    "kind": "PointProfile",
+    "feature": "W1RFTMRA01",
+    "cluster": "PointProfile +-2000 um [no datums]",
+    "tolerance_half_width_um": 2000.0,
+    "approximate": false
+   },
+   {
+    "name": "W1RISMRA08V",
+    "kind": "PointProfile",
+    "feature": "W1RISMRA08",
+    "cluster": "PointProfile +-250 um [no datums]",
+    "tolerance_half_width_um": 250.0,
+    "approximate": false
+   },
+   {
+    "name": "W1RXXMRA19P",
+    "kind": "Position",
+    "feature": "W1RXXMRA19",
+    "cluster": "Position +-625 um [A|B|C]",
+    "tolerance_half_width_um": 625.0,
+    "approximate": true
+   },
+   {
+    "name": "W1RXXMRA22P",
+    "kind": "Position",
+    "feature": "W1RXXMRA22",
+    "cluster": "Position +-625 um [A|B|C]",
+    "tolerance_half_width_um": 625.0,
+    "approximate": true
+   },
+   {
+    "name": "W1RXXMRA20P",
+    "kind": "Position",
+    "feature": "W1RXXMRA20",
+    "cluster": "Position +-625 um [A|B|C]",
+    "tolerance_half_width_um": 625.0,
+    "approximate": true
+   },
+   {
+    "name": "W1RXXMRA21P",
+    "kind": "Position",
+    "feature": "W1RXXMRA21",
+    "cluster": "Position +-625 um [A|B|C]",
+    "tolerance_half_width_um": 625.0,
+    "approximate": true
+   }
+  ],
+  "skipped": [],
+  "clusters": [
+   {
+    "name": "PointProfile +-2000 um [no datums]",
+    "members": [
+     "W1RFTMRA02V",
+     "W1RFTMRA01V"
+    ],
+    "mean_um": -32.109466486372476,
+    "std_um": 21.434148200872066,
+    "n_builds": 6,
+    "source": "6 measured parts in the file (12 deviations pooled over the cluster)"
+   },
+   {
+    "name": "PointProfile +-750 um [no datums]",
+    "members": [
+     "W1RFSMRA05V",
+     "W1RHSMRA06V",
+     "W1RFSMRA12V",
+     "W1RFSMRA04V"
+    ],
+    "mean_um": 125.79411104442622,
+    "std_um": 446.26276652121317,
+    "n_builds": 6,
+    "source": "6 measured parts in the file (24 deviations pooled over the cluster)"
+   },
+   {
+    "name": "PointProfile +-250 um [no datums]",
+    "members": [
+     "W1RISMRA09V",
+     "W1RISMRA10V",
+     "W1RISMRA07V",
+     "W1RISMRA08V"
+    ],
+    "mean_um": 120.58012242773944,
+    "std_um": 92.98455628944937,
+    "n_builds": 6,
+    "source": "6 measured parts in the file (24 deviations pooled over the cluster)"
+   },
+   {
+    "name": "PointProfile +-1000 um [no datums]",
+    "members": [
+     "W1RFSMRA11V",
+     "W1RISMRA15V",
+     "W1RISMRA16V",
+     "W1RFTMRA18V"
+    ],
+    "mean_um": -851.1991758910976,
+    "std_um": 68.15369291217903,
+    "n_builds": 6,
+    "source": "6 measured parts in the file (24 deviations pooled over the cluster)"
+   },
+   {
+    "name": "PointProfile +-500 um [no datums]",
+    "members": [
+     "W1RISMRA14V",
+     "W1RISMRA13V"
+    ],
+    "mean_um": -356.93955175412805,
+    "std_um": 117.92638648413389,
+    "n_builds": 6,
+    "source": "6 measured parts in the file (12 deviations pooled over the cluster)"
+   },
+   {
+    "name": "PointProfile +-1500 um [no datums]",
+    "members": [
+     "W1RFTMRA17V"
+    ],
+    "mean_um": -1298.2899658597994,
+    "std_um": 118.08253090033784,
+    "n_builds": 6,
+    "source": "6 measured parts in the file (6 deviations pooled over the cluster)"
+   },
+   {
+    "name": "Position +-625 um [A|B|C]",
+    "members": [
+     "W1RXXMRA19P",
+     "W1RXXMRA22P",
+     "W1RXXMRA20P",
+     "W1RXXMRA21P"
+    ],
+    "mean_um": 568.7348287970625,
+    "std_um": 84.87242248517751,
+    "n_builds": 6,
+    "source": "6 measured parts in the file (24 deviations pooled over the cluster)"
+   }
+  ],
+  "notes": [
+   "the file locates fewer than three datum features (or they are in a line), so the part frame is a best fit through the planned points themselves; give datum points to change that",
+   "placement assumed: the file's z axis is vertical, the part's longer side lies along the cell, its lowest located point is 0.5 m above the floor",
+   "no part geometry was given: a sight line is limited by range and by the incidence angle at each target only, so the part cannot hide its own far side (optimistic)",
+   "the part's extent is taken from the features the file locates; the real envelope may be larger",
+   "the located features span 0.16 m: below the 2 m where large-volume metrology starts, so a tracker network is unlikely to be the instrument of choice for this part",
+   "position characteristics have a round zone but are judged in one dimension (worst-measured direction across the axis, +- half the zone diameter): their risk is indicative and understates a round zone's",
+   "a hole's normal in the file may point into the part; if so the side it can be seen from is wrong here"
+  ]
+ },
+ "rule": "simple",
+ "de": {
+  "maxiter": 60,
+  "popsize": 15,
+  "tol": 1e-08,
+  "workers": 1,
+  "seed": 0
+ },
+ "objectives": [
+  "A0",
+  "A1",
+  "risk"
+ ],
+ "risk_if_nothing_is_measured": 3.029534439043598,
+ "plans": {
+  "A0|1": {
+   "feasible": false
+  },
+  "A1|1": {
+   "feasible": false
+  },
+  "risk|1": {
+   "feasible": false
+  },
+  "A0|2": {
+   "feasible": true,
+   "found_by": "A0",
+   "stations": [
+    {
+     "s_m": 4.238654633303699,
+     "height_m": 1.0220548903510056,
+     "segment": "+x loop",
+     "position_cell_m": [
+      3.1168716689601195,
+      -0.6801943854660835,
+      1.0220548903510056
+     ],
+     "position_file_m": [
+      5.52023250880387,
+      0.10675718313743254,
+      1.3770545851752245
+     ]
+    },
+    {
+     "s_m": 15.909671288092856,
+     "height_m": 1.562258795566959,
+     "segment": "-x loop",
+     "position_cell_m": [
+      -2.758148588569804,
+      -1.2586942184436754,
+      1.562258795566959
+     ],
+     "position_file_m": [
+      -0.35478774872605356,
+      -0.47174264984015934,
+      1.9172584903911778
+     ]
+    }
+   ],
+   "u_um": {
+    "W1RFTMRA02V": 3.922757582450729,
+    "W1RFSMRA05V": 8.15684502057233,
+    "W1RHSMRA06V": 9.582862843511403,
+    "W1RISMRA09V": 5.434683928715801,
+    "W1RFSMRA11V": 4.126985773508224,
+    "W1RISMRA14V": 5.220604060108995,
+    "W1RISMRA15V": 5.189020418454195,
+    "W1RFTMRA17V": 4.0736364221285255,
+    "W1RISMRA10V": 5.5104002299151125,
+    "W1RFSMRA12V": 2.3782718253639143,
+    "W1RISMRA13V": 5.052486882007451,
+    "W1RISMRA16V": 5.010265760651118,
+    "W1RFTMRA18V": 4.659775727073051,
+    "W1RISMRA07V": 5.544060923416164,
+    "W1RFSMRA04V": 2.3328050298879948,
+    "W1RFTMRA01V": 4.840074031699031,
+    "W1RISMRA08V": 5.557346592284928,
+    "W1RXXMRA19P": 3.9923111453066937,
+    "W1RXXMRA22P": 3.9140020733300678,
+    "W1RXXMRA20P": 4.082703347412441,
+    "W1RXXMRA21P": 4.091216159231482
+   },
+   "tur": {
+    "W1RFTMRA02V": 254.92271163370071,
+    "W1RFSMRA05V": 45.97365759116604,
+    "W1RHSMRA06V": 39.132355969585234,
+    "W1RISMRA09V": 23.000417621257526,
+    "W1RFSMRA11V": 121.15379781766616,
+    "W1RISMRA14V": 47.887178786506276,
+    "W1RISMRA15V": 96.35730054593803,
+    "W1RFTMRA17V": 184.11068693462724,
+    "W1RISMRA10V": 22.68437768302097,
+    "W1RFSMRA12V": 157.6775186085463,
+    "W1RISMRA13V": 49.48058368845683,
+    "W1RISMRA16V": 99.79510546662533,
+    "W1RFTMRA18V": 107.30130145427952,
+    "W1RISMRA07V": 22.546649780135702,
+    "W1RFSMRA04V": 160.7506822025349,
+    "W1RFTMRA01V": 206.6084100058622,
+    "W1RISMRA08V": 22.492748638987745,
+    "W1RXXMRA19P": 78.27546216365694,
+    "W1RXXMRA22P": 79.84155198316546,
+    "W1RXXMRA20P": 76.54242138314018,
+    "W1RXXMRA21P": 76.38315548174356
+   },
+   "worst_tur": 22.492748638987745,
+   "risk": {
+    "W1RFTMRA02V": 3.097556427224962e-11,
+    "W1RFSMRA05V": 0.003272642536465708,
+    "W1RHSMRA06V": 0.003844942900796346,
+    "W1RISMRA09V": 0.007257763313504353,
+    "W1RFSMRA11V": 0.0028348943899784793,
+    "W1RISMRA14V": 0.0063354464989725315,
+    "W1RISMRA15V": 0.003568193432954192,
+    "W1RFTMRA17V": 0.0028663223406991327,
+    "W1RISMRA10V": 0.007359084915921044,
+    "W1RFSMRA12V": 0.0009541018353832306,
+    "W1RISMRA13V": 0.006131306649682799,
+    "W1RISMRA16V": 0.0034446300416113,
+    "W1RFTMRA18V": 0.003202452212908393,
+    "W1RISMRA07V": 0.007404129695318012,
+    "W1RFSMRA04V": 0.0009358613954233702,
+    "W1RFTMRA01V": 3.822012279309895e-11,
+    "W1RISMRA08V": 0.0074219087454628395,
+    "W1RXXMRA19P": 0.010604674685610405,
+    "W1RXXMRA22P": 0.010396781616359378,
+    "W1RXXMRA20P": 0.010844642876849808,
+    "W1RXXMRA21P": 0.01086724095236088
+   },
+   "total_risk": 0.10954702110545789,
+   "n_shots": 73,
+   "time_min": {
+    "per_station_model_min": 22.0,
+    "per_observation_model_min": 31.865079365079364
+   },
+   "objective_values": {
+    "A0": 1.9251657762549796e-09,
+    "A1": 0.00010267311577702963,
+    "risk": 0.10954702110545789
+   }
+  },
+  "A1|2": {
+   "feasible": true,
+   "found_by": "A1",
+   "stations": [
+    {
+     "s_m": 4.333301975224817,
+     "height_m": 0.8002137914704001,
+     "segment": "+x loop",
+     "position_cell_m": [
+      3.136663209030127,
+      -0.5876433900199297,
+      0.8002137914704001
+     ],
+     "position_file_m": [
+      5.540024048873877,
+      0.1993081785835863,
+      1.155213486294619
+     ]
+    },
+    {
+     "s_m": 16.542781845634178,
+     "height_m": 0.8002615885378723,
+     "segment": "-x loop",
+     "position_cell_m": [
+      -2.437288325185161,
+      -1.8031418114195146,
+      0.8002615885378723
+     ],
+     "position_file_m": [
+      -0.03392748534141088,
+      -1.0161902428159986,
+      1.1552612833620914
+     ]
+    }
+   ],
+   "u_um": {
+    "W1RFTMRA02V": 5.901801750095799,
+    "W1RFSMRA05V": 7.671640324761382,
+    "W1RHSMRA06V": 9.43135693817798,
+    "W1RISMRA09V": 4.400098724414821,
+    "W1RFSMRA11V": 1.874028723071938,
+    "W1RISMRA14V": 3.9327991735627434,
+    "W1RISMRA15V": 3.946392959180093,
+    "W1RFTMRA17V": 3.467636569543577,
+    "W1RISMRA10V": 4.4986409176776165,
+    "W1RFSMRA12V": 2.9658725941748374,
+    "W1RISMRA13V": 3.8560912992630123,
+    "W1RISMRA16V": 3.8614426969994353,
+    "W1RFTMRA18V": 4.0511305611340855,
+    "W1RISMRA07V": 4.578035407257621,
+    "W1RFSMRA04V": 1.9492000473710862,
+    "W1RFTMRA01V": 4.454163718507268,
+    "W1RISMRA08V": 4.484585787484986,
+    "W1RXXMRA19P": 5.90011998812968,
+    "W1RXXMRA22P": 5.976148926852174,
+    "W1RXXMRA20P": 6.14429352592993,
+    "W1RXXMRA21P": 6.130239813425812
+   },
+   "tur": {
+    "W1RFTMRA02V": 169.43978167070216,
+    "W1RFSMRA05V": 48.881332299903406,
+    "W1RHSMRA06V": 39.760980573432235,
+    "W1RISMRA09V": 28.40845349819373,
+    "W1RFSMRA11V": 266.80487542389,
+    "W1RISMRA14V": 63.56795477393362,
+    "W1RISMRA15V": 126.69797589135182,
+    "W1RFTMRA17V": 216.2856415194392,
+    "W1RISMRA10V": 27.78616970934638,
+    "W1RFSMRA12V": 126.43833748507062,
+    "W1RISMRA13V": 64.83248984477643,
+    "W1RISMRA16V": 129.48528289401497,
+    "W1RFTMRA18V": 123.4223366674286,
+    "W1RISMRA07V": 27.304288604198174,
+    "W1RFSMRA04V": 192.386615476317,
+    "W1RFTMRA01V": 224.5090354099359,
+    "W1RISMRA08V": 27.87325428110533,
+    "W1RXXMRA19P": 52.965024546740025,
+    "W1RXXMRA22P": 52.29120020685355,
+    "W1RXXMRA20P": 50.860200392640515,
+    "W1RXXMRA21P": 50.97679854474781
+   },
+   "worst_tur": 27.304288604198174,
+   "risk": {
+    "W1RFTMRA02V": 4.660604521220735e-11,
+    "W1RFSMRA05V": 0.0030779353594821614,
+    "W1RHSMRA06V": 0.0037841343324037397,
+    "W1RISMRA09V": 0.0058743247095711494,
+    "W1RFSMRA11V": 0.001285466096051044,
+    "W1RISMRA14V": 0.004771957574033547,
+    "W1RISMRA15V": 0.0027104441825806748,
+    "W1RFTMRA17V": 0.0024396234154142214,
+    "W1RISMRA10V": 0.006006038686002315,
+    "W1RFSMRA12V": 0.0011898384417524607,
+    "W1RISMRA13V": 0.004678849853379316,
+    "W1RISMRA16V": 0.0026519212604320997,
+    "W1RFTMRA18V": 0.0027826040961110793,
+    "W1RISMRA07V": 0.006112161821839291,
+    "W1RFSMRA04V": 0.0007819668706782643,
+    "W1RFTMRA01V": 3.517230236358541e-11,
+    "W1RISMRA08V": 0.0059872520367334784,
+    "W1RXXMRA19P": 0.015666507004498117,
+    "W1RXXMRA22P": 0.01586812093534101,
+    "W1RXXMRA20P": 0.016313995842479292,
+    "W1RXXMRA21P": 0.016276729736915505
+   },
+   "total_risk": 0.11825987233747712,
+   "n_shots": 73,
+   "time_min": {
+    "per_station_model_min": 22.0,
+    "per_observation_model_min": 31.865079365079364
+   },
+   "objective_values": {
+    "A0": 1.9915574359933785e-09,
+    "A1": 9.94757204470159e-05,
+    "risk": 0.11825987233747712
+   }
+  },
+  "risk|2": {
+   "feasible": true,
+   "found_by": "risk",
+   "stations": [
+    {
+     "s_m": 4.244389214767291,
+     "height_m": 1.0171196980006725,
+     "segment": "+x loop",
+     "position_cell_m": [
+      3.118152963523437,
+      -0.6746047791293199,
+      1.0171196980006725
+     ],
+     "position_file_m": [
+      5.521513803367187,
+      0.11234678947419607,
+      1.3721193928248914
+     ]
+    },
+    {
+     "s_m": 16.373598070059728,
+     "height_m": 2.3495498204538907,
+     "segment": "-x loop",
+     "position_cell_m": [
+      -2.5340637117895795,
+      -1.664396550334191,
+      2.3495498204538907
+     ],
+     "position_file_m": [
+      -0.1307028719458292,
+      -0.8774449817306751,
+      2.7045495152781096
+     ]
+    }
+   ],
+   "u_um": {
+    "W1RFTMRA02V": 2.4338342676784257,
+    "W1RFSMRA05V": 8.141852441918104,
+    "W1RHSMRA06V": 9.572199204640908,
+    "W1RISMRA09V": 5.6509736829313875,
+    "W1RFSMRA11V": 6.160546535385193,
+    "W1RISMRA14V": 5.495909332092913,
+    "W1RISMRA15V": 5.458870256759165,
+    "W1RFTMRA17V": 4.07510097146807,
+    "W1RISMRA10V": 5.7530775589684175,
+    "W1RFSMRA12V": 4.471649750892405,
+    "W1RISMRA13V": 5.330226828810088,
+    "W1RISMRA16V": 5.281501788483506,
+    "W1RFTMRA18V": 4.658905027666976,
+    "W1RISMRA07V": 5.801299219732961,
+    "W1RFSMRA04V": 2.344880716540558,
+    "W1RFTMRA01V": 6.783328264766083,
+    "W1RISMRA08V": 5.820588439448999,
+    "W1RXXMRA19P": 3.352102108361735,
+    "W1RXXMRA22P": 3.2294696052386285,
+    "W1RXXMRA20P": 3.345927527423129,
+    "W1RXXMRA21P": 3.35377475863713
+   },
+   "tur": {
+    "W1RFTMRA02V": 410.8743201129612,
+    "W1RFSMRA05V": 46.058314453025794,
+    "W1RHSMRA06V": 39.17595026837594,
+    "W1RISMRA09V": 22.12008177945672,
+    "W1RFSMRA11V": 81.1616302430442,
+    "W1RISMRA14V": 45.48837779039502,
+    "W1RISMRA15V": 91.59404354424814,
+    "W1RFTMRA17V": 184.04451944900148,
+    "W1RISMRA10V": 21.72750127540671,
+    "W1RFSMRA12V": 83.8616664744732,
+    "W1RISMRA13V": 46.90231917500022,
+    "W1RISMRA16V": 94.67004273107831,
+    "W1RFTMRA18V": 107.3213549172483,
+    "W1RISMRA07V": 21.54689755957009,
+    "W1RFSMRA04V": 159.92284697246512,
+    "W1RFTMRA01V": 147.42025757388055,
+    "W1RISMRA08V": 21.475491919822634,
+    "W1RXXMRA19P": 93.22508381247592,
+    "W1RXXMRA22P": 96.76511569982993,
+    "W1RXXMRA20P": 93.39712155710448,
+    "W1RXXMRA21P": 93.17858904960877
+   },
+   "worst_tur": 21.475491919822634,
+   "risk": {
+    "W1RFTMRA02V": 1.9217824302096544e-11,
+    "W1RFSMRA05V": 0.0032666258099604347,
+    "W1RHSMRA06V": 0.003840662921238818,
+    "W1RISMRA09V": 0.007547204130062968,
+    "W1RFSMRA11V": 0.00424109766896237,
+    "W1RISMRA14V": 0.006669776709764329,
+    "W1RISMRA15V": 0.00375485709966393,
+    "W1RFTMRA17V": 0.0028673536602747424,
+    "W1RISMRA10V": 0.007683848262968422,
+    "W1RFSMRA12V": 0.001793953903037131,
+    "W1RISMRA13V": 0.006468560428433643,
+    "W1RISMRA16V": 0.003632129744755391,
+    "W1RFTMRA18V": 0.003201851395613021,
+    "W1RISMRA07V": 0.00774838432229158,
+    "W1RFSMRA04V": 0.0009407059274604183,
+    "W1RFTMRA01V": 5.356950538766507e-11,
+    "W1RISMRA08V": 0.007774199793845081,
+    "W1RXXMRA19P": 0.008904915565244252,
+    "W1RXXMRA22P": 0.008579278564255069,
+    "W1RXXMRA20P": 0.008888519775682929,
+    "W1RXXMRA21P": 0.008909357066344787
+   },
+   "total_risk": 0.10671328282264665,
+   "n_shots": 73,
+   "time_min": {
+    "per_station_model_min": 22.0,
+    "per_observation_model_min": 31.865079365079364
+   },
+   "objective_values": {
+    "A0": 1.9878165381128256e-09,
+    "A1": 0.0001065160182878448,
+    "risk": 0.10671328282264665
+   }
+  },
+  "A0|3": {
+   "feasible": true,
+   "found_by": "A0",
+   "stations": [
+    {
+     "s_m": 3.825242182668017,
+     "height_m": 0.8060913820447901,
+     "segment": "+x loop",
+     "position_cell_m": [
+      2.9969824888460774,
+      -1.075506640397362,
+      0.8060913820447901
+     ],
+     "position_file_m": [
+      5.400343328689828,
+      -0.2885550717938461,
+      1.1610910768690093
+     ]
+    },
+    {
+     "s_m": 18.61687924630288,
+     "height_m": 0.8043026235873985,
+     "segment": "-x loop",
+     "position_cell_m": [
+      -0.7492731755502244,
+      -2.937734583071456,
+      0.8043026235873985
+     ],
+     "position_file_m": [
+      1.6540876642935258,
+      -2.15078301446794,
+      1.1593023184116173
+     ]
+    },
+    {
+     "s_m": 18.65820764780001,
+     "height_m": 2.9980237432480163,
+     "segment": "-x loop",
+     "position_cell_m": [
+      -0.7091584109868825,
+      -2.947675206039447,
+      2.9980237432480163
+     ],
+     "position_file_m": [
+      1.6942024288568678,
+      -2.160723637435931,
+      3.3530234380722352
+     ]
+    }
+   ],
+   "u_um": {
+    "W1RFTMRA02V": 3.4640810875031653,
+    "W1RFSMRA05V": 7.833527096712329,
+    "W1RHSMRA06V": 9.373365035775757,
+    "W1RISMRA09V": 2.658190542931679,
+    "W1RFSMRA11V": 3.0484734175828274,
+    "W1RISMRA14V": 2.1841910504133697,
+    "W1RISMRA15V": 2.2571542810991345,
+    "W1RFTMRA17V": 4.047608752908998,
+    "W1RISMRA10V": 2.3105879326183105,
+    "W1RFSMRA12V": 4.1909154918858285,
+    "W1RISMRA13V": 2.174512813294906,
+    "W1RISMRA16V": 2.2500402135201503,
+    "W1RFTMRA18V": 4.508894363523488,
+    "W1RISMRA07V": 2.423632399961656,
+    "W1RFSMRA04V": 2.299897072914718,
+    "W1RFTMRA01V": 4.7269463315193425,
+    "W1RISMRA08V": 2.439554716456582,
+    "W1RXXMRA19P": 2.373998132835273,
+    "W1RXXMRA22P": 2.2315757695228506,
+    "W1RXXMRA20P": 2.2429942759632824,
+    "W1RXXMRA21P": 2.2656609840891586
+   },
+   "tur": {
+    "W1RFTMRA02V": 288.67684524116567,
+    "W1RFSMRA05V": 47.87115629655314,
+    "W1RHSMRA06V": 40.006977064130126,
+    "W1RISMRA09V": 47.02446945813725,
+    "W1RFSMRA11V": 164.0165195852212,
+    "W1RISMRA14V": 114.45885191805277,
+    "W1RISMRA15V": 221.51786618525787,
+    "W1RFTMRA17V": 185.29458892512238,
+    "W1RISMRA10V": 54.098785090750724,
+    "W1RFSMRA12V": 89.47925595876367,
+    "W1RISMRA13V": 114.96828092780483,
+    "W1RISMRA16V": 222.2182505875121,
+    "W1RFTMRA18V": 110.89193041312983,
+    "W1RISMRA07V": 51.57547819627169,
+    "W1RFSMRA04V": 163.0507749308768,
+    "W1RFTMRA01V": 211.55306827411738,
+    "W1RISMRA08V": 51.23885894289786,
+    "W1RXXMRA19P": 131.634475898589,
+    "W1RXXMRA22P": 140.03557677399317,
+    "W1RXXMRA20P": 139.32269170227505,
+    "W1RXXMRA21P": 137.92884380962727
+   },
+   "worst_tur": 40.006977064130126,
+   "risk": {
+    "W1RFTMRA02V": 2.7353352967037306e-11,
+    "W1RFSMRA05V": 0.0031428982414427966,
+    "W1RHSMRA06V": 0.0037608587259871395,
+    "W1RISMRA09V": 0.0035474549169676544,
+    "W1RFSMRA11V": 0.002092338420331299,
+    "W1RISMRA14V": 0.0026498984229333163,
+    "W1RISMRA15V": 0.0015485263874786912,
+    "W1RFTMRA17V": 0.002847993991068674,
+    "W1RISMRA10V": 0.003083403224845554,
+    "W1RFSMRA12V": 0.001681320998910913,
+    "W1RISMRA13V": 0.00263815524566388,
+    "W1RISMRA16V": 0.0015436407619055961,
+    "W1RFTMRA18V": 0.0030983449252172278,
+    "W1RISMRA07V": 0.0032343114245183447,
+    "W1RFSMRA04V": 0.0009226593612897845,
+    "W1RFTMRA01V": 3.732664178239685e-11,
+    "W1RISMRA08V": 0.003255567922652425,
+    "W1RXXMRA19P": 0.006307265295118111,
+    "W1RXXMRA22P": 0.005928947643428047,
+    "W1RXXMRA20P": 0.0059592790668806465,
+    "W1RXXMRA21P": 0.006019489440112223
+   },
+   "total_risk": 0.06326235448143232,
+   "n_shots": 109,
+   "time_min": {
+    "per_station_model_min": 33.0,
+    "per_observation_model_min": 47.57936507936508
+   },
+   "objective_values": {
+    "A0": 9.814082343308478e-10,
+    "A1": 7.130580176303282e-05,
+    "risk": 0.06326235448143232
+   }
+  },
+  "A1|3": {
+   "feasible": true,
+   "found_by": "A1",
+   "stations": [
+    {
+     "s_m": 4.318837831597387,
+     "height_m": 0.8009234820742928,
+     "segment": "+x loop",
+     "position_cell_m": [
+      3.1338258179113807,
+      -0.6018264879076985,
+      0.8009234820742928
+     ],
+     "position_file_m": [
+      5.5371866577551305,
+      0.18512508069581746,
+      1.1559231768985119
+     ]
+    },
+    {
+     "s_m": 16.88221163058294,
+     "height_m": 2.99407408765801,
+     "segment": "-x loop",
+     "position_cell_m": [
+      -2.2205759744751146,
+      -2.064155302722407,
+      2.99407408765801
+     ],
+     "position_file_m": [
+      0.1827848653686357,
+      -1.277203734118891,
+      3.349073782482229
+     ]
+    },
+    {
+     "s_m": 17.896995106640553,
+     "height_m": 0.8165679269196762,
+     "segment": "-x loop",
+     "position_cell_m": [
+      -1.419266953028804,
+      -2.679062539063519,
+      0.8165679269196762
+     ],
+     "position_file_m": [
+      0.9840938868149463,
+      -1.8921109704600032,
+      1.171567621743895
+     ]
+    }
+   ],
+   "u_um": {
+    "W1RFTMRA02V": 1.9229114759416979,
+    "W1RFSMRA05V": 7.64128448299238,
+    "W1RHSMRA06V": 9.36100935539065,
+    "W1RISMRA09V": 2.7005683052868115,
+    "W1RFSMRA11V": 2.3878296981674905,
+    "W1RISMRA14V": 2.2348759985472135,
+    "W1RISMRA15V": 2.3078000626441466,
+    "W1RFTMRA17V": 3.453453121422652,
+    "W1RISMRA10V": 2.3198318412731203,
+    "W1RFSMRA12V": 3.2825861687963425,
+    "W1RISMRA13V": 2.2348642587809944,
+    "W1RISMRA16V": 2.311509158251646,
+    "W1RFTMRA18V": 4.000369363965674,
+    "W1RISMRA07V": 2.4284139661775175,
+    "W1RFSMRA04V": 1.744593535621669,
+    "W1RFTMRA01V": 4.5123146603160365,
+    "W1RISMRA08V": 2.449111417207784,
+    "W1RXXMRA19P": 2.364451440189964,
+    "W1RXXMRA22P": 2.2307002911622367,
+    "W1RXXMRA20P": 2.265378871416118,
+    "W1RXXMRA21P": 2.2768704808255835
+   },
+   "tur": {
+    "W1RFTMRA02V": 520.0447407545244,
+    "W1RFSMRA05V": 49.075518760577204,
+    "W1RHSMRA06V": 40.059782632740536,
+    "W1RISMRA09V": 46.28655374325905,
+    "W1RFSMRA11V": 209.39516766363977,
+    "W1RISMRA14V": 111.86302960992604,
+    "W1RISMRA15V": 216.65655014634513,
+    "W1RFTMRA17V": 217.173933923573,
+    "W1RISMRA10V": 53.883215919391894,
+    "W1RFSMRA12V": 114.23919456088638,
+    "W1RISMRA13V": 111.86361722763527,
+    "W1RISMRA16V": 216.30889854582472,
+    "W1RFTMRA18V": 124.98845844183164,
+    "W1RISMRA07V": 51.47392567370142,
+    "W1RFSMRA04V": 214.94978190800893,
+    "W1RFTMRA01V": 221.61575051372,
+    "W1RISMRA08V": 51.038919308339054,
+    "W1RXXMRA19P": 132.16596234046287,
+    "W1RXXMRA22P": 140.09053624912633,
+    "W1RXXMRA20P": 137.946020395543,
+    "W1RXXMRA21P": 137.24979204205277
+   },
+   "worst_tur": 40.059782632740536,
+   "risk": {
+    "W1RFTMRA02V": 1.518340256294984e-11,
+    "W1RFSMRA05V": 0.003065754016226715,
+    "W1RHSMRA06V": 0.0037558996611851796,
+    "W1RISMRA09V": 0.0036040319239889233,
+    "W1RFSMRA11V": 0.0016382776313809213,
+    "W1RISMRA14V": 0.002711397565905109,
+    "W1RISMRA15V": 0.0015833081141917186,
+    "W1RFTMRA17V": 0.002429638744575419,
+    "W1RISMRA10V": 0.0030957425887673667,
+    "W1RFSMRA12V": 0.0013169007984626421,
+    "W1RISMRA13V": 0.0027113833213107275,
+    "W1RISMRA16V": 0.0015858554205199966,
+    "W1RFTMRA18V": 0.002747630985513748,
+    "W1RISMRA07V": 0.003240694871441525,
+    "W1RFSMRA04V": 0.0006998833354835123,
+    "W1RFTMRA01V": 3.563155366941144e-11,
+    "W1RISMRA08V": 0.0032683262676466394,
+    "W1RXXMRA19P": 0.006281907847082918,
+    "W1RXXMRA22P": 0.005926622074943922,
+    "W1RXXMRA20P": 0.0060187400550099236,
+    "W1RXXMRA21P": 0.006049265577919242
+   },
+   "total_risk": 0.0617312608523711,
+   "n_shots": 109,
+   "time_min": {
+    "per_station_model_min": 33.0,
+    "per_observation_model_min": 47.57936507936508
+   },
+   "objective_values": {
+    "A0": 9.926652398795343e-10,
+    "A1": 6.643072795437773e-05,
+    "risk": 0.0617312608523711
+   }
+  },
+  "risk|3": {
+   "feasible": true,
+   "found_by": "A1",
+   "stations": [
+    {
+     "s_m": 4.318837831597387,
+     "height_m": 0.8009234820742928,
+     "segment": "+x loop",
+     "position_cell_m": [
+      3.1338258179113807,
+      -0.6018264879076985,
+      0.8009234820742928
+     ],
+     "position_file_m": [
+      5.5371866577551305,
+      0.18512508069581746,
+      1.1559231768985119
+     ]
+    },
+    {
+     "s_m": 16.88221163058294,
+     "height_m": 2.99407408765801,
+     "segment": "-x loop",
+     "position_cell_m": [
+      -2.2205759744751146,
+      -2.064155302722407,
+      2.99407408765801
+     ],
+     "position_file_m": [
+      0.1827848653686357,
+      -1.277203734118891,
+      3.349073782482229
+     ]
+    },
+    {
+     "s_m": 17.896995106640553,
+     "height_m": 0.8165679269196762,
+     "segment": "-x loop",
+     "position_cell_m": [
+      -1.419266953028804,
+      -2.679062539063519,
+      0.8165679269196762
+     ],
+     "position_file_m": [
+      0.9840938868149463,
+      -1.8921109704600032,
+      1.171567621743895
+     ]
+    }
+   ],
+   "u_um": {
+    "W1RFTMRA02V": 1.9229114759416979,
+    "W1RFSMRA05V": 7.64128448299238,
+    "W1RHSMRA06V": 9.36100935539065,
+    "W1RISMRA09V": 2.7005683052868115,
+    "W1RFSMRA11V": 2.3878296981674905,
+    "W1RISMRA14V": 2.2348759985472135,
+    "W1RISMRA15V": 2.3078000626441466,
+    "W1RFTMRA17V": 3.453453121422652,
+    "W1RISMRA10V": 2.3198318412731203,
+    "W1RFSMRA12V": 3.2825861687963425,
+    "W1RISMRA13V": 2.2348642587809944,
+    "W1RISMRA16V": 2.311509158251646,
+    "W1RFTMRA18V": 4.000369363965674,
+    "W1RISMRA07V": 2.4284139661775175,
+    "W1RFSMRA04V": 1.744593535621669,
+    "W1RFTMRA01V": 4.5123146603160365,
+    "W1RISMRA08V": 2.449111417207784,
+    "W1RXXMRA19P": 2.364451440189964,
+    "W1RXXMRA22P": 2.2307002911622367,
+    "W1RXXMRA20P": 2.265378871416118,
+    "W1RXXMRA21P": 2.2768704808255835
+   },
+   "tur": {
+    "W1RFTMRA02V": 520.0447407545244,
+    "W1RFSMRA05V": 49.075518760577204,
+    "W1RHSMRA06V": 40.059782632740536,
+    "W1RISMRA09V": 46.28655374325905,
+    "W1RFSMRA11V": 209.39516766363977,
+    "W1RISMRA14V": 111.86302960992604,
+    "W1RISMRA15V": 216.65655014634513,
+    "W1RFTMRA17V": 217.173933923573,
+    "W1RISMRA10V": 53.883215919391894,
+    "W1RFSMRA12V": 114.23919456088638,
+    "W1RISMRA13V": 111.86361722763527,
+    "W1RISMRA16V": 216.30889854582472,
+    "W1RFTMRA18V": 124.98845844183164,
+    "W1RISMRA07V": 51.47392567370142,
+    "W1RFSMRA04V": 214.94978190800893,
+    "W1RFTMRA01V": 221.61575051372,
+    "W1RISMRA08V": 51.038919308339054,
+    "W1RXXMRA19P": 132.16596234046287,
+    "W1RXXMRA22P": 140.09053624912633,
+    "W1RXXMRA20P": 137.946020395543,
+    "W1RXXMRA21P": 137.24979204205277
+   },
+   "worst_tur": 40.059782632740536,
+   "risk": {
+    "W1RFTMRA02V": 1.518340256294984e-11,
+    "W1RFSMRA05V": 0.003065754016226715,
+    "W1RHSMRA06V": 0.0037558996611851796,
+    "W1RISMRA09V": 0.0036040319239889233,
+    "W1RFSMRA11V": 0.0016382776313809213,
+    "W1RISMRA14V": 0.002711397565905109,
+    "W1RISMRA15V": 0.0015833081141917186,
+    "W1RFTMRA17V": 0.002429638744575419,
+    "W1RISMRA10V": 0.0030957425887673667,
+    "W1RFSMRA12V": 0.0013169007984626421,
+    "W1RISMRA13V": 0.0027113833213107275,
+    "W1RISMRA16V": 0.0015858554205199966,
+    "W1RFTMRA18V": 0.002747630985513748,
+    "W1RISMRA07V": 0.003240694871441525,
+    "W1RFSMRA04V": 0.0006998833354835123,
+    "W1RFTMRA01V": 3.563155366941144e-11,
+    "W1RISMRA08V": 0.0032683262676466394,
+    "W1RXXMRA19P": 0.006281907847082918,
+    "W1RXXMRA22P": 0.005926622074943922,
+    "W1RXXMRA20P": 0.0060187400550099236,
+    "W1RXXMRA21P": 0.006049265577919242
+   },
+   "total_risk": 0.0617312608523711,
+   "n_shots": 109,
+   "time_min": {
+    "per_station_model_min": 33.0,
+    "per_observation_model_min": 47.57936507936508
+   },
+   "objective_values": {
+    "A0": 9.926652398795343e-10,
+    "A1": 6.643072795437773e-05,
+    "risk": 0.0617312608523711
+   }
+  },
+  "A0|4": {
+   "feasible": true,
+   "found_by": "A0",
+   "stations": [
+    {
+     "s_m": 3.0963182044611415,
+     "height_m": 2.0541400021501555,
+     "segment": "+x loop",
+     "position_cell_m": [
+      2.659351082385037,
+      -1.7195413008505975,
+      2.0541400021501555
+     ],
+     "position_file_m": [
+      5.062711922228788,
+      -0.9325897322470815,
+      2.4091396969743744
+     ]
+    },
+    {
+     "s_m": 3.9323300689012672,
+     "height_m": 0.8738119621087725,
+     "segment": "+x loop",
+     "position_cell_m": [
+      3.0331953143474073,
+      -0.9747333582267254,
+      0.8738119621087725
+     ],
+     "position_file_m": [
+      5.436556154191157,
+      -0.18778178962320935,
+      1.2288116569329914
+     ]
+    },
+    {
+     "s_m": 18.310208766412998,
+     "height_m": 2.5999158037321157,
+     "segment": "-x loop",
+     "position_cell_m": [
+      -1.0420943137418306,
+      -2.847057114537761,
+      2.5999158037321157
+     ],
+     "position_file_m": [
+      1.3612665261019197,
+      -2.060105545934245,
+      2.9549154985563346
+     ]
+    },
+    {
+     "s_m": 18.878052484878488,
+     "height_m": 0.8361814148862683,
+     "segment": "-x loop",
+     "position_cell_m": [
+      -0.4937359985148233,
+      -2.9913073289021486,
+      0.8361814148862683
+     ],
+     "position_file_m": [
+      1.909624841328927,
+      -2.2043557602986326,
+      1.1911811097104872
+     ]
+    }
+   ],
+   "u_um": {
+    "W1RFTMRA02V": 2.8702287063876133,
+    "W1RFSMRA05V": 3.3330982511887974,
+    "W1RHSMRA06V": 9.38546687743459,
+    "W1RISMRA09V": 2.4892464196422335,
+    "W1RFSMRA11V": 3.3450051981292224,
+    "W1RISMRA14V": 2.0244187837597023,
+    "W1RISMRA15V": 2.0543788034996755,
+    "W1RFTMRA17V": 2.270813799517903,
+    "W1RISMRA10V": 2.144127483153641,
+    "W1RFSMRA12V": 4.054908561090316,
+    "W1RISMRA13V": 1.9574851206422184,
+    "W1RISMRA16V": 1.9898431295228522,
+    "W1RFTMRA18V": 2.38421722037341,
+    "W1RISMRA07V": 2.1940796643351663,
+    "W1RFSMRA04V": 1.7024109146820474,
+    "W1RFTMRA01V": 4.8113868080064455,
+    "W1RISMRA08V": 2.221749950754544,
+    "W1RXXMRA19P": 1.8710317807964822,
+    "W1RXXMRA22P": 1.9123712052679027,
+    "W1RXXMRA20P": 1.9280825949387712,
+    "W1RXXMRA21P": 1.9534147978613525
+   },
+   "tur": {
+    "W1RFTMRA02V": 348.40429188605356,
+    "W1RFSMRA05V": 112.50793458196165,
+    "W1RHSMRA06V": 39.95539112727677,
+    "W1RISMRA09V": 50.21600071959353,
+    "W1RFSMRA11V": 149.47659880458107,
+    "W1RISMRA14V": 123.49223490986681,
+    "W1RISMRA15V": 243.3825734320467,
+    "W1RFTMRA17V": 330.2780704253365,
+    "W1RISMRA10V": 58.29877233612368,
+    "W1RFSMRA12V": 92.48050710647026,
+    "W1RISMRA13V": 127.7148916043761,
+    "W1RISMRA16V": 251.27608934674956,
+    "W1RFTMRA18V": 209.71243548089603,
+    "W1RISMRA07V": 56.97149562610643,
+    "W1RFSMRA04V": 220.27584337359426,
+    "W1RFTMRA01V": 207.84028387323548,
+    "W1RISMRA08V": 56.26195691263451,
+    "W1RXXMRA19P": 167.02014535903362,
+    "W1RXXMRA22P": 163.40969741605272,
+    "W1RXXMRA20P": 162.07811886291304,
+    "W1RXXMRA21P": 159.9762632811694
+   },
+   "worst_tur": 39.95539112727677,
+   "risk": {
+    "W1RFTMRA02V": 2.2663829925574857e-11,
+    "W1RFSMRA05V": 0.0013371658651800328,
+    "W1RHSMRA06V": 0.003765715912373738,
+    "W1RISMRA09V": 0.0033219073354313657,
+    "W1RFSMRA11V": 0.002296339587205985,
+    "W1RISMRA14V": 0.002456039162652441,
+    "W1RISMRA15V": 0.0014092758963648012,
+    "W1RFTMRA17V": 0.0015973089264320391,
+    "W1RISMRA10V": 0.002861203678574756,
+    "W1RFSMRA12V": 0.00162675426774062,
+    "W1RISMRA13V": 0.0023748276636814877,
+    "W1RISMRA16V": 0.0013649713314075244,
+    "W1RFTMRA18V": 0.0016357957829775734,
+    "W1RISMRA07V": 0.0029278817712085105,
+    "W1RFSMRA04V": 0.000682960665660794,
+    "W1RFTMRA01V": 3.7993551142462956e-11,
+    "W1RISMRA08V": 0.0029648173285776063,
+    "W1RXXMRA19P": 0.00497118325182461,
+    "W1RXXMRA22P": 0.005081002853064767,
+    "W1RXXMRA20P": 0.005122740609482856,
+    "W1RXXMRA21P": 0.00519003622883024
+   },
+   "total_risk": 0.05298792817932913,
+   "n_shots": 145,
+   "time_min": {
+    "per_station_model_min": 44.0,
+    "per_observation_model_min": 63.29365079365079
+   },
+   "objective_values": {
+    "A0": 5.53326620482882e-10,
+    "A1": 5.88977660709849e-05,
+    "risk": 0.05298792817932913
+   }
+  },
+  "A1|4": {
+   "feasible": true,
+   "found_by": "A0",
+   "stations": [
+    {
+     "s_m": 3.0963182044611415,
+     "height_m": 2.0541400021501555,
+     "segment": "+x loop",
+     "position_cell_m": [
+      2.659351082385037,
+      -1.7195413008505975,
+      2.0541400021501555
+     ],
+     "position_file_m": [
+      5.062711922228788,
+      -0.9325897322470815,
+      2.4091396969743744
+     ]
+    },
+    {
+     "s_m": 3.9323300689012672,
+     "height_m": 0.8738119621087725,
+     "segment": "+x loop",
+     "position_cell_m": [
+      3.0331953143474073,
+      -0.9747333582267254,
+      0.8738119621087725
+     ],
+     "position_file_m": [
+      5.436556154191157,
+      -0.18778178962320935,
+      1.2288116569329914
+     ]
+    },
+    {
+     "s_m": 18.310208766412998,
+     "height_m": 2.5999158037321157,
+     "segment": "-x loop",
+     "position_cell_m": [
+      -1.0420943137418306,
+      -2.847057114537761,
+      2.5999158037321157
+     ],
+     "position_file_m": [
+      1.3612665261019197,
+      -2.060105545934245,
+      2.9549154985563346
+     ]
+    },
+    {
+     "s_m": 18.878052484878488,
+     "height_m": 0.8361814148862683,
+     "segment": "-x loop",
+     "position_cell_m": [
+      -0.4937359985148233,
+      -2.9913073289021486,
+      0.8361814148862683
+     ],
+     "position_file_m": [
+      1.909624841328927,
+      -2.2043557602986326,
+      1.1911811097104872
+     ]
+    }
+   ],
+   "u_um": {
+    "W1RFTMRA02V": 2.8702287063876133,
+    "W1RFSMRA05V": 3.3330982511887974,
+    "W1RHSMRA06V": 9.38546687743459,
+    "W1RISMRA09V": 2.4892464196422335,
+    "W1RFSMRA11V": 3.3450051981292224,
+    "W1RISMRA14V": 2.0244187837597023,
+    "W1RISMRA15V": 2.0543788034996755,
+    "W1RFTMRA17V": 2.270813799517903,
+    "W1RISMRA10V": 2.144127483153641,
+    "W1RFSMRA12V": 4.054908561090316,
+    "W1RISMRA13V": 1.9574851206422184,
+    "W1RISMRA16V": 1.9898431295228522,
+    "W1RFTMRA18V": 2.38421722037341,
+    "W1RISMRA07V": 2.1940796643351663,
+    "W1RFSMRA04V": 1.7024109146820474,
+    "W1RFTMRA01V": 4.8113868080064455,
+    "W1RISMRA08V": 2.221749950754544,
+    "W1RXXMRA19P": 1.8710317807964822,
+    "W1RXXMRA22P": 1.9123712052679027,
+    "W1RXXMRA20P": 1.9280825949387712,
+    "W1RXXMRA21P": 1.9534147978613525
+   },
+   "tur": {
+    "W1RFTMRA02V": 348.40429188605356,
+    "W1RFSMRA05V": 112.50793458196165,
+    "W1RHSMRA06V": 39.95539112727677,
+    "W1RISMRA09V": 50.21600071959353,
+    "W1RFSMRA11V": 149.47659880458107,
+    "W1RISMRA14V": 123.49223490986681,
+    "W1RISMRA15V": 243.3825734320467,
+    "W1RFTMRA17V": 330.2780704253365,
+    "W1RISMRA10V": 58.29877233612368,
+    "W1RFSMRA12V": 92.48050710647026,
+    "W1RISMRA13V": 127.7148916043761,
+    "W1RISMRA16V": 251.27608934674956,
+    "W1RFTMRA18V": 209.71243548089603,
+    "W1RISMRA07V": 56.97149562610643,
+    "W1RFSMRA04V": 220.27584337359426,
+    "W1RFTMRA01V": 207.84028387323548,
+    "W1RISMRA08V": 56.26195691263451,
+    "W1RXXMRA19P": 167.02014535903362,
+    "W1RXXMRA22P": 163.40969741605272,
+    "W1RXXMRA20P": 162.07811886291304,
+    "W1RXXMRA21P": 159.9762632811694
+   },
+   "worst_tur": 39.95539112727677,
+   "risk": {
+    "W1RFTMRA02V": 2.2663829925574857e-11,
+    "W1RFSMRA05V": 0.0013371658651800328,
+    "W1RHSMRA06V": 0.003765715912373738,
+    "W1RISMRA09V": 0.0033219073354313657,
+    "W1RFSMRA11V": 0.002296339587205985,
+    "W1RISMRA14V": 0.002456039162652441,
+    "W1RISMRA15V": 0.0014092758963648012,
+    "W1RFTMRA17V": 0.0015973089264320391,
+    "W1RISMRA10V": 0.002861203678574756,
+    "W1RFSMRA12V": 0.00162675426774062,
+    "W1RISMRA13V": 0.0023748276636814877,
+    "W1RISMRA16V": 0.0013649713314075244,
+    "W1RFTMRA18V": 0.0016357957829775734,
+    "W1RISMRA07V": 0.0029278817712085105,
+    "W1RFSMRA04V": 0.000682960665660794,
+    "W1RFTMRA01V": 3.7993551142462956e-11,
+    "W1RISMRA08V": 0.0029648173285776063,
+    "W1RXXMRA19P": 0.00497118325182461,
+    "W1RXXMRA22P": 0.005081002853064767,
+    "W1RXXMRA20P": 0.005122740609482856,
+    "W1RXXMRA21P": 0.00519003622883024
+   },
+   "total_risk": 0.05298792817932913,
+   "n_shots": 145,
+   "time_min": {
+    "per_station_model_min": 44.0,
+    "per_observation_model_min": 63.29365079365079
+   },
+   "objective_values": {
+    "A0": 5.53326620482882e-10,
+    "A1": 5.88977660709849e-05,
+    "risk": 0.05298792817932913
+   }
+  },
+  "risk|4": {
+   "feasible": true,
+   "found_by": "risk",
+   "stations": [
+    {
+     "s_m": 3.1230275004604415,
+     "height_m": 2.599139956167532,
+     "segment": "+x loop",
+     "position_cell_m": [
+      2.6744027553795275,
+      -1.6974770986464234,
+      2.599139956167532
+     ],
+     "position_file_m": [
+      5.077763595223278,
+      -0.9105255300429074,
+      2.954139650991751
+     ]
+    },
+    {
+     "s_m": 4.195149444447709,
+     "height_m": 0.809409642987535,
+     "segment": "+x loop",
+     "position_cell_m": [
+      3.1068072276862364,
+      -0.7225190355131158,
+      0.809409642987535
+     ],
+     "position_file_m": [
+      5.510168067529987,
+      0.0644325330904002,
+      1.1644093378117542
+     ]
+    },
+    {
+     "s_m": 17.341642336655713,
+     "height_m": 2.5317929001726402,
+     "segment": "-x loop",
+     "position_cell_m": [
+      -1.8835256100047284,
+      -2.3757159023396404,
+      2.5317929001726402
+     ],
+     "position_file_m": [
+      0.5198352298390219,
+      -1.5887643337361244,
+      2.886792594996859
+     ]
+    },
+    {
+     "s_m": 18.936466731446153,
+     "height_m": 0.8673891746618476,
+     "segment": "-x loop",
+     "position_cell_m": [
+      -0.4360134906507554,
+      -3.0002644896981465,
+      0.8673891746618476
+     ],
+     "position_file_m": [
+      1.967347349192995,
+      -2.2133129210946305,
+      1.2223888694860667
+     ]
+    }
+   ],
+   "u_um": {
+    "W1RFTMRA02V": 1.8415456624475741,
+    "W1RFSMRA05V": 7.695054906464368,
+    "W1RHSMRA06V": 9.34250661293675,
+    "W1RISMRA09V": 2.488926228427594,
+    "W1RFSMRA11V": 3.3656854313269395,
+    "W1RISMRA14V": 1.954603948477454,
+    "W1RISMRA15V": 1.987471818813386,
+    "W1RFTMRA17V": 1.9003794234592635,
+    "W1RISMRA10V": 2.038149940800242,
+    "W1RFSMRA12V": 3.511208154218741,
+    "W1RISMRA13V": 1.9163108485981253,
+    "W1RISMRA16V": 1.9660379570398743,
+    "W1RFTMRA18V": 1.9886063768515088,
+    "W1RISMRA07V": 2.09880918987276,
+    "W1RFSMRA04V": 1.489399808209877,
+    "W1RFTMRA01V": 4.669362479409148,
+    "W1RISMRA08V": 2.235868490574945,
+    "W1RXXMRA19P": 1.778121380967069,
+    "W1RXXMRA22P": 1.7357101550618055,
+    "W1RXXMRA20P": 1.7529985111108037,
+    "W1RXXMRA21P": 1.7585793041066329
+   },
+   "tur": {
+    "W1RFTMRA02V": 543.0221038727399,
+    "W1RFSMRA05V": 48.73259574599975,
+    "W1RHSMRA06V": 40.13912063821611,
+    "W1RISMRA09V": 50.2224608235858,
+    "W1RFSMRA11V": 148.5581496553801,
+    "W1RISMRA14V": 127.90314897027524,
+    "W1RISMRA15V": 251.5758941923129,
+    "W1RFTMRA17V": 394.65803025522865,
+    "W1RISMRA10V": 61.33012959337087,
+    "W1RFSMRA12V": 106.80084561475937,
+    "W1RISMRA13V": 130.45900156693637,
+    "W1RISMRA16V": 254.31858942988822,
+    "W1RFTMRA18V": 251.43236279450767,
+    "W1RISMRA07V": 59.55758179597933,
+    "W1RFSMRA04V": 251.77927238403225,
+    "W1RFTMRA01V": 214.1619984333574,
+    "W1RISMRA08V": 55.90668705557755,
+    "W1RXXMRA19P": 175.7472821287601,
+    "W1RXXMRA22P": 180.0415807262892,
+    "W1RXXMRA20P": 178.26598141374433,
+    "W1RXXMRA21P": 177.70026024430646
+   },
+   "worst_tur": 40.13912063821611,
+   "risk": {
+    "W1RFTMRA02V": 1.4540917834956099e-11,
+    "W1RFSMRA05V": 0.0030873312855587004,
+    "W1RHSMRA06V": 0.00374847342105825,
+    "W1RISMRA09V": 0.0033214798721177908,
+    "W1RFSMRA11V": 0.002310569857729258,
+    "W1RISMRA14V": 0.0023713319048656225,
+    "W1RISMRA15V": 0.0013633434174217599,
+    "W1RFTMRA17V": 0.0013366858060598682,
+    "W1RISMRA10V": 0.0027197440304232334,
+    "W1RFSMRA12V": 0.0014086223033606916,
+    "W1RISMRA13V": 0.002324870496943094,
+    "W1RISMRA16V": 0.0013486290572367933,
+    "W1RFTMRA18V": 0.0013641222957200489,
+    "W1RISMRA07V": 0.002800711476881432,
+    "W1RFSMRA04V": 0.0005975057710312719,
+    "W1RFTMRA01V": 3.687185424483424e-11,
+    "W1RISMRA08V": 0.002983663450734537,
+    "W1RXXMRA19P": 0.0047243610219241,
+    "W1RXXMRA22P": 0.00461168912360786,
+    "W1RXXMRA20P": 0.004657618317499927,
+    "W1RXXMRA21P": 0.0046724445473476294
+   },
+   "total_risk": 0.05175319750893464,
+   "n_shots": 144,
+   "time_min": {
+    "per_station_model_min": 44.0,
+    "per_observation_model_min": 62.85714285714286
+   },
+   "objective_values": {
+    "A0": 6.624130307691571e-10,
+    "A1": 5.9515336629174855e-05,
+    "risk": 0.05175319750893464
+   }
+  }
+ },
+ "source_file": "SheetMetal_QIF_Results_6_samples.QIF"
+}

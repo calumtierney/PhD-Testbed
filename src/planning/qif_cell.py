@@ -164,11 +164,14 @@ class QifCell:
     def scorer(self, require_all_characteristics: bool = True) -> PartFrameScorer:
         return PartFrameScorer(self.scenario, self.datum_indices, require_all_characteristics)
 
-    def risk_model(self, rule: str = "best") -> CellRiskModel:
+    def risk_model(self, rule: str = "simple") -> CellRiskModel:
         """Total decision risk against each characteristic's uncertainty, from
-        each cluster's process knowledge. `rule`: "best" (accept when the part
-        is more likely conforming than not) or "simple" (accept inside the
-        tolerance limits)."""
+        each cluster's process knowledge. `rule`: "simple" (accept inside the
+        tolerance limits) or "best" (accept when the part is more likely
+        conforming than not). The two agree closely when the uncertainty is
+        small against the tolerance; "best" takes minutes to tabulate for
+        process knowledge from few builds (about four minutes for the sheet-
+        metal sample's six clusters), "simple" about a second."""
         curves = {}
         for p in self.planned:
             key = (p.cluster, p.tolerance_half_width_m)
@@ -483,13 +486,14 @@ DEFAULT_DE = dict(maxiter=60, popsize=15, tol=1e-8, workers=1)
 
 
 def plan_qif_cell(cell: QifCell, station_counts: Sequence[int] = (2, 3, 4), objectives: Sequence[str] = ("A1", "risk"),
-                  rule: str = "best", seed: int = 0, de: Optional[dict] = None) -> dict:
+                  rule: str = "simple", seed: int = 0, de: Optional[dict] = None) -> dict:
     """Search the best station layout on the cell's track for each station
     count and each objective, and describe every layout found the same way.
 
     Objectives: "A0" (summed covariance trace: what the field minimises), "A1"
     (summed uncertainty along the tolerances), "TUR" (worst uncertainty-to-
-    tolerance ratio) and "risk" (expected wrong decisions under `rule`). The
+    tolerance ratio) and "risk" (expected wrong decisions under `rule`: see
+    `QifCell.risk_model` for the two rules and what the slower one costs). The
     optimiser is the one every other track search uses (differential evolution
     over arc length and height per station), with the same settings and seed
     for every objective. A layout found for one objective is also scored under
