@@ -4,6 +4,7 @@
 conformity decision risk** — draft manuscript, kept as an editable document:
 https://claude.ai/artifact/MLSdDrFc4VV8bzJLY2RsfU (export to Word, PDF or Markdown from there).
 
+* `measurement_digital_twin_draft.pdf` is a typeset export of that document (13 pages, A4).
 * Every number in it comes from this repository: `docs/cell_experiment.md` gives the runs,
   `results/cell_results_datum.json`, `cell_results_datum_no_network.json` and
   `cell_sensitivity.json` the data, `python -m viz.make_paper_figures` the figures
