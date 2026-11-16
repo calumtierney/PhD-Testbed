@@ -12,5 +12,5 @@ it is a real file written by someone else's software, so `tests/test_qif_reader.
 checks the reader against the format as it is used, not as this repo imagines it.
 
 It is **not** a large-volume part. No public QIF file of an aerospace-scale
-structure was found; `planning.qif_cell.write_planning_qif` writes the testbed's
+structure was found; `interchange.qif_write.write_point_inspection_qif` writes the testbed's
 own long-part scene as a QIF document for that purpose (`tests/test_qif_cell.py`).
