@@ -221,3 +221,49 @@ def test_datum_scorer_agrees_with_the_functional_and_plans_every_station(cell):
     assert one.feasible and np.isnan(one.u_m[:3]).all() and np.all(one.u_m[3:] < 10e-6)
     assert not scorer.score(layout_poses([(11.0, 1.25)], cell, TRACK)).feasible
     assert not scorer.score([]).feasible
+
+
+# -- the scene-independent pieces used for imported parts (planning.qif_cell) ---------------
+def test_reference_nests_for_track_reproduces_the_long_part_cell():
+    from planning.cell import ers_nests, reference_nests_for_track
+    from planning.experiment import long_part_track
+
+    points, normals = reference_nests_for_track(long_part_track(), part_top_m=2.0)
+    expected_points, expected_normals = ers_nests(15.0)
+    np.testing.assert_allclose(points, expected_points, atol=1e-12)
+    np.testing.assert_allclose(normals, expected_normals, atol=1e-12)
+
+
+def test_reference_nests_scale_with_the_track():
+    from geometry.station_track import StationTrack
+    from planning.cell import reference_nests_for_track
+
+    small = StationTrack(0.0, 0.2, 0.1, 3.0)
+    points, normals = reference_nests_for_track(small, part_top_m=0.7)
+    assert len(points) == 2 * 3 * 2 + 8                      # 5.2 m of pillars at <= 5 m spacing is three pillars a side
+    assert np.all(np.abs(points[:12, 1]) == pytest.approx(0.05 + 3.0 + 2.25))
+    assert set(np.round(points[:, 2], 6)) == {1.0, 1.5}      # low, and 0.8 m above the part's top
+    centre = np.array([0.1, 0.0, 1.0])
+    assert np.all(np.einsum("ij,ij->i", normals, centre - points) > 0.0)  # every nest faces into the cell
+
+
+def test_part_frame_scorer_matches_datum_cell_scorer_on_the_long_part():
+    from planning.cell import DatumCellScorer, PartFrameScorer, factory_cell_scenario, layout_poses, part_datum_indices
+    from planning.experiment import long_part_track
+
+    track = long_part_track()
+    scenario = factory_cell_scenario(track=track)
+    old = DatumCellScorer(scenario)
+    new = PartFrameScorer(scenario, tuple(part_datum_indices(scenario)))
+    rng = np.random.default_rng(3)
+    n_feasible = 0
+    for _ in range(12):
+        stations = [(rng.uniform(0, track.perimeter_m), rng.uniform(0.8, 3.0)) for _ in range(4)]
+        poses = layout_poses(stations, scenario, track)
+        a, b = old.score(poses), new.score(poses)
+        assert a.feasible == b.feasible and a.deficit == b.deficit
+        if a.feasible:
+            n_feasible += 1
+            np.testing.assert_allclose(b.u_m, a.u_m, rtol=1e-9)
+            np.testing.assert_allclose(b.trace_m2, a.trace_m2, rtol=1e-9)
+    assert n_feasible >= 3

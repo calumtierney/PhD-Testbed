@@ -48,7 +48,8 @@ from geometry.pose import InstrumentPose
 from geometry.station_track import StationTrack
 from geometry.visibility import visibility_matrix
 from network.design import (
-    _skew, count_untied_stations, design_covariances_for_poses, design_joint_covariance, projected_uncertainty_m,
+    _skew, count_untied_stations, datum_referenced_functional, design_covariances_for_poses, design_joint_covariance,
+    projected_uncertainty_m,
 )
 from planning.experiment import long_part_track, long_part_two_cluster_scenario
 from planning.objectives import MIN_TARGETS_PER_NON_ANCHOR_STATION, PlanningScenario, risk_derived_weights
@@ -79,6 +80,44 @@ def ers_nests(part_length_m: float = 15.0) -> Tuple[np.ndarray, np.ndarray]:
     for x, nx in ((-CELL_ERS_END_X_BEYOND_PART_M, 1.0), (part_length_m + CELL_ERS_END_X_BEYOND_PART_M, -1.0)):
         for y in CELL_ERS_END_Y_M:
             for z in CELL_ERS_HEIGHTS_M:
+                points.append([x, y, z])
+                normals.append([nx, 0.0, 0.0])
+    return np.array(points), np.array(normals)
+
+
+def reference_nests_for_track(track: StationTrack, part_top_m: float = 2.0, row_beyond_track_m: float = 2.25,
+                              pillar_spacing_m: float = 5.0, overhang_m: float = 2.5, end_beyond_loop_m: float = 3.25,
+                              end_half_spacing_m: float = 2.5, low_height_m: float = 1.0,
+                              above_part_m: float = 0.8) -> Tuple[np.ndarray, np.ndarray]:
+    """`ers_nests` for a cell of any size: the same layout, stated as rules
+    about the track instead of as coordinates, so a cell sized round an
+    imported part (`planning.qif_cell`) gets the same kind of reference network.
+
+      * a row of pillars `row_beyond_track_m` behind each row of the track,
+        from `overhang_m` before the part to `overhang_m` after it, no more
+        than `pillar_spacing_m` apart, nests facing across the cell;
+      * an end wall `end_beyond_loop_m` beyond the tip of each end loop, two
+        nest columns `end_half_spacing_m` either side of the centreline,
+        facing along the cell;
+      * two nests on every pillar and column: `low_height_m`, and
+        `above_part_m` above the part's top.
+
+    With the defaults and the 15 m part's track this is exactly `ers_nests()`
+    (a test checks it). Every number is the same placeholder as there:
+    TODO(source), the real cell."""
+    heights = (low_height_m, part_top_m + above_part_m)
+    x_from, x_to = track.part_x_min_m - overhang_m, track.part_x_max_m + overhang_m
+    n_pillars = max(2, int(np.ceil((x_to - x_from) / pillar_spacing_m - 1e-9)) + 1)
+    points, normals = [], []
+    for side, row_y in ((+1.0, track.y_left_row_m + row_beyond_track_m), (-1.0, track.y_right_row_m - row_beyond_track_m)):
+        for x in np.linspace(x_from, x_to, n_pillars):
+            for z in heights:
+                points.append([x, row_y, z])
+                normals.append([0.0, -side, 0.0])
+    reach = track.loop_radius_m + end_beyond_loop_m
+    for x, nx in ((track.part_x_min_m - reach, 1.0), (track.part_x_max_m + reach, -1.0)):
+        for y in (track.loop_centre_y_m - end_half_spacing_m, track.loop_centre_y_m + end_half_spacing_m):
+            for z in heights:
                 points.append([x, y, z])
                 normals.append([nx, 0.0, 0.0])
     return np.array(points), np.array(normals)
@@ -249,6 +288,84 @@ class DatumCellScorer:
             cov = joint[p, p] - cross - cross.T + transfer @ cov_dd @ transfer.T
             n = np.asarray(c.tolerance.surface_normal, dtype=float)
             u[k] = np.sqrt(max(float(n @ cov @ n), 0.0) + sys2)
+            trace[k] = float(np.trace(cov)) + 3.0 * sys2
+        return LayoutScore(True, 0.0, u, trace, n_shots, len(station_poses))
+
+
+@dataclass(frozen=True)
+class PartFrameScorer:
+    """`DatumCellScorer` without its assumptions about one particular scene.
+
+    `DatumCellScorer` knows the long-part scene: its datum targets are "the
+    first 26 targets that are not characteristics" and every characteristic is
+    a profile along one surface normal. A part read from a file
+    (`planning.qif_cell`) has neither property, so here
+
+      * the datum targets are named explicitly (`datum_indices`), and may
+        include the characteristic targets themselves (a best-fit alignment
+        through all the measured points is then the part frame);
+      * a characteristic's uncertainty comes from its tolerance's own
+        `constraint_directions()`: the covariance of its datum-referenced
+        position is projected onto those directions and the **largest**
+        standard deviation in that projection is reported. For a profile (one
+        direction) that is the same number `DatumCellScorer` gives (a test
+        checks it). For a hole position (the two directions across the hole's
+        axis) it is the uncertainty in the worst-measured direction in that
+        plane: a conservative single number for a zone that is really round.
+
+    Feasibility is `DatumCellScorer`'s: every station tied to the first by
+    >= 3 shared targets, >= 3 non-collinear datum targets observed, and every
+    characteristic observed unless `require_all_characteristics` is False.
+    """
+
+    scenario: PlanningScenario
+    datum_indices: Tuple[int, ...]
+    require_all_characteristics: bool = True
+    occlusion_target_offset_m: float = 0.0
+
+    def visible(self, station_poses: Sequence[InstrumentPose]) -> np.ndarray:
+        s = self.scenario
+        positions = np.array([p.position_m for p in station_poses])
+        return visibility_matrix(positions, s.target_points_m, s.visibility_limits, s.target_normals_m, s.obstacles,
+                                 self.occlusion_target_offset_m)
+
+    def score(self, station_poses: Sequence[InstrumentPose]) -> LayoutScore:
+        s = self.scenario
+        nan = np.full(len(s.characteristics), np.nan)
+        if len(station_poses) == 0:
+            return LayoutScore(False, 1.0, nan, nan, 0, 0)
+        visible = self.visible(station_poses)
+        n_shots = int(visible.sum())
+        counts = visible.sum(axis=1)
+        n_thin = sum(1 for i in range(1, visible.shape[0]) if counts[i] < MIN_TARGETS_PER_NON_ANCHOR_STATION)
+        n_untied = count_untied_stations(visible, 0, MIN_TARGETS_PER_NON_ANCHOR_STATION)
+        seen = visible.any(axis=0)
+        char_targets = [c.target_indices[0] for c in s.characteristics]
+        n_missing = int(sum(not seen[t] for t in char_targets)) if self.require_all_characteristics else 0
+        datum = [i for i in self.datum_indices if seen[i]]
+        deficit = float(max(n_thin, n_untied) + n_missing + max(0, 3 - len(datum)))
+        if deficit > 0.0:
+            return LayoutScore(False, deficit, nan, nan, n_shots, len(station_poses))
+        subset = list(dict.fromkeys([t for t in char_targets if seen[t]] + datum))
+        place = {t: k for k, t in enumerate(subset)}
+        joint, _, connected = design_joint_covariance(s.target_points_m, list(station_poses), s.tracker, visible, subset, 0)
+        if not connected:
+            return LayoutScore(False, 1.0, nan, nan, n_shots, len(station_poses))
+        points = s.target_points_m[subset]
+        datum_places = [place[i] for i in datum]
+        u, trace = nan.copy(), nan.copy()
+        sys2 = s.tracker.systematic_std_m ** 2
+        for k, c in enumerate(s.characteristics):
+            t = c.target_indices[0]
+            if not seen[t]:
+                continue
+            functional = datum_referenced_functional(points, place[t], datum_places)
+            if functional is None:  # the observed datum targets cannot fix six degrees of freedom
+                return LayoutScore(False, 1.0, nan, nan, n_shots, len(station_poses))
+            cov = functional @ joint @ functional.T
+            directions = c.tolerance.constraint_directions()
+            projected = directions @ cov @ directions.T
+            u[k] = np.sqrt(max(float(np.linalg.eigvalsh(projected).max()), 0.0) + sys2)
             trace[k] = float(np.trace(cov)) + 3.0 * sys2
         return LayoutScore(True, 0.0, u, trace, n_shots, len(station_poses))
 
