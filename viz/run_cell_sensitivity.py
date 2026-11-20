@@ -17,7 +17,14 @@ A0, A1 and C at 2-5 stations with one assumption changed at a time:
   tol_25um, tol_100um               the tolerance, priors scaled so Cpk is kept.
   centred_marginal                  the marginal cluster centred with a wide
         spread (mean 0, std 12.5 um: the same Cpk 1.33 as the offset one).
+  centred_cpk1                      the marginal cluster centred and only just
+        capable: mean 0, std 16.7 um (Cpk 1.0).
+  residual_offset_10um              a calibrated process with a small residual
+        offset: mean 10 um, std 10 um (Cpk 1.33).
   anchor_frame                      is not here: see results/cell_results.json.
+
+`--cases name ...` runs only those cases and writes
+results/cell_sensitivity_<names>.json, leaving the full file untouched.
 
 For each case and station count it records each objective's best layout, its
 uncertainties and its total risk (simple acceptance, process known: objective
@@ -47,7 +54,9 @@ RESULTS_PATH = Path(__file__).resolve().parent.parent / "results" / "cell_sensit
 COUNTS = (2, 3, 4, 5)
 NAMES = ("A0", "A1", "C")
 DE = dict(seed=0, maxiter=150, popsize=25, tol=1e-8, workers=1)
-CASES = ("baseline", "floor_1um", "floor_2um", "floor_4um", "tol_25um", "tol_100um", "centred_marginal")
+CASES = ("baseline", "floor_1um", "floor_2um", "floor_4um", "tol_25um", "tol_100um", "centred_marginal",
+         "centred_cpk1", "residual_offset_10um")
+DEFAULT_CASES = CASES[:7]  # the set results/cell_sensitivity.json holds
 _CACHE = {}
 
 
@@ -61,6 +70,10 @@ def build(case):
             scenario = with_tolerance(scenario, float(case[4:-2]) * 1e-6)
         elif case == "centred_marginal":
             scenario = with_marginal_prior(scenario, ProcessPrior(mean_m=0.0, std_m=12.5e-6))
+        elif case == "centred_cpk1":
+            scenario = with_marginal_prior(scenario, ProcessPrior(mean_m=0.0, std_m=50e-6 / 3.0))
+        elif case == "residual_offset_10um":
+            scenario = with_marginal_prior(scenario, ProcessPrior(mean_m=10e-6, std_m=10e-6))
         _CACHE[case] = (track, scenario, standard_objectives(scenario))
     return _CACHE[case]
 
@@ -82,15 +95,22 @@ def describe(case, stations):
 
 
 def main():
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--cases", nargs="+", choices=CASES, default=list(DEFAULT_CASES))
+    args = parser.parse_args()
+    cases = tuple(args.cases)
+    path = RESULTS_PATH if cases == DEFAULT_CASES else RESULTS_PATH.with_name(f"cell_sensitivity_{'_'.join(cases)}.json")
     layouts = {}
     with Pool(4) as pool:
-        jobs = [(case, name, k, None) for case in CASES for k in COUNTS for name in NAMES]
+        jobs = [(case, name, k, None) for case in cases for k in COUNTS for name in NAMES]
         for case, name, k, stations, value, seconds in pool.imap_unordered(run_job, jobs):
             layouts[(case, name, k)] = stations
             print(f"[{case} {name} k={k}] {value:.4g} ({seconds:.0f} s)", flush=True)
         # one seeded re-run wherever another objective's layout beats an objective under its own measure
         again = []
-        for case in CASES:
+        for case in cases:
             for k in COUNTS:
                 known = [layouts[(case, n, k)] for n in NAMES if layouts.get((case, n, k))]
                 values = [describe(case, s)["objective_values"] for s in known]
@@ -104,7 +124,7 @@ def main():
             print(f"[{case} {name} k={k}] re-run seeded ({seconds:.0f} s)", flush=True)
 
     results = {"de": DE, "counts": list(COUNTS), "cases": {}}
-    for case in CASES:
+    for case in cases:
         entry = {"layouts": {f"{name}|{k}": describe(case, layouts[(case, name, k)]) for name in NAMES for k in COUNTS}}
         risk = {name: {k: entry["layouts"][f"{name}|{k}"]["objective_values"]["C"] for k in COUNTS} for name in NAMES}
         entry["risk_by_objective_and_count"] = risk
@@ -116,8 +136,8 @@ def main():
         results["cases"][case] = entry
         print(case, "risk ratio A1/C:", {k: round(v, 2) for k, v in entry["risk_ratio_to_C"]["A1"].items()},
               "stations to reach:", entry["stations_to_reach"], flush=True)
-    RESULTS_PATH.write_text(json.dumps(results, indent=1, default=float))
-    print("wrote", RESULTS_PATH, flush=True)
+    path.write_text(json.dumps(results, indent=1, default=float))
+    print("wrote", path, flush=True)
 
 
 if __name__ == "__main__":
