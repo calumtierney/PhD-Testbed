@@ -51,6 +51,42 @@ docstring), one station's pose is held fixed -- its frame *is* the global
 frame -- and the covariance is datum-dependent: a different anchor is a
 different datum, not a bug.
 
+**Geometric-parameter uncertainty: the consider term** (`instruments.npl_model`,
+`docs/step1b_npl_geometric_model.md`). A tracker compensated with the best
+estimates of its geometric parameters still carries their errors, delta_c, one
+16-vector per *physical tracker*, with covariance V_c. To the network a
+parameter error is a bias on every shot's pseudo-measurement: the point an
+ideal conversion of the corrected readings reports is shifted by
+
+    b_k = R_s P_k delta_c(i(s))          P_k: 3 x 16, `npl_model.reading_sensitivities`
+
+(R_s the station's rotation, i(s) its instrument). Shots of one instrument share
+delta_c, which is the whole point: the errors of different targets and different
+stations are correlated. With the shot residual r_k = z_k - x_t + G_k xi_s (G_k
+the station-pose columns above, Lambda_k the shot information) the least-squares
+solution moves by  delta_u = N^-1 Q delta_c,  where
+
+    Q = - sum_k J_k^T Lambda_k R_s P_k,   J_k = [ -I (target) , +G_k (station) ]
+
+so Q's target rows are + sum Lambda_k R_s P_k and its station rows
+- sum G_k^T Lambda_k R_s P_k, accumulated in the 16 columns of the shot's
+instrument (16 x n_instruments columns in all). Added to the noise-only
+covariance:
+
+    Sigma = N^-1 + (N^-1 Q) V (N^-1 Q)^T,   V = blockdiag(V_c, ..., V_c)
+
+Q has only 16 x n_instruments columns, so N^-1 Q needs no new factorisation:
+with the same A, B, D' as above,
+
+    y_s = D'^-1 ( Q_s - B^T A^-1 Q_t ),     y_t = A^-1 ( Q_t - B y_s )
+
+a low-rank update of the block-arrow solve, linear in shots and targets. A
+second face of the same target adds a shot with the same information (the
+noise is the same) but a different P_k: errors that flip sign between faces
+(collimation, trunnion axis, beam offsets) partly cancel in the average, those
+that do not (range offset, scale, elevation zero) do not. Two trackers are
+two independent draws of delta_c.
+
 **Rank deficiency, caught instead of hidden.** A network whose free
 stations are not tied (through shared targets) to the anchor has a gauge
 freedom: move that sub-network rigidly and every observation is unchanged.
@@ -67,6 +103,7 @@ import numpy as np
 
 from geometry.pose import InstrumentPose
 from instruments.laser_tracker import LaserTracker
+from instruments.npl_model import BACK, FRONT, N_PARAMETERS, reading_sensitivities
 
 # Smallest allowed eigenvalue of the Jacobi-scaled station-pose information
 # D'. An exact gauge freedom gives ~1e-16; a genuinely weak but valid
@@ -150,8 +187,19 @@ def design_point_covariances(
     tracker: LaserTracker,
     visible: np.ndarray,
     anchor_index: int = 0,
+    instrument_ids: Optional[Sequence[int]] = None,
+    faces: Optional[Sequence[Sequence[str]]] = None,
 ) -> DesignCovarianceResult:
     """Per-target design covariance for the shots in `visible` (S, N).
+
+    `instrument_ids` (S,): which physical tracker each station is (stations
+    with the same id share one set of geometric-parameter errors); default
+    every station the same tracker. `faces`: per station, the faces it
+    measures each visible target on, `("front",)` (default) or
+    `("front", "back")`. If the tracker carries `geometric_params` with a
+    nonzero covariance, or any station measures on the back face, the
+    extended algebra of the module docstring is used; otherwise the code below
+    runs exactly as it always has.
 
     Matches `network.solve.solve_network` fed with `exact_observations`
     restricted to the visible pairs (tests/test_design_covariance.py pins
@@ -164,6 +212,10 @@ def design_point_covariances(
     orientations = np.asarray(station_orientations, dtype=float)
     visible = np.asarray(visible, dtype=bool)
     n_stations, n_targets = visible.shape
+    if _needs_extended_algebra(tracker, faces):
+        cov, observed, connected, n_obs, _ = _extended_design(
+            targets, positions, orientations, tracker, visible, anchor_index, instrument_ids, faces, None)
+        return DesignCovarianceResult(cov, observed, connected, n_obs)
 
     cov = np.full((n_targets, 3, 3), np.nan)
     observed = visible.any(axis=0)
@@ -252,13 +304,15 @@ def design_covariances_for_poses(
     tracker: LaserTracker,
     visible: np.ndarray,
     anchor_index: int = 0,
+    instrument_ids: Optional[Sequence[int]] = None,
+    faces: Optional[Sequence[Sequence[str]]] = None,
 ) -> DesignCovarianceResult:
     """Convenience wrapper over `design_point_covariances` taking
     `InstrumentPose` objects (the form `network.solve` uses)."""
     positions = np.array([p.position_m for p in station_poses])
     orientations = np.array([p.orientation for p in station_poses])
     return design_point_covariances(
-        target_points_m, positions, orientations, tracker, visible, anchor_index
+        target_points_m, positions, orientations, tracker, visible, anchor_index, instrument_ids, faces
     )
 
 
@@ -282,6 +336,8 @@ def design_joint_covariance(
     visible: np.ndarray,
     subset: Sequence[int],
     anchor_index: int = 0,
+    instrument_ids: Optional[Sequence[int]] = None,
+    faces: Optional[Sequence[Sequence[str]]] = None,
 ):
     """Joint design covariance of a *subset* of targets, cross-covariances
     included: `(covariance (3n x 3n), observed (n,), connected)` for the n
@@ -300,6 +356,13 @@ def design_joint_covariance(
 
     Rows and columns of unobserved targets are NaN. Matches the corresponding
     blocks of `network.solve.solve_network`'s full covariance (tests).
+
+    With geometric-parameter uncertainty (module docstring) the shared parameter
+    errors add a dense term to this matrix -- the cross-covariances between
+    targets measured by the same tracker -- which is what lets a quantity
+    defined relative to other points (a datum-referenced deviation, a
+    distance) benefit from errors that are common to them. `instrument_ids`
+    and `faces` as in `design_point_covariances`.
     """
     targets = np.asarray(target_points_m, dtype=float)
     positions = np.array([p.position_m for p in station_poses])
@@ -307,6 +370,10 @@ def design_joint_covariance(
     visible = np.asarray(visible, dtype=bool)
     n_stations, n_targets = visible.shape
     subset = np.asarray(list(subset), dtype=int)
+    if _needs_extended_algebra(tracker, faces):
+        out, observed_sub, connected, _, _ = _extended_design(
+            targets, positions, orientations, tracker, visible, anchor_index, instrument_ids, faces, subset)
+        return out, observed_sub, connected
     n_sub = len(subset)
     out = np.full((3 * n_sub, 3 * n_sub), np.nan)
     observed = visible.any(axis=0)
@@ -405,3 +472,181 @@ def datum_referenced_functional(
     if direction is None:
         return a
     return np.asarray(direction, dtype=float)[None, :] @ a
+
+
+# -- the extended algebra: faces, instrument identity, geometric-parameter uncertainty ---------------
+def _needs_extended_algebra(tracker: LaserTracker, faces) -> bool:
+    params = tracker.geometric_params
+    if params is not None and params.covariance.any():
+        return True
+    return faces is not None  # any explicit faces list is validated, and may name the back face
+
+
+def _expand_shots(visible: np.ndarray, faces):
+    """One shot per visible (station, target) pair per face the station uses:
+    `(station index, target index, face is back)` arrays."""
+    n_stations = visible.shape[0]
+    faces = [(FRONT,)] * n_stations if faces is None else [tuple(f) for f in faces]
+    if len(faces) != n_stations:
+        raise ValueError(f"faces needs one entry per station ({n_stations}), got {len(faces)}")
+    s_parts, t_parts, b_parts = [], [], []
+    for s in range(n_stations):
+        t = np.nonzero(visible[s])[0]
+        for face in faces[s]:
+            if face not in (FRONT, BACK):
+                raise ValueError(f"face must be '{FRONT}' or '{BACK}', got {face!r}")
+            s_parts.append(np.full(len(t), s))
+            t_parts.append(t)
+            b_parts.append(np.full(len(t), face == BACK))
+    if not s_parts:
+        return np.zeros(0, int), np.zeros(0, int), np.zeros(0, bool)
+    return np.concatenate(s_parts), np.concatenate(t_parts), np.concatenate(b_parts)
+
+
+def _extended_design(targets, positions, orientations, tracker, visible, anchor_index, instrument_ids, faces, subset):
+    """Design covariance with faces, instrument ids and the consider term.
+
+    `subset is None`: per-target blocks, `(cov (N,3,3), observed (N,), connected, n_shots, S)`.
+    Otherwise the joint covariance of the subset, `(cov (3n,3n), observed (n,), connected, n_shots, S)`.
+    `S` (N, 3, 16 x n_instruments) is N^-1 Q's target rows: the error of each
+    target's coordinates per unit error of each instrument's parameters (zero
+    rows for unobserved targets), or None without geometric parameters.
+    The algebra is the module docstring's; with one face, no geometric
+    parameters, it reproduces the noise-only functions to rounding (tests).
+    """
+    n_stations, n_targets = visible.shape
+    s_k, t_k, back_k = _expand_shots(visible, faces)
+    n_obs = len(s_k)
+    observed = visible.any(axis=0)
+    joint = subset is not None
+    n_out = n_targets if not joint else len(subset)
+    out = np.full((3 * n_out, 3 * n_out) if joint else (n_targets, 3, 3), np.nan)
+    obs_out = observed[subset] if joint else observed
+    if n_obs == 0:
+        return out, obs_out, True, 0, None
+
+    delta = targets[t_k] - positions[s_k]
+    rot = orientations[s_k]
+    lam = shot_information_global(delta, rot, tracker)
+    a_info = np.zeros((n_targets, 3, 3))
+    np.add.at(a_info, t_k, lam)
+    a_inv = np.zeros((n_targets, 3, 3))
+    a_inv[observed] = np.linalg.inv(a_info[observed])
+
+    free = [s for s in range(n_stations) if s != anchor_index]
+    n_cols = 6 * len(free)
+    g_station = np.concatenate([np.broadcast_to(np.eye(3), (n_obs, 3, 3)), -_skew(delta)], axis=2)
+    lam_g = np.einsum("oij,ojk->oik", lam, g_station)
+    b_full = np.zeros((n_targets, 3, n_cols))
+    d_info = np.zeros((n_cols, n_cols))
+    for k, s in enumerate(free):
+        sel = s_k == s
+        cols = slice(6 * k, 6 * k + 6)
+        block = np.zeros((n_targets, 3, 6))
+        np.add.at(block, t_k[sel], -lam_g[sel])
+        b_full[:, :, cols] = block
+        d_info[cols, cols] = np.einsum("oji,ojk->ik", g_station[sel], lam_g[sel])
+
+    # parameter columns (the consider term)
+    params = tracker.geometric_params
+    has_params = params is not None and params.covariance.any()
+    n_c = 0
+    if has_params:
+        ids = np.zeros(n_stations, int) if instrument_ids is None else np.asarray(instrument_ids, dtype=int)
+        if ids.shape != (n_stations,):
+            raise ValueError(f"instrument_ids needs one entry per station ({n_stations}), got shape {ids.shape}")
+        unique_ids = sorted(set(ids.tolist()))
+        slot = {i: n for n, i in enumerate(unique_ids)}
+        n_c = N_PARAMETERS * len(unique_ids)
+        local = np.einsum("oji,oj->oi", rot, delta)
+        shift_local = reading_sensitivities(local, params.values, np.where(back_k, BACK, FRONT))[2]  # (O, 3, 16)
+        shift_global = np.einsum("oij,ojk->oik", rot, shift_local)
+        lam_p = np.einsum("oij,ojk->oik", lam, shift_global)  # Lambda R P
+        q_t = np.zeros((n_targets, 3, n_c))
+        q_s = np.zeros((n_cols, n_c))
+        for s in range(n_stations):
+            sel = s_k == s
+            if not sel.any():
+                continue
+            c0 = N_PARAMETERS * slot[int(ids[s])]
+            block = np.zeros((n_targets, 3, N_PARAMETERS))
+            np.add.at(block, t_k[sel], lam_p[sel])
+            q_t[:, :, c0:c0 + N_PARAMETERS] += block
+            if s != anchor_index:
+                k = free.index(s)
+                q_s[6 * k:6 * k + 6, c0:c0 + N_PARAMETERS] = -np.einsum("oji,ojk->ik", g_station[sel], lam_p[sel])
+        v_full = np.kron(np.eye(len(unique_ids)), params.covariance)
+
+    # block-arrow elimination (identical to the noise-only functions)
+    m = np.zeros((n_targets, 3, n_cols))
+    if n_cols:
+        m[observed] = np.matmul(a_inv[observed], b_full[observed])
+        d_prime = d_info - b_full[observed].reshape(-1, n_cols).T @ m[observed].reshape(-1, n_cols)
+        diag = np.diag(d_prime)
+        if np.any(diag <= 0.0):
+            return out, obs_out, False, n_obs, None
+        scale = 1.0 / np.sqrt(diag)
+        if np.linalg.eigvalsh(d_prime * scale[:, None] * scale[None, :]).min() < CONNECTIVITY_EIGENVALUE_FLOOR:
+            return out, obs_out, False, n_obs, None
+        d_prime_inv = np.linalg.inv(d_prime)
+    covariance = np.zeros((n_targets, 3, 3))
+    covariance[observed] = a_inv[observed]
+    if n_cols:
+        covariance[observed] += np.matmul(m[observed] @ d_prime_inv, m[observed].transpose(0, 2, 1))
+    y_t = None
+    if has_params:
+        if n_cols:
+            at_q = np.matmul(a_inv, q_t)  # A^-1 Q_t, zero rows for unobserved targets
+            rhs = q_s - np.einsum("tia,tic->ac", b_full, at_q)  # Q_s - B^T A^-1 Q_t
+            y_s = d_prime_inv @ rhs
+            y_t = np.matmul(a_inv, q_t - np.matmul(b_full, y_s))
+        else:
+            y_t = np.matmul(a_inv, q_t)
+        covariance[observed] += np.matmul(y_t[observed] @ v_full, y_t[observed].transpose(0, 2, 1))
+    if not joint:
+        out[observed] = covariance[observed]
+        return out, obs_out, True, n_obs, y_t
+    # joint over the subset: noise-only cross terms plus the dense parameter term
+    keep = np.repeat(obs_out, 3)
+    full = np.zeros((3 * len(subset), 3 * len(subset)))
+    for i, t in enumerate(subset):
+        full[3 * i:3 * i + 3, 3 * i:3 * i + 3] = a_inv[t]
+    if n_cols:
+        m_sub = m[subset].reshape(3 * len(subset), n_cols)
+        full += m_sub @ d_prime_inv @ m_sub.T
+    if has_params:
+        y_sub = y_t[subset].reshape(3 * len(subset), n_c)
+        full += y_sub @ v_full @ y_sub.T
+    out[np.ix_(keep, keep)] = full[np.ix_(keep, keep)]
+    return out, obs_out, True, n_obs, y_t
+
+
+def design_parameter_sensitivity(
+    target_points_m: np.ndarray,
+    station_poses: Sequence[InstrumentPose],
+    tracker: LaserTracker,
+    visible: np.ndarray,
+    anchor_index: int = 0,
+    instrument_ids: Optional[Sequence[int]] = None,
+    faces: Optional[Sequence[Sequence[str]]] = None,
+) -> Optional[np.ndarray]:
+    """S (N, 3, 16 x n_instruments): how much each target's solved coordinates
+    move per unit error in each geometric parameter of each physical tracker
+    (the module docstring's N^-1 Q, global frame, SI units). Columns are
+    `instruments.npl_model.PARAMETER_NAMES` for the first instrument id, then
+    the second, and so on. The consider-term covariance is S V S^T. NaN rows for
+    unobserved targets and for a network that is not connected; None if the
+    tracker carries no geometric parameters with a covariance."""
+    targets = np.asarray(target_points_m, dtype=float)
+    positions = np.array([p.position_m for p in station_poses])
+    orientations = np.array([p.orientation for p in station_poses])
+    visible = np.asarray(visible, dtype=bool)
+    if not _needs_extended_algebra(tracker, faces) or tracker.geometric_params is None or not tracker.geometric_params.covariance.any():
+        return None
+    _, observed, connected, _, y_t = _extended_design(
+        targets, positions, orientations, tracker, visible, anchor_index, instrument_ids, faces, None)
+    if y_t is None or not connected:
+        return None
+    y_t = y_t.copy()
+    y_t[~observed] = np.nan
+    return y_t
