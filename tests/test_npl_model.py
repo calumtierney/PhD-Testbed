@@ -14,8 +14,9 @@ from geometry.spherical import (
 from instruments.laser_tracker import LaserTracker
 from instruments.npl_model import (
     ARCSEC_TO_RAD, BACK, FRONT, INDEX, N_PARAMETERS, PARAMETER_NAMES, PARAMETER_STEPS, NPLErrorParameters,
-    beam_geometry, observation_parameter_jacobian, observation_point_jacobian, observed_to_true, point_from_true,
-    readings_from_true, solve_true_coordinates, true_to_observed,
+    beam_geometry, beam_geometry_batch, observation_parameter_jacobian, observation_point_jacobian, observed_to_true,
+    point_from_true, point_from_true_batch, readings_from_true, readings_from_true_batch, reading_sensitivities,
+    solve_true_coordinates, solve_true_coordinates_batch, true_to_observed, true_to_observed_batch,
 )
 
 AS = ARCSEC_TO_RAD
@@ -351,3 +352,71 @@ def test_parameter_jacobian_does_not_depend_on_the_step_chosen(face):
         other = observation_parameter_jacobian(x, HUGHES, face, steps=PARAMETER_STEPS * factor)
         for row in range(3):
             assert np.abs(other[row] - reference[row]).max() < 1e-6 * np.abs(reference[row]).max()
+
+
+# -- batch versions (for the network layers) --------------------------------------------------------------
+def random_shots(k=120, seed=0, high=77.0):
+    rng = np.random.default_rng(seed)
+    points = np.array([spherical_to_cartesian(rng.uniform(0.3, 6.4), rng.uniform(-np.pi, np.pi),
+                                              np.deg2rad(rng.uniform(-60, high))) for _ in range(k)])
+    return points, rng.choice([FRONT, BACK], k)
+
+
+def test_batch_forward_model_equals_the_scalar_one():
+    rng = np.random.default_rng(1)
+    d, theta, phi = rng.uniform(0.3, 6.4, 40), rng.uniform(-np.pi, np.pi, 40), rng.uniform(-1.0, 4.0, 40)
+    origin, direction = beam_geometry_batch(HUGHES.values, theta, phi)
+    points = point_from_true_batch(HUGHES.values, d, theta, phi)
+    readings = readings_from_true_batch(HUGHES.values, d, theta, phi)
+    for i in range(40):
+        o, n = beam_geometry(HUGHES.values, theta[i], phi[i])
+        np.testing.assert_allclose(origin[i], o, atol=1e-15)
+        np.testing.assert_allclose(direction[i], n, atol=1e-15)
+        np.testing.assert_allclose(points[i], point_from_true(HUGHES.values, d[i], theta[i], phi[i]), atol=1e-14)
+        np.testing.assert_allclose(readings[i], readings_from_true(HUGHES.values, d[i], theta[i], phi[i]), atol=1e-14)
+
+
+def test_batch_solve_and_readings_equal_the_scalar_ones_and_one_vector_per_shot_works():
+    points, faces = random_shots()
+    batch = true_to_observed_batch(points, HUGHES.values, faces)
+    for i in range(len(points)):
+        np.testing.assert_allclose(batch[i], true_to_observed(points[i], HUGHES, faces[i]), atol=1e-12)
+    per_shot = np.where(np.arange(len(points))[:, None] % 2 == 0, HUGHES.values, 0.0)  # every other shot from a perfect tracker
+    mixed = true_to_observed_batch(points, per_shot, faces)
+    for i in range(0, len(points), 2):
+        np.testing.assert_allclose(mixed[i], batch[i], atol=1e-12)
+    for i in range(1, len(points), 2):
+        np.testing.assert_allclose(mixed[i], true_to_observed(points[i], ZERO, faces[i]), atol=1e-12)
+
+
+def test_batch_solve_handles_the_beam_pointing_straight_up_and_reports_the_blind_spot():
+    points = np.array([point_from_true(HUGHES.values, 3.0, theta, np.pi / 2) for theta in (-2.0, 0.3, 2.5)])
+    q = solve_true_coordinates_batch(points, HUGHES.values, [FRONT] * 3)
+    np.testing.assert_allclose(point_from_true_batch(HUGHES.values, *q.T), points, atol=1e-12)
+    with pytest.raises(RuntimeError, match="vertical axis"):
+        solve_true_coordinates_batch(np.array([[0.0, 0.0, 3.0]]), HUGHES.values, [FRONT])
+
+
+def test_sensitivities_agree_with_finite_differences_through_the_solve():
+    points, faces = random_shots(12, seed=3)
+    j_point, j_params, p_shift = reading_sensitivities(points, HUGHES.values, faces)
+    for i in range(len(points)):
+        fd_point = observation_point_jacobian(points[i], HUGHES, faces[i])
+        fd_params = observation_parameter_jacobian(points[i], HUGHES, faces[i])
+        assert np.abs(j_point[i] - fd_point).max() < 1e-7 * np.abs(fd_point).max()
+        assert np.abs(j_params[i] - fd_params).max() < 1e-7 * np.abs(fd_params).max()
+        np.testing.assert_allclose(p_shift[i], np.linalg.solve(fd_point, fd_params), rtol=1e-6, atol=1e-6 * np.abs(p_shift[i]).max())
+
+
+def test_point_shift_of_a_perfect_tracker_is_the_spherical_jacobian_times_the_reading_error_minus_the_beam_shift():
+    """P = F_q G_q^-1 G_c - F_c. For an encoder error (G_c only) the reported
+    point moves through the spherical Jacobian: a_E,0 of 1 arcsec moves it by d
+    along the elevation direction. For a pure beam offset b_y,0 (F_c only) it
+    moves by minus the offset."""
+    d, az, el = 3.0, 0.5, 0.3
+    x = spherical_to_cartesian(d, az, el)[None, :]
+    _, _, shift = reading_sensitivities(x, ZERO.values)
+    elevation_direction = np.array([-np.sin(el) * np.cos(az), -np.sin(el) * np.sin(az), np.cos(el)])
+    np.testing.assert_allclose(shift[0][:, INDEX["a_E0_rad"]], d * elevation_direction, rtol=1e-6)
+    np.testing.assert_allclose(shift[0][:, INDEX["b_y0_m"]], -np.array([-np.sin(az), np.cos(az), 0.0]), atol=1e-6)
+    np.testing.assert_allclose(shift[0][:, INDEX["lambda_m"]], np.array([np.cos(el) * np.cos(az), np.cos(el) * np.sin(az), np.sin(el)]), rtol=1e-6)

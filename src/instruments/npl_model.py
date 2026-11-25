@@ -517,3 +517,193 @@ def observation_parameter_jacobian(point_local_m, params: NPLErrorParameters, fa
             true_to_observed(x, NPLErrorParameters(minus, np.zeros((N_PARAMETERS, N_PARAMETERS))), face),
         ) / (2.0 * step)
     return jacobian
+
+
+# =============================================================================================
+# Batch versions, for the network layers: hundreds of shots per layout. The scalar functions above
+# stay the plain, readable statement of the physics; each batch function is tested against them.
+# `values` is one parameter vector (16,) shared by every shot, or one per shot (K, 16) when the
+# shots come from different physical trackers.
+# =============================================================================================
+def _batch_values(values, k: int) -> np.ndarray:
+    values = np.asarray(values, dtype=float)
+    return np.broadcast_to(values, (k, N_PARAMETERS)) if values.ndim == 1 else values
+
+
+def _rotation_batch(axis: str, angle_rad: np.ndarray) -> np.ndarray:
+    """(K,) angles -> (K, 3, 3) rotations about x, y or z (the same matrices as `rotation_x/y/z`)."""
+    c, s = np.cos(angle_rad), np.sin(angle_rad)
+    out = np.zeros(angle_rad.shape + (3, 3))
+    if axis == "x":
+        out[..., 0, 0] = 1.0
+        out[..., 1, 1], out[..., 1, 2], out[..., 2, 1], out[..., 2, 2] = c, -s, s, c
+    elif axis == "y":
+        out[..., 1, 1] = 1.0
+        out[..., 0, 0], out[..., 0, 2], out[..., 2, 0], out[..., 2, 2] = c, s, -s, c
+    else:
+        out[..., 2, 2] = 1.0
+        out[..., 0, 0], out[..., 0, 1], out[..., 1, 0], out[..., 1, 1] = c, -s, s, c
+    return out
+
+
+def beam_geometry_batch(values, theta_true_rad: np.ndarray, phi_true_rad: np.ndarray):
+    """`beam_geometry` for K shots: `(origin (K,3), direction (K,3))`."""
+    theta = np.asarray(theta_true_rad, dtype=float)
+    k = theta.shape[0]
+    v = _batch_values(values, k)
+    alpha, gamma = v[:, INDEX["alpha_rad"]], v[:, INDEX["gamma_rad"]]
+    e0 = np.zeros((k, 3))
+    e0[:, 0] = v[:, INDEX["e_x_m"]]
+    b0 = np.zeros((k, 3))
+    b0[:, 1], b0[:, 2] = v[:, INDEX["b_y0_m"]], v[:, INDEX["b_z0_m"]]
+    rz_theta = _rotation_batch("z", theta)
+    tip = rz_theta @ _rotation_batch("x", alpha) @ _rotation_batch("y", -np.asarray(phi_true_rad, dtype=float)) @ _rotation_batch("x", -alpha)
+    origin = np.einsum("kij,kj->ki", rz_theta, e0) + np.einsum("kij,kj->ki", tip, b0 - e0)
+    x_hat = np.zeros((k, 3))
+    x_hat[:, 0] = 1.0
+    direction = np.einsum("kij,kj->ki", tip @ _rotation_batch("z", gamma), x_hat)
+    return origin, direction
+
+
+def point_from_true_batch(values, d_true_m, theta_true_rad, phi_true_rad) -> np.ndarray:
+    """`point_from_true` for K shots: (K, 3)."""
+    origin, direction = beam_geometry_batch(values, theta_true_rad, phi_true_rad)
+    return origin + np.asarray(d_true_m, dtype=float)[:, None] * direction
+
+
+def readings_from_true_batch(values, d_true_m, theta_true_rad, phi_true_rad) -> np.ndarray:
+    """`readings_from_true` for K shots: (K, 3) of (d, theta, phi), azimuth wrapped to (-pi, pi]."""
+    d_true, theta, phi = (np.asarray(a, dtype=float) for a in (d_true_m, theta_true_rad, phi_true_rad))
+    v = _batch_values(values, d_true.shape[0])
+    g = lambda name: v[:, INDEX[name]]
+    d = (1.0 + g("mu")) * d_true + g("lambda_m")
+    theta_read = theta + (g("a_A1_rad") * np.cos(theta) + g("b_A1_rad") * np.sin(theta)
+                          + g("a_A2_rad") * np.cos(2 * theta) + g("b_A2_rad") * np.sin(2 * theta))
+    phi_read = phi + g("a_E0_rad") + (g("a_E1_rad") * np.cos(phi) + g("b_E1_rad") * np.sin(phi)
+                                      + g("a_E2_rad") * np.cos(2 * phi) + g("b_E2_rad") * np.sin(2 * phi))
+    theta_read = theta_read - 2.0 * np.pi * np.ceil((theta_read - np.pi) / (2.0 * np.pi))
+    return np.stack([d, theta_read, phi_read], axis=1)
+
+
+def ideal_readings_batch(points_local_m: np.ndarray, back: np.ndarray) -> np.ndarray:
+    """The ideal (d, theta, phi) of K points, front face where `back` is False and
+    back face where True (`geometry.spherical`'s conversions, vectorised)."""
+    p = np.asarray(points_local_m, dtype=float)
+    d = np.linalg.norm(p, axis=1)
+    theta = np.arctan2(p[:, 1], p[:, 0])
+    phi = np.arcsin(np.clip(p[:, 2] / d, -1.0, 1.0))
+    back = np.asarray(back, dtype=bool)
+    theta = np.where(back, theta + np.pi, theta)
+    theta = np.where(theta > np.pi, theta - 2.0 * np.pi, theta)
+    phi = np.where(back, np.pi - phi, phi)
+    return np.stack([d, theta, phi], axis=1)
+
+
+def _faces_to_back(faces, k: int) -> np.ndarray:
+    if faces is None:
+        return np.zeros(k, dtype=bool)
+    arr = np.asarray(faces)
+    if arr.ndim == 0:
+        arr = np.full(k, arr)
+    bad = [f for f in np.unique(arr) if f not in (FRONT, BACK)]
+    if bad:
+        raise ValueError(f"face must be '{FRONT}' or '{BACK}', got {bad}")
+    return arr == BACK
+
+
+def solve_true_coordinates_batch(points_local_m: np.ndarray, values, faces=None) -> np.ndarray:
+    """`solve_true_coordinates` for K shots at once: (K, 3) of (d*, theta*, phi*).
+
+    The same Newton iteration, from the same ideal start, on every shot
+    together (a pseudo-inverse step, so the rank-deficient straight-up case of a
+    perfect instrument still works); the same 0.1 pm convergence criterion.
+    Shots that have not converged -- a target in the blind spot, or an
+    extremely ill-conditioned one -- are handed to the scalar solver, which
+    either solves them with step halving or raises its explanatory error.
+    """
+    points = np.asarray(points_local_m, dtype=float)
+    k = points.shape[0]
+    v = _batch_values(values, k)
+    back = _faces_to_back(faces, k)
+    q = ideal_readings_batch(points, back)
+    steps = np.array([1e-6, 1e-7, 1e-7])
+    for _ in range(SOLVE_MAX_ITERATIONS):
+        residual = point_from_true_batch(v, *q.T) - points
+        active = np.max(np.abs(residual), axis=1) > SOLVE_TOLERANCE_M
+        if not active.any():
+            return q
+        jac = np.empty((k, 3, 3))
+        for col in range(3):
+            shift = np.zeros(3)
+            shift[col] = steps[col]
+            jac[:, :, col] = (point_from_true_batch(v, *(q + shift).T) - point_from_true_batch(v, *(q - shift).T)) / (2.0 * steps[col])
+        step = -np.einsum("kij,kj->ki", np.linalg.pinv(jac, rcond=1e-12), residual)
+        q = q + np.where(active[:, None], step, 0.0)
+    residual = point_from_true_batch(v, *q.T) - points
+    for i in np.nonzero(np.max(np.abs(residual), axis=1) > SOLVE_TOLERANCE_M)[0]:
+        d, th, ph, _ = solve_true_coordinates(points[i], v[i], BACK if back[i] else FRONT)  # raises, with its explanation, if unreachable
+        q[i] = (d, th, ph)
+    return q
+
+
+def true_to_observed_batch(points_local_m: np.ndarray, values, faces=None) -> np.ndarray:
+    """`true_to_observed` for K shots: (K, 3) readings."""
+    q = solve_true_coordinates_batch(points_local_m, values, faces)
+    return readings_from_true_batch(values, *q.T)
+
+
+def reading_sensitivities(points_local_m: np.ndarray, values, faces=None):
+    """Sensitivities of K shots, at the parameter values given, from the explicit
+    forward maps only (no finite differences through the iterative solve):
+
+      reading_wrt_point  (K, 3, 3)   d(d, theta, phi) / d(x, y, z)
+      reading_wrt_params (K, 3, 16)  d(d, theta, phi) / d(parameters), target fixed
+      point_wrt_params   (K, 3, 16)  P: the shift of the point an *ideal* conversion
+          of the corrected readings would report, per unit error in each
+          parameter, target fixed (local frame, metres per unit)
+
+    Write x = F(q; c) for the target position at true coordinates q =
+    (d*, theta*, phi*), and r = G(q; c) for the readings. Holding the target
+    fixed while a parameter changes moves q by -F_q^-1 F_c, so
+
+        dr/dx = G_q F_q^-1,        dr/dc = G_c - G_q F_q^-1 F_c,
+        P = (dr/dx)^-1 dr/dc = F_q G_q^-1 G_c - F_c,
+
+    all four derivatives being of explicit functions, taken by central
+    differences with the steps of `PARAMETER_STEPS` for c and 1 um / 0.1 urad
+    for q. At zero parameters F_q is `geometry.spherical.spherical_jacobian`,
+    G_q the identity, and P reduces to J_sph G_c - F_c: a parameter that
+    reads the angle wrongly (encoder) moves the reported point through the
+    spherical Jacobian, one that moves the beam (axis offsets and tilts) moves
+    it the other way. P is what the network layers need: a parameter error is,
+    to the network, a shift of every shot's pseudo-measurement by P times it.
+    """
+    points = np.asarray(points_local_m, dtype=float)
+    k = points.shape[0]
+    v = _batch_values(values, k)
+    q = solve_true_coordinates_batch(points, v, faces)
+    q_steps = np.array([1e-6, 1e-6, 1e-6])
+    f_q, g_q = np.empty((k, 3, 3)), np.empty((k, 3, 3))
+    for col in range(3):
+        shift = np.zeros(3)
+        shift[col] = q_steps[col]
+        plus, minus = q + shift, q - shift
+        f_q[:, :, col] = (point_from_true_batch(v, *plus.T) - point_from_true_batch(v, *minus.T)) / (2.0 * q_steps[col])
+        diff = readings_from_true_batch(v, *plus.T) - readings_from_true_batch(v, *minus.T)
+        diff[:, 1] = (diff[:, 1] + np.pi) % (2 * np.pi) - np.pi
+        g_q[:, :, col] = diff / (2.0 * q_steps[col])
+    f_c, g_c = np.empty((k, 3, N_PARAMETERS)), np.empty((k, 3, N_PARAMETERS))
+    for col in range(N_PARAMETERS):
+        plus, minus = v.copy(), v.copy()
+        plus[:, col] += PARAMETER_STEPS[col]
+        minus[:, col] -= PARAMETER_STEPS[col]
+        f_c[:, :, col] = (point_from_true_batch(plus, *q.T) - point_from_true_batch(minus, *q.T)) / (2.0 * PARAMETER_STEPS[col])
+        diff = readings_from_true_batch(plus, *q.T) - readings_from_true_batch(minus, *q.T)
+        diff[:, 1] = (diff[:, 1] + np.pi) % (2 * np.pi) - np.pi
+        g_c[:, :, col] = diff / (2.0 * PARAMETER_STEPS[col])
+    g_q_inv_g_c = np.linalg.solve(g_q, g_c)
+    f_q_inv_f_c = np.linalg.solve(f_q, f_c)
+    reading_wrt_point = g_q @ np.linalg.inv(f_q)
+    reading_wrt_params = g_c - g_q @ f_q_inv_f_c
+    point_wrt_params = f_q @ g_q_inv_g_c - f_c
+    return reading_wrt_point, reading_wrt_params, point_wrt_params
