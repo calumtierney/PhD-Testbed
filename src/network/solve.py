@@ -105,7 +105,7 @@ See docs/step3_network_solve_physics.md for the physical explanation of
 rather than falling forever.
 """
 from dataclasses import dataclass
-from typing import List
+from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import scipy.sparse
@@ -115,6 +115,9 @@ from scipy.spatial.transform import Rotation
 from geometry.pose import InstrumentPose
 from geometry.spherical import cartesian_to_spherical
 from instruments.laser_tracker import LaserTracker
+from instruments.npl_model import (
+    BACK, FRONT, INDEX, N_PARAMETERS, PARAMETER_NAMES, NPLErrorParameters, reading_sensitivities, true_to_observed_batch,
+)
 
 
 @dataclass(frozen=True)
@@ -127,6 +130,7 @@ class Observation:
     d_m: float
     theta_rad: float
     phi_rad: float
+    face: str = FRONT  # "front" or "back": which face of the tracker took the shot (instruments.npl_model)
 
 
 @dataclass
@@ -158,6 +162,14 @@ class NetworkSolveResult:
         noise model matches the data, as a rough sanity check.
     n_function_evals, success : optimizer diagnostics from `scipy.optimize.
         least_squares`.
+    parameter_estimates : estimate mode only -- one `NPLErrorParameters` per
+        instrument id (sorted): the fitted values and their posterior
+        covariance (zero rows and columns for parameters held fixed).
+    full_covariance_m2 : estimate mode only -- the covariance of every unknown,
+        in the order targets (3 each), non-anchor station poses (position,
+        rotation vector: 6 each), then for each instrument its estimated
+        parameters, in `PARAMETER_NAMES` order.
+    n_parameters_estimated : parameters estimated per instrument.
     """
 
     target_points_m: np.ndarray
@@ -166,6 +178,9 @@ class NetworkSolveResult:
     residual_rms: float
     n_function_evals: int
     success: bool
+    parameter_estimates: Optional[List[NPLErrorParameters]] = None
+    full_covariance_m2: Optional[np.ndarray] = None
+    n_parameters_estimated: int = 0
 
     def target_point_covariance(self, target_index: int) -> np.ndarray:
         """3x3 covariance block for one target, sliced out of the full
@@ -179,6 +194,10 @@ def simulate_observations(
     true_station_poses: List[InstrumentPose],
     tracker: LaserTracker,
     rng: np.random.Generator,
+    instrument_params: Optional[Sequence[NPLErrorParameters]] = None,
+    instrument_ids: Optional[Sequence[int]] = None,
+    faces: Optional[Sequence[Sequence[str]]] = None,
+    visible: Optional[np.ndarray] = None,
 ) -> List[Observation]:
     """Simulate a full network: every station observes every target.
 
@@ -196,7 +215,17 @@ def simulate_observations(
     returned list, or build one directly; that composition belongs to the
     caller, not this function, per CLAUDE.md §9 (step 3's job is the
     solve, not re-deciding visibility).
+
+    **With `instrument_params`** (a sequence of `NPLErrorParameters`, one per
+    physical tracker, ordered by sorted instrument id) the readings are what
+    those *real* instruments would report -- `instruments.npl_model.
+    true_to_observed`, front face or back per `faces` (default front only) --
+    plus the same random noise. `visible` (S, N) restricts which shots are
+    taken. The noise-only branch below is unchanged.
     """
+    if instrument_params is not None or faces is not None or visible is not None:
+        return _simulate_with_instruments(true_target_points_m, true_station_poses, tracker, rng,
+                                          instrument_params, instrument_ids, faces, visible)
     observations = []
     n_targets = true_target_points_m.shape[0]
     for station_index, pose in enumerate(true_station_poses):
@@ -388,6 +417,8 @@ def solve_network(
     initial_station_poses: List[InstrumentPose],
     tracker: LaserTracker,
     anchor_index: int = 0,
+    instrument_ids: Optional[Sequence[int]] = None,
+    estimate_parameters: Union[None, bool, "ParameterPrior"] = None,
 ) -> NetworkSolveResult:
     """Solve for every target's coordinates and every non-anchor station's
     pose jointly, by weighted nonlinear least squares over `observations`.
@@ -396,7 +427,32 @@ def solve_network(
     (`anchor_index`'s pose is held fixed, not solved for), the weighting
     (each residual divided by the tracker's own sigma_d/theta/phi), and
     how the block-diagonal observation structure is exploited.
+
+    **Geometric parameters** (`instruments.npl_model`, `docs/step1b_npl_geometric_model.md`).
+    With `tracker.geometric_params` unset (or zero), every observation on the
+    front face and `estimate_parameters` unset, this is the noise-only solve,
+    unchanged. Otherwise `_solve_extended` runs, in one of two modes:
+
+      * **consider** (a tracker with `geometric_params`, `estimate_parameters`
+        unset): readings are corrected with the parameters' values, which are not
+        re-estimated; their covariance enters as Sigma = N^-1 + S V S^T with
+        S = -N^-1 J^T W H (H the readings' sensitivity to the parameters,
+        W the whitening) -- the same quantity `network.design` computes
+        analytically (tests).
+      * **estimate** (`estimate_parameters` a `ParameterPrior`, or True to use
+        `tracker.geometric_params` as the prior): the parameters of each
+        physical tracker are solved together with the network, under the prior
+        (the paper's equation 18). The covariance comes from the full normal
+        matrix, after a Jacobi-scaled rank test: a network that cannot
+        determine a parameter or a pose raises `NetworkRankError` naming the
+        weakest directions, instead of `pinv`'s zero variance.
+
+    `instrument_ids` (one per station, default all the same tracker) says which
+    stations share a physical instrument, and so one parameter vector.
     """
+    if _extended_solve_needed(observations, tracker, estimate_parameters):
+        return _solve_extended(observations, initial_target_points_m, initial_station_poses, tracker,
+                               anchor_index, instrument_ids, estimate_parameters)
     n_targets = initial_target_points_m.shape[0]
     n_stations = len(initial_station_poses)
     anchor_pose = initial_station_poses[anchor_index]
@@ -496,3 +552,321 @@ def mean_positional_uncertainty_m(result: NetworkSolveResult) -> float:
         [np.sqrt(np.trace(result.target_point_covariance(i))) for i in range(n_targets)]
     )
     return float(np.sqrt(np.mean(per_target_rss_m**2)))
+
+
+# =============================================================================================
+# Geometric parameters: faces, instrument identity, consider and estimate modes
+# =============================================================================================
+class NetworkRankError(ValueError):
+    """The network does not determine every unknown it was asked to solve for:
+    a gauge freedom (a station not tied to the anchor) or a parameter the data
+    cannot separate (e.g. the range scale mu with no length reference and no
+    prior). `weak_directions` names the unknowns that carry the weakest
+    direction of the Jacobi-scaled normal matrix."""
+
+    def __init__(self, message: str, weak_directions: List[str]):
+        super().__init__(message)
+        self.weak_directions = weak_directions
+
+
+@dataclass(frozen=True, eq=False)
+class ParameterPrior:
+    """What is known about one tracker's 16 geometric parameters before the
+    network test (the paper's prior term (Bc - c0)^T (Bc - c0), equation 18).
+
+    `mean` (16,); `covariance` (16, 16) for the parameters that have a prior;
+    `flat` (16,) bool: no prior at all (estimated freely); `fixed` (16,) bool:
+    held at `mean`, not estimated. A parameter is in exactly one of the three
+    states. Cross-covariances between a prior-carrying parameter and a flat or
+    fixed one are ignored.
+    """
+
+    mean: np.ndarray
+    covariance: np.ndarray
+    flat: np.ndarray
+    fixed: np.ndarray
+
+    @classmethod
+    def flat_except(cls, prior_std: Optional[Dict[str, float]] = None, fixed: Sequence[str] = (),
+                    mean: Optional[np.ndarray] = None) -> "ParameterPrior":
+        """Every parameter flat, except those named in `prior_std` (a
+        standard-deviation prior, SI units) and those in `fixed` (held at the
+        mean, default zero). The paper's network test is
+        `flat_except({"mu": 5e-7})`: the scale is traceable to the laser
+        wavelength, nothing else is known in advance."""
+        flat = np.ones(N_PARAMETERS, bool)
+        fixed_mask = np.zeros(N_PARAMETERS, bool)
+        covariance = np.zeros((N_PARAMETERS, N_PARAMETERS))
+        for name, std in (prior_std or {}).items():
+            flat[INDEX[name]] = False
+            covariance[INDEX[name], INDEX[name]] = std**2
+        for name in fixed:
+            flat[INDEX[name]], fixed_mask[INDEX[name]] = False, True
+        return cls(np.zeros(N_PARAMETERS) if mean is None else np.asarray(mean, float), covariance, flat, fixed_mask)
+
+    @classmethod
+    def from_parameters(cls, params: NPLErrorParameters) -> "ParameterPrior":
+        """The prior a tracker's own parameter set states: its values and
+        covariance, parameters of zero variance held fixed."""
+        fixed = np.diag(params.covariance) == 0.0
+        return cls(params.values.copy(), params.covariance.copy(), np.zeros(N_PARAMETERS, bool), fixed)
+
+
+def _extended_solve_needed(observations, tracker: LaserTracker, estimate_parameters) -> bool:
+    params = tracker.geometric_params
+    if estimate_parameters is not None and estimate_parameters is not False:
+        return True
+    if params is not None and (params.values.any() or params.covariance.any()):
+        return True
+    return any(o.face != FRONT for o in observations)
+
+
+def _simulate_with_instruments(targets, poses, tracker, rng, instrument_params, instrument_ids, faces, visible):
+    n_stations, n_targets = len(poses), targets.shape[0]
+    ids = np.zeros(n_stations, int) if instrument_ids is None else np.asarray(instrument_ids, dtype=int)
+    unique = sorted(set(ids.tolist()))
+    slot = {i: n for n, i in enumerate(unique)}
+    if instrument_params is None:
+        instrument_params = [NPLErrorParameters.zero()] * len(unique)
+    if len(instrument_params) != len(unique):
+        raise ValueError(f"instrument_params needs one entry per instrument id ({len(unique)}), got {len(instrument_params)}")
+    faces = [(FRONT,)] * n_stations if faces is None else [tuple(f) for f in faces]
+    vis = np.ones((n_stations, n_targets), bool) if visible is None else np.asarray(visible, dtype=bool)
+    observations = []
+    for s, pose in enumerate(poses):
+        t_idx = np.nonzero(vis[s])[0]
+        local = np.array([pose.to_local(targets[t]) for t in t_idx])
+        values = instrument_params[slot[int(ids[s])]].values
+        for face in faces[s]:
+            readings = true_to_observed_batch(local, values, face)
+            for t, (d, theta, phi) in zip(t_idx, readings):
+                observations.append(Observation(
+                    s, int(t), d + rng.normal(0.0, tracker.sigma_d_m), theta + rng.normal(0.0, tracker.sigma_theta_rad),
+                    phi + rng.normal(0.0, tracker.sigma_phi_rad), face))
+    return observations
+
+
+@dataclass
+class _Layout:
+    """Where each unknown lives in the parameter vector: targets, non-anchor
+    station poses, then each instrument's estimated parameters."""
+
+    n_targets: int
+    n_stations: int
+    anchor_index: int
+    station_offset: Dict[int, int]
+    inst_slot_of_station: np.ndarray   # (S,) instrument slot of each station
+    n_instruments: int
+    estimated: np.ndarray              # parameter indices estimated per instrument (may be empty)
+    param_offset: int                  # first parameter column
+    n_unknowns: int
+
+    def instrument_columns(self, slot: int) -> np.ndarray:
+        n = len(self.estimated)
+        return self.param_offset + slot * n + np.arange(n)
+
+
+def _make_layout(n_targets, n_stations, anchor_index, instrument_ids, estimated: np.ndarray):
+    ids = np.zeros(n_stations, int) if instrument_ids is None else np.asarray(instrument_ids, dtype=int)
+    if ids.shape != (n_stations,):
+        raise ValueError(f"instrument_ids needs one entry per station ({n_stations}), got shape {ids.shape}")
+    unique = sorted(set(ids.tolist()))
+    slot = {i: n for n, i in enumerate(unique)}
+    inst_slot = np.array([slot[int(i)] for i in ids])
+    n_target_params = 3 * n_targets
+    station_offset = _station_param_offsets(n_stations, anchor_index, n_target_params)
+    param_offset = n_target_params + 6 * (n_stations - 1)
+    n_unknowns = param_offset + len(unique) * len(estimated)
+    return _Layout(n_targets, n_stations, anchor_index, station_offset, inst_slot, len(unique), estimated, param_offset, n_unknowns), unique
+
+
+def _unpack_extended(x, layout: _Layout, anchor_pose: InstrumentPose, base_values: np.ndarray):
+    targets = x[: 3 * layout.n_targets].reshape(layout.n_targets, 3)
+    positions = np.empty((layout.n_stations, 3))
+    orientations = np.empty((layout.n_stations, 3, 3))
+    free = [s for s in range(layout.n_stations) if s != layout.anchor_index]
+    positions[layout.anchor_index], orientations[layout.anchor_index] = anchor_pose.position_m, anchor_pose.orientation
+    if free:
+        blocks = np.stack([x[layout.station_offset[s]: layout.station_offset[s] + 6] for s in free])
+        positions[free] = blocks[:, :3]
+        orientations[free] = Rotation.from_rotvec(blocks[:, 3:]).as_matrix()
+    values = np.repeat(base_values[None, :], layout.n_instruments, axis=0) if base_values.ndim == 1 else base_values.copy()
+    for slot in range(layout.n_instruments):
+        values[slot, layout.estimated] = x[layout.instrument_columns(slot)]
+    return targets, positions, orientations, values
+
+
+def _extended_residuals(x, layout, anchor_pose, base_values, obs_s, obs_t, obs_back, readings, sigma, prior_rows):
+    targets, positions, orientations, values = _unpack_extended(x, layout, anchor_pose, base_values)
+    local = np.einsum("oji,oj->oi", orientations[obs_s], targets[obs_t] - positions[obs_s])
+    predicted = true_to_observed_batch(local, values[layout.inst_slot_of_station[obs_s]], np.where(obs_back, BACK, FRONT))
+    diff = readings - predicted
+    diff[:, 1] = (diff[:, 1] + np.pi) % (2.0 * np.pi) - np.pi
+    residual = (diff / sigma).reshape(-1)
+    if prior_rows is not None:
+        parts = [residual]
+        for slot in range(layout.n_instruments):
+            c = values[slot]
+            parts.append(prior_rows["l_inv"] @ (c[prior_rows["index"]] - prior_rows["mean"]))
+        residual = np.concatenate(parts)
+    return residual
+
+
+def _extended_sparsity(layout, obs_s, obs_t, n_prior_rows_per_instrument, n_prior_params):
+    n_obs = len(obs_s)
+    n_rows = 3 * n_obs + layout.n_instruments * n_prior_rows_per_instrument
+    rows, cols = [], []
+    for k in range(n_obs):
+        s, t = int(obs_s[k]), int(obs_t[k])
+        station = layout.station_offset.get(s)
+        param_cols = layout.instrument_columns(int(layout.inst_slot_of_station[s]))
+        for r in range(3):
+            row = 3 * k + r
+            rows.extend([row] * 3)
+            cols.extend(range(3 * t, 3 * t + 3))
+            if station is not None:
+                rows.extend([row] * 6)
+                cols.extend(range(station, station + 6))
+            rows.extend([row] * len(param_cols))
+            cols.extend(param_cols.tolist())
+    for slot in range(layout.n_instruments):
+        cols_slot = layout.instrument_columns(slot)
+        position = [int(np.nonzero(layout.estimated == pi)[0][0]) for pi in n_prior_params]  # prior parameters are estimated ones
+        for r in range(n_prior_rows_per_instrument):
+            row = 3 * n_obs + slot * n_prior_rows_per_instrument + r
+            rows.extend([row] * len(position))
+            cols.extend(cols_slot[position].tolist())
+    data = np.ones(len(rows), dtype=bool)
+    return scipy.sparse.coo_matrix((data, (rows, cols)), shape=(n_rows, layout.n_unknowns)).tocsr()
+
+
+def _unknown_label(j: int, layout: _Layout, instrument_ids_sorted) -> str:
+    if j < 3 * layout.n_targets:
+        return f"target {j // 3} {'xyz'[j % 3]}"
+    if j < layout.param_offset:
+        free = [s for s in range(layout.n_stations) if s != layout.anchor_index]
+        k, r = divmod(j - 3 * layout.n_targets, 6)
+        return f"station {free[k]} {['x', 'y', 'z', 'rotation x', 'rotation y', 'rotation z'][r]}"
+    n = len(layout.estimated)
+    slot, r = divmod(j - layout.param_offset, n)
+    return f"instrument {instrument_ids_sorted[slot]} {PARAMETER_NAMES[int(layout.estimated[r])]}"
+
+
+def _checked_inverse(normal: np.ndarray, layout: _Layout, instrument_ids_sorted) -> np.ndarray:
+    """Inverse of the normal matrix after a Jacobi-scaled rank test (the one
+    `network.design` uses): a nearly singular matrix means the data cannot
+    determine every unknown, which `pinv` would hide as zero variance."""
+    from network.design import CONNECTIVITY_EIGENVALUE_FLOOR
+
+    diag = np.diag(normal)
+    scale = 1.0 / np.sqrt(np.where(diag > 0.0, diag, 1.0))
+    scaled = normal * scale[:, None] * scale[None, :]
+    values, vectors = np.linalg.eigh(scaled)
+    if np.any(diag <= 0.0) or values[0] < CONNECTIVITY_EIGENVALUE_FLOOR:
+        weak = vectors[:, 0]
+        labels = [_unknown_label(int(j), layout, instrument_ids_sorted) for j in np.argsort(-np.abs(weak))[:6] if abs(weak[j]) > 0.15]
+        if np.any(diag <= 0.0):
+            labels = [_unknown_label(int(j), layout, instrument_ids_sorted) for j in np.nonzero(diag <= 0.0)[0][:6]]
+        raise NetworkRankError(
+            "the network does not determine every unknown (smallest Jacobi-scaled eigenvalue "
+            f"{values[0]:.2e}, floor {CONNECTIVITY_EIGENVALUE_FLOOR:.0e}); weakest directions involve: " + ", ".join(labels),
+            labels)
+    return (vectors * (1.0 / values)) @ vectors.T * scale[:, None] * scale[None, :]
+
+
+def _solve_extended(observations, initial_targets, initial_poses, tracker, anchor_index, instrument_ids, estimate_parameters):
+    """`solve_network` with faces, instrument identity, and either the consider
+    covariance or estimated parameters (see `solve_network`)."""
+    n_targets, n_stations = initial_targets.shape[0], len(initial_poses)
+    anchor_pose = initial_poses[anchor_index]
+    params = tracker.geometric_params
+    estimate = estimate_parameters is not None and estimate_parameters is not False
+    if estimate:
+        if estimate_parameters is True:
+            if params is None:
+                raise ValueError("estimate_parameters=True needs tracker.geometric_params as the prior")
+            prior = ParameterPrior.from_parameters(params)
+        else:
+            prior = estimate_parameters
+        estimated = np.nonzero(~prior.fixed)[0]
+        base_values = prior.mean.copy()
+    else:
+        prior = None
+        estimated = np.zeros(0, dtype=int)
+        base_values = np.zeros(N_PARAMETERS) if params is None else params.values.copy()
+    layout, ids_sorted = _make_layout(n_targets, n_stations, anchor_index, instrument_ids, estimated)
+
+    obs_s = np.array([o.station_index for o in observations])
+    obs_t = np.array([o.target_index for o in observations])
+    obs_back = np.array([o.face == BACK for o in observations])
+    bad = [o.face for o in observations if o.face not in (FRONT, BACK)]
+    if bad:
+        raise ValueError(f"face must be '{FRONT}' or '{BACK}', got {bad[0]!r}")
+    readings = np.array([[o.d_m, o.theta_rad, o.phi_rad] for o in observations])
+    sigma = np.array([tracker.sigma_d_m, tracker.sigma_theta_rad, tracker.sigma_phi_rad])
+
+    prior_rows, n_prior_rows, prior_params = None, 0, np.zeros(0, int)
+    if estimate:
+        prior_params = np.nonzero(~prior.flat & ~prior.fixed)[0]
+        if len(prior_params):
+            sub = prior.covariance[np.ix_(prior_params, prior_params)]
+            prior_rows = {"index": prior_params, "mean": prior.mean[prior_params], "l_inv": np.linalg.inv(np.linalg.cholesky(sub))}
+            n_prior_rows = len(prior_params)
+    x0 = np.concatenate([
+        initial_targets.reshape(-1),
+        *[_pack_station_params(pose) for i, pose in enumerate(initial_poses) if i != anchor_index],
+        *([base_values[estimated]] * layout.n_instruments if len(estimated) else []),
+    ])
+    args = (layout, anchor_pose, base_values, obs_s, obs_t, obs_back, readings, sigma, prior_rows if estimate else None)
+    sparsity = _extended_sparsity(layout, obs_s, obs_t, n_prior_rows, prior_params) if len(estimated) else None
+    if sparsity is None:  # no parameter unknowns: the same sparsity as the noise-only solve
+        sparsity = _build_jac_sparsity(observations, n_targets, n_stations, anchor_index)
+    fit = least_squares(_extended_residuals, x0, jac_sparsity=sparsity, method="trf", x_scale="jac", args=args)
+
+    jac = fit.jac.toarray() if scipy.sparse.issparse(fit.jac) else fit.jac
+    normal = jac.T @ jac
+    targets, positions, orientations, values = _unpack_extended(fit.x, layout, anchor_pose, base_values)
+    poses = [InstrumentPose(position_m=positions[i].copy(), orientation=orientations[i].copy()) for i in range(n_stations)]
+    parameter_estimates, full_covariance = None, None
+    if estimate:
+        full_covariance = _checked_inverse(normal, layout, ids_sorted)
+        target_covariance = full_covariance[: 3 * n_targets, : 3 * n_targets].copy()
+        parameter_estimates = []
+        for slot in range(layout.n_instruments):
+            cols = layout.instrument_columns(slot)
+            covariance = np.zeros((N_PARAMETERS, N_PARAMETERS))
+            covariance[np.ix_(estimated, estimated)] = full_covariance[np.ix_(cols, cols)]
+            parameter_estimates.append(NPLErrorParameters(values[slot], covariance, f"fitted, instrument {ids_sorted[slot]}"))
+    else:
+        full_covariance_u = np.linalg.pinv(normal)
+        target_covariance = full_covariance_u[: 3 * n_targets, : 3 * n_targets].copy()
+        if params is not None and params.covariance.any():
+            target_covariance += _consider_term(jac, full_covariance_u, layout, positions, orientations, targets, obs_s, obs_t,
+                                                obs_back, sigma, params)
+    if tracker.systematic_std_m > 0.0:
+        for i in range(n_targets):
+            block = slice(3 * i, 3 * i + 3)
+            target_covariance[block, block] += tracker.systematic_std_m**2 * np.eye(3)
+    return NetworkSolveResult(
+        target_points_m=targets, station_poses=poses, target_covariance_m2=target_covariance,
+        residual_rms=float(np.sqrt(np.mean(fit.fun[: 3 * len(observations)] ** 2))), n_function_evals=fit.nfev,
+        success=bool(fit.success), parameter_estimates=parameter_estimates, full_covariance_m2=full_covariance,
+        n_parameters_estimated=len(estimated),
+    )
+
+
+def _consider_term(jac, covariance_u, layout, positions, orientations, targets, obs_s, obs_t, obs_back, sigma, params):
+    """S V S^T for the targets: S = -N^-1 J^T W H, H the readings' sensitivity
+    to each tracker's parameters at the solved geometry (see `solve_network`)."""
+    local = np.einsum("oji,oj->oi", orientations[obs_s], targets[obs_t] - positions[obs_s])
+    dr_dc = reading_sensitivities(local, params.values, np.where(obs_back, BACK, FRONT))[1]  # (O, 3, 16)
+    n_obs = len(obs_s)
+    h = np.zeros((3 * n_obs, layout.n_instruments * N_PARAMETERS))
+    whitened = dr_dc / sigma[None, :, None]
+    for k in range(n_obs):
+        c0 = N_PARAMETERS * int(layout.inst_slot_of_station[obs_s[k]])
+        h[3 * k:3 * k + 3, c0:c0 + N_PARAMETERS] = whitened[k]
+    sensitivity = -covariance_u @ jac.T @ h  # (unknowns, 16 K)
+    s_targets = sensitivity[: 3 * layout.n_targets]
+    v_full = np.kron(np.eye(layout.n_instruments), params.covariance)
+    return s_targets @ v_full @ s_targets.T
