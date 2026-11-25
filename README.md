@@ -202,9 +202,11 @@ complete:
   uncertainty floor); the decision rule and the number of builds matter as much as the plan.
 - **the NPL geometric error model** (`docs/step1b_npl_geometric_model.md`) — the 16-parameter model of one
   physical tracker's mechanism (axis offsets and tilts, encoder harmonics, range offset and scale) from
-  Hughes et al. 2011: the forward model, its inverse and two-face physics are built and gated
-  (`instruments.npl_model`, `viz.make_two_face_figure`); carrying its uncertainty into the network
-  covariance is in progress.
+  Hughes et al. 2011: the forward model, two-face physics, the consider and estimate modes of the
+  network layers, and the paper's network test and variance split reproduced
+  (`instruments.npl_model`, `network.hughes_network`, `viz.make_two_face_figure`,
+  `viz.run_network_test_reproduction`, `viz.run_npl_side_by_side`). Not the default anywhere:
+  `LaserTracker(geometric_params=...)` switches it on.
 - **planning from a QIF file** (`docs/qif_integration.md`) — an input route, not a
   step: `python -m viz.plan_from_qif file.qif` reads a QIF (ISO 23952) document
   (`interchange.qif`), sizes a cell round the part or assembly and plans it

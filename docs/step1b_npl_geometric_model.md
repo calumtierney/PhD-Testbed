@@ -255,7 +255,7 @@ datum-referenced deviation actually suffers, because the common errors cancel
 objectives choose the *same* plan under both models. Under the full model the
 same plans are worse: A0/A1 sum u 44.3 -> 57.5 um, PFR 0.199 -> 0.348; B/C sum u
 46.6 -> 59.3 um, PFR 0.193 -> 0.343 (PFA stays ~0). The ordering of objectives is
-unchanged (B and C ahead of A0 and A1 by about 3%).
+unchanged (B and C ahead of A0 and A1: by 3.2% of risk noise-only, by 1.4% under the full model).
 
 **Station-track grid stage** (1.0 m spacing, 3 added stations, exhaustive; the
 GA stages and the 0.5 m grid were not re-run): A1, B and C choose the same plan;
