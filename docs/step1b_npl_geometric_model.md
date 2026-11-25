@@ -7,7 +7,7 @@ estimate modes) are not yet built; this document is extended as they land.
 
 Code: `src/instruments/npl_model.py`. Source: Hughes, Forbes, Lewis, Sun, Veal
 and Nasr, *Laser tracker error determination using a network measurement*,
-Meas. Sci. Technol. 22 (2011) 045103. Values: `docs/claude_md_4f_proposed.md`.
+Meas. Sci. Technol. 22 (2011) 045103. Values: CLAUDE.md §4f.
 
 ## Why a second error model
 
