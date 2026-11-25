@@ -707,3 +707,51 @@ def reading_sensitivities(points_local_m: np.ndarray, values, faces=None):
     reading_wrt_params = g_c - g_q @ f_q_inv_f_c
     point_wrt_params = f_q @ g_q_inv_g_c - f_c
     return reading_wrt_point, reading_wrt_params, point_wrt_params
+
+
+def shot_shift_zero_mean(points_local_m: np.ndarray, faces=None) -> np.ndarray:
+    """`reading_sensitivities(...)[2]` (the point shift P per unit parameter
+    error) for parameters whose *values* are zero -- the compensated tracker of
+    `NPLErrorParameters.hughes_2011_residual` -- in closed form, vectorised, no
+    finite differences. About a fiftieth of the cost, which is what a station
+    search needs.
+
+    At zero parameters F_q is the spherical Jacobian J of the face's ideal
+    angles (d, theta, phi) and G_q the identity, so P = J G_c - F_c, with
+
+      G_c (the readings' direct sensitivity): lambda -> (1,0,0), mu -> (d,0,0),
+        azimuth harmonics a_A,q b_A,q -> (0, cos q theta | sin q theta, 0),
+        elevation terms a_E,0 -> (0,0,1) and a_E,q b_E,q -> (0,0, cos q phi |
+        sin q phi); zero for the five geometric parameters;
+      F_c (the beam's own displacement, T0 = R_z(theta) R_y(-phi)):
+        e_x  -> R_z(theta) (1 - cos phi, 0, -sin phi)
+        b_y0 -> T0 y-hat = (-sin theta, cos theta, 0)
+        b_z0 -> T0 z-hat = (-sin phi cos theta, -sin phi sin theta, cos phi)
+        gamma -> d T0 y-hat
+        alpha -> d sin phi (sin theta, -cos theta, 0);  zero for the rest.
+
+    The same numbers, to 1e-6, as the finite-difference route (tests).
+    """
+    points = np.asarray(points_local_m, dtype=float)
+    k = points.shape[0]
+    d, theta, phi = ideal_readings_batch(points, _faces_to_back(faces, k)).T
+    ct, st, cp, sp = np.cos(theta), np.sin(theta), np.cos(phi), np.sin(phi)
+    jac = np.zeros((k, 3, 3))  # the spherical Jacobian at the face's ideal angles
+    jac[:, :, 0] = np.stack([cp * ct, cp * st, sp], axis=1)
+    jac[:, :, 1] = d[:, None] * np.stack([-cp * st, cp * ct, np.zeros(k)], axis=1)
+    jac[:, :, 2] = d[:, None] * np.stack([-sp * ct, -sp * st, cp], axis=1)
+    g_c = np.zeros((k, 3, N_PARAMETERS))
+    g_c[:, 0, INDEX["lambda_m"]] = 1.0
+    g_c[:, 0, INDEX["mu"]] = d
+    g_c[:, 1, INDEX["a_A1_rad"]], g_c[:, 1, INDEX["b_A1_rad"]] = ct, st
+    g_c[:, 1, INDEX["a_A2_rad"]], g_c[:, 1, INDEX["b_A2_rad"]] = np.cos(2 * theta), np.sin(2 * theta)
+    g_c[:, 2, INDEX["a_E0_rad"]] = 1.0
+    g_c[:, 2, INDEX["a_E1_rad"]], g_c[:, 2, INDEX["b_E1_rad"]] = cp, sp
+    g_c[:, 2, INDEX["a_E2_rad"]], g_c[:, 2, INDEX["b_E2_rad"]] = np.cos(2 * phi), np.sin(2 * phi)
+    f_c = np.zeros((k, 3, N_PARAMETERS))
+    f_c[:, :, INDEX["e_x_m"]] = np.stack([ct * (1 - cp), st * (1 - cp), -sp], axis=1)
+    f_c[:, :, INDEX["b_y0_m"]] = np.stack([-st, ct, np.zeros(k)], axis=1)
+    f_c[:, :, INDEX["b_z0_m"]] = np.stack([-sp * ct, -sp * st, cp], axis=1)
+    f_c[:, :, INDEX["gamma_rad"]] = d[:, None] * np.stack([-st, ct, np.zeros(k)], axis=1)
+    f_c[:, :, INDEX["alpha_rad"]] = d[:, None] * sp[:, None] * np.stack([st, -ct, np.zeros(k)], axis=1)
+    return jac @ g_c - f_c

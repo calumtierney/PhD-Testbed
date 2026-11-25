@@ -208,3 +208,15 @@ def test_common_parameter_errors_cancel_in_the_distance_between_nearby_targets()
     assert ratio_near < 0.005 and correlation_near > 0.99
     assert ratio_near < ratio_mid < ratio_far
     assert ratio_far > 0.1 and correlation_far < 0.9
+
+
+def test_a_tracker_compensated_with_nonzero_values_differs_from_the_zero_mean_one_only_at_second_order():
+    """With the Hughes values as the compensation (nonzero mean) the design uses
+    finite-difference sensitivities at those values; the covariance differs from
+    the zero-mean closed-form one by well under 1%."""
+    targets, poses, visible = scene()
+    uncompensated = NPLErrorParameters.hughes_2011_uncompensated()
+    zero_mean = design_covariances_for_poses(targets, poses, tracker_with(HUGHES_RESIDUAL), visible).point_covariance_m2
+    nonzero = design_covariances_for_poses(targets, poses, tracker_with(uncompensated), visible).point_covariance_m2
+    assert np.abs(nonzero - zero_mean).max() < 5e-3 * np.abs(zero_mean).max()
+    assert not np.array_equal(nonzero, zero_mean)

@@ -16,7 +16,7 @@ from instruments.npl_model import (
     ARCSEC_TO_RAD, BACK, FRONT, INDEX, N_PARAMETERS, PARAMETER_NAMES, PARAMETER_STEPS, NPLErrorParameters,
     beam_geometry, beam_geometry_batch, observation_parameter_jacobian, observation_point_jacobian, observed_to_true,
     point_from_true, point_from_true_batch, readings_from_true, readings_from_true_batch, reading_sensitivities,
-    solve_true_coordinates, solve_true_coordinates_batch, true_to_observed, true_to_observed_batch,
+    shot_shift_zero_mean, solve_true_coordinates, solve_true_coordinates_batch, true_to_observed, true_to_observed_batch,
 )
 
 AS = ARCSEC_TO_RAD
@@ -436,3 +436,15 @@ def test_floor_with_a_parameter_covariance_warns_unless_the_caller_says_it_exclu
         LaserTracker(geometric_params=NPLErrorParameters.hughes_2011_residual())      # parameters alone: silent
         LaserTracker(systematic_std_m=4e-6, geometric_params=NPLErrorParameters.zero())  # no covariance: silent
     assert LaserTracker().systematic_std_m == 0.0                                     # the default is unchanged
+
+
+def test_closed_form_point_shift_at_zero_parameters_equals_the_finite_difference_route():
+    points, faces = random_shots(300, seed=5)
+    closed = shot_shift_zero_mean(points, faces)
+    numerical = reading_sensitivities(points, np.zeros(16), faces)[2]
+    for j in range(N_PARAMETERS):
+        column_scale = np.abs(numerical[:, :, j]).max()
+        np.testing.assert_allclose(closed[:, :, j], numerical[:, :, j], atol=1e-7 * column_scale, err_msg=PARAMETER_NAMES_[j])
+
+
+PARAMETER_NAMES_ = tuple(INDEX)

@@ -103,7 +103,7 @@ import numpy as np
 
 from geometry.pose import InstrumentPose
 from instruments.laser_tracker import LaserTracker
-from instruments.npl_model import BACK, FRONT, N_PARAMETERS, reading_sensitivities
+from instruments.npl_model import BACK, FRONT, N_PARAMETERS, reading_sensitivities, shot_shift_zero_mean
 
 # Smallest allowed eigenvalue of the Jacobi-scaled station-pose information
 # D'. An exact gauge freedom gives ~1e-16; a genuinely weak but valid
@@ -559,7 +559,11 @@ def _extended_design(targets, positions, orientations, tracker, visible, anchor_
         slot = {i: n for n, i in enumerate(unique_ids)}
         n_c = N_PARAMETERS * len(unique_ids)
         local = np.einsum("oji,oj->oi", rot, delta)
-        shift_local = reading_sensitivities(local, params.values, np.where(back_k, BACK, FRONT))[2]  # (O, 3, 16)
+        faces_k = np.where(back_k, BACK, FRONT)
+        if params.values.any():  # sensitivities at nonzero values: finite differences of the explicit forward maps
+            shift_local = reading_sensitivities(local, params.values, faces_k)[2]  # (O, 3, 16)
+        else:                   # a compensated tracker (zero mean): the closed form, about 30x faster
+            shift_local = shot_shift_zero_mean(local, faces_k)
         shift_global = np.einsum("oij,ojk->oik", rot, shift_local)
         lam_p = np.einsum("oij,ojk->oik", lam, shift_global)  # Lambda R P
         q_t = np.zeros((n_targets, 3, n_c))
