@@ -125,7 +125,6 @@ The paper states the scatter is a mixture of atmospheric beam bending, angular s
 
 If a computed result disagrees with 4b, the code is wrong. If it disagrees with 4c, check first whether the missing physics explains the gap — usually it does. **Never adjust an input in 4a to make an output match.** Inputs are measured; outputs are predictions; the whole value of the testbed is that the second follows from the first.
 
----
 
 ### 4f. The NPL geometric model — Hughes et al. 2011 (Meas. Sci. Technol. 22 045103), Tables 2–4
 
