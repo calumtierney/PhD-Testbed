@@ -103,3 +103,28 @@ def spherical_jacobian(d, theta, phi):
             [sin_p, 0.0, d * cos_p],
         ]
     )
+
+
+def cartesian_to_spherical_back_face(point_local_m):
+    """The *back-face* reading of a point: (range, azimuth, elevation).
+
+    A laser tracker can point its beam at the same target in two ways. In
+    the **front face** the standing axis is at azimuth theta and the transit
+    axis at elevation phi, with phi in [-pi/2, +pi/2] -- what
+    `cartesian_to_spherical` returns (its `arcsin` can only return that
+    range). In the **back face** the head is turned round by half a
+    revolution and the beam is steered over the top: azimuth theta + pi,
+    elevation pi - phi, which for an ordinary target lies in
+    [pi/2, 3*pi/2] -- "more than vertical". A perfect instrument gives the
+    same point from both faces (`spherical_to_cartesian` of either reading
+    returns it); a real one does not, and the disagreement between the two
+    faces is how the NPL geometric errors are separated
+    (`instruments.npl_model`, `docs/step1b_npl_geometric_model.md`).
+
+    Azimuth is wrapped to (-pi, pi], like the front-face value.
+    """
+    d, theta, phi = cartesian_to_spherical(point_local_m)
+    theta_back = theta + np.pi
+    if theta_back > np.pi:
+        theta_back -= 2.0 * np.pi
+    return d, theta_back, np.pi - phi

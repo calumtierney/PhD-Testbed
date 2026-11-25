@@ -42,12 +42,14 @@ this sensor-noise-only model and the larger, environment-inclusive scatter
 Hughes et al. actually observed.
 """
 from dataclasses import dataclass, replace
+from typing import Optional
 
 import numpy as np
 
 from geometry.pose import InstrumentPose
 from geometry.scene import Scene
 from geometry.spherical import cartesian_to_spherical, spherical_jacobian
+from instruments.npl_model import NPLErrorParameters
 
 ARCSEC_TO_RAD = np.pi / (180.0 * 3600.0)
 
@@ -106,12 +108,25 @@ class LaserTracker:
         it with a real multi-term budget is exactly the next elaboration
         CLAUDE.md §6's "optimise/refine later, once tests pass" points at
         -- not done here.
+    geometric_params : optional `instruments.npl_model.NPLErrorParameters` --
+        the NPL geometric error model of *this physical tracker* (axis
+        offsets and tilts, encoder harmonics, range offset and scale) and
+        the covariance of what is not known about them. `None` (the default)
+        is the noise-only model above, byte for byte. A parameter set is a
+        property of one physical instrument: stations that share a tracker
+        share it (that is what correlates their errors), which is why it is
+        carried here and not on a pose. It is consumed by the network layers
+        (`network.design`, `network.solve`), not by the single-shot
+        `covariance_local` below, which has no network to propagate it
+        through; with a nonzero parameter set `covariance_local` therefore
+        refuses rather than quietly ignoring it.
     """
 
     sigma_d_m: float = DEFAULT_SIGMA_D_M
     sigma_theta_rad: float = DEFAULT_SIGMA_THETA_ARCSEC * ARCSEC_TO_RAD
     sigma_phi_rad: float = DEFAULT_SIGMA_PHI_ARCSEC * ARCSEC_TO_RAD
     systematic_std_m: float = 0.0
+    geometric_params: Optional[NPLErrorParameters] = None
 
     def covariance_local(self, point_local_m: np.ndarray) -> np.ndarray:
         """3x3 Cartesian covariance of a measured point, in the instrument's
@@ -128,6 +143,12 @@ class LaserTracker:
         since it is not modelled as arising from spherical-coordinate
         noise in the first place.
         """
+        if self.geometric_params is not None and not self.geometric_params.is_zero():
+            raise NotImplementedError(
+                "a nonzero geometric_params enters through the network layer "
+                "(network.design / network.solve), not through the single-shot "
+                "covariance; use those, or leave geometric_params None / zero()"
+            )
         d, theta, phi = cartesian_to_spherical(point_local_m)
         jacobian = spherical_jacobian(d, theta, phi)
         sigma_spherical = np.diag(
