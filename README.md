@@ -200,6 +200,11 @@ complete:
   risk with one to two stations fewer than planning for uncertainty along the tolerances
   (about a third of the risk at equal stations, narrowing to 15-90% with a 4 um
   uncertainty floor); the decision rule and the number of builds matter as much as the plan.
+- **the NPL geometric error model** (`docs/step1b_npl_geometric_model.md`) — the 16-parameter model of one
+  physical tracker's mechanism (axis offsets and tilts, encoder harmonics, range offset and scale) from
+  Hughes et al. 2011: the forward model, its inverse and two-face physics are built and gated
+  (`instruments.npl_model`, `viz.make_two_face_figure`); carrying its uncertainty into the network
+  covariance is in progress.
 - **planning from a QIF file** (`docs/qif_integration.md`) — an input route, not a
   step: `python -m viz.plan_from_qif file.qif` reads a QIF (ISO 23952) document
   (`interchange.qif`), sizes a cell round the part or assembly and plans it
