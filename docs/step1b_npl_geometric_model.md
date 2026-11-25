@@ -1,11 +1,17 @@
 # Step 1b: the NPL geometric model — what a tracker's mechanism does to a reading
 
-Status: **the forward model is built and gated** (parameter set, readings from
-true position and back, sensitivities, two-face physics). The network layers
-that carry the parameter uncertainty into target covariance (consider and
-estimate modes) are not yet built; this document is extended as they land.
+Status: **built and gated.** The forward model, its inverse and the two-face
+physics (gates 1-4); the consider term in the fast design covariance and in the
+dense solve; estimate mode with priors and a rank test; the Hughes et al.
+network test reproduced on a reconstructed layout (gate 5) and the paper's
+variance split (gate 6); the noise-only/full-model side-by-side on the existing
+experiments. **Not adopted as a default anywhere**: with `geometric_params`
+unset every result is what it was. Which default is yours to decide; the numbers
+for that decision are in "Side by side" below.
 
-Code: `src/instruments/npl_model.py`. Source: Hughes, Forbes, Lewis, Sun, Veal
+Code: `src/instruments/npl_model.py` (the model), `src/network/design.py` and
+`src/network/solve.py` (consider and estimate modes), `src/network/hughes_network.py`
+(gate 5), `src/network/variance_split.py` (gate 6). Source: Hughes, Forbes, Lewis, Sun, Veal
 and Nasr, *Laser tracker error determination using a network measurement*,
 Meas. Sci. Technol. 22 (2011) 045103. Values: CLAUDE.md §4f.
 
@@ -130,3 +136,204 @@ tracker when its network test is available.
   2.351 µm at 1 m); for distance they are not (0.312″ would subtend 1.513 µm).
   Open question for NPL; Wang, Forbes and Maropoulos (2014) list the same
   absolute/relative pairs as an 8-parameter tracker model, which may help.
+
+
+## Two modes, as built
+
+A tracker's parameter errors are one 16-vector per *physical tracker*, with
+covariance V_c, shared by every shot at every station it occupies. To the
+network a parameter error is a bias on every shot's pseudo-measurement: the
+point an ideal conversion of the corrected readings reports is shifted by
+R_s P_k delta_c, with P_k (3 x 16) from `npl_model.reading_sensitivities`
+(finite differences of explicit maps) or, for a compensated tracker whose
+parameter values are zero, `shot_shift_zero_mean` (closed form, 30 times
+faster, equal to 1e-9). P = J_sph G_c - F_c: encoder errors move the reported
+point through the spherical Jacobian; axis offsets and tilts move the beam and
+so move it the other way.
+
+**(A) Consider mode, the planning default.** The tracker is compensated; the
+parameters are *not* re-estimated; their errors are uncertain but fixed. The
+target covariance is Sigma = N^-1 + S V S^T with S = N^-1 Q, Q having 16 columns
+per tracker, accumulated per instrument id. `network.design` does this as a
+low-rank update of the block-arrow elimination (linear in shots; algebra in the
+module docstring); `network.solve` does it densely from the Jacobian. They agree
+to 1e-5 of the largest entry (the dense solve's Jacobian is a finite difference);
+the sensitivity S matches nonlinear network solves of data from a perturbed
+tracker for every one of the 16 parameters (`tests/test_design_geometric.py`).
+This is how a tracker is used on the shop floor with the manufacturer's
+compensation applied inside the software.
+
+**(B) Estimate mode.** The 16 parameters of each tracker are unknowns of the
+network solve under a prior (`ParameterPrior`: flat, fixed, or a mean and
+covariance per parameter; the paper's equation 18). The posterior covariance
+comes from the full normal matrix after a Jacobi-scaled rank test: a network that
+cannot determine a parameter (no length reference and no prior on mu) or a pose
+raises `NetworkRankError` naming the weakest directions, where `pinv` would give
+the undetermined direction zero variance. With the same prior, the estimate
+posterior is never worse than consider mode in the matrix sense (a test). This
+is how the network test itself works and what fitting GKN's own tracker needs.
+
+**Which for planning.** (A), unless the real workflow re-estimates the
+parameters: a plan with two-face and birdbath shots whose data are used to
+self-calibrate (some USMN runs can), or a tracker not characterised for a long
+time. (B) then gives a smaller covariance; (A) overstates it.
+
+Instrument identity is per station (`instrument_ids`; default one tracker);
+faces are per station (`("front",)` or `("front", "back")`). A second face
+doubles the information (halves the noise-only covariance exactly) but a
+different bias per shot: collimation error (gamma) cancels between faces to
+second order, a range offset does not (tests).
+
+## Gate 5: the Hughes network test
+
+`results/npl_network_test.png`, `viz/run_network_test_reproduction.py`. The
+layout is a reconstruction (the paper gives no coordinates): 8 wall nests, 1
+floor nest, 6 bench nests; positions 0-4 as described; two birdbath lines
+(horizontal 6-8, 45-degree diagonal 9-10, each through trackers 0 and 3 or 4);
+126 readings (63 of 75 pairs on both faces), ranges 0.27-6.4 m, maximum elevation
+56.5 degrees, mean cos 2phi 0.68 (paper: 0.69). Not tuned to anything below.
+
+| | This reconstruction | Paper |
+|---|---|---|
+| Recovery over 100 seeds, within 1 / 2 / 3 fitted sigma | 68.5% / 96.3% / 99.9% | 68.3% / 95.4% / 99.7% expected |
+| Fitted parameter uncertainties / Tables 2-3 | 0.56 to 1.10 | 1 |
+| Target uncertainty (RSS) | 1.6 - 5.9 um | 2.1 - 4.9 um |
+| Station position uncertainty (RSS) | 1.0 - 4.7 um | 1.1 - 2.2 um |
+| Pointing uncertainty | 0.15 - 0.43 arcsec | 0.33 - 0.45 arcsec |
+| Correlations the paper names | gamma-b_y -0.79, a_E0-b_z +0.59, a_E2-a_E0 -0.81 | "significant", no values |
+| a_E2-a_E0 as the maximum elevation rises 57 -> 75 degrees | -0.81 -> -0.74 | "because no elevation exceeded 57 degrees" |
+
+**The lambda-e_x correlation did not reproduce.** The paper adds the birdbath
+lines because lambda and e_x can be strongly correlated. In this layout the
+correlation coefficient is moderate with the lines (-0.31) and without (-0.23),
+two faces or one. The reason: e_x acts on the range as e_x(1 - cos phi) on the
+front face and e_x(1 + cos phi) on the back, while lambda acts equally on both,
+so any elevation spread and the second face separate them. What the lines do
+do is tighten lambda: removing them raises sigma(lambda) from 0.38 to 0.52 um
+(front face only: 0.58 to 0.81, and sigma(e_x) from 2.6 to 5.8 um), while
+removing four other readings from the same positions changes it by 3% (10%
+front-only). So the lines matter, but not through the correlation coefficient the
+paper's description suggests. It may be that the paper's network, which we only
+know in outline, had less elevation spread than this one.
+
+## Gate 6: the variance split
+
+`results/npl_variance_split.json`. 1000 points, 1-5 m, random azimuth and
+elevation within -60 to +77 degrees, half on each face, `hughes_2011_residual()`:
+the geometric parameters carry **19.2%** of the coordinate variance (paper:
+about 20%); the angle sensors **80.0%** (paper: about 80%); range noise 0.8%.
+Per parameter the shares run from 0.02% (e_x) to 6.3% (a_E,0) against the
+paper's 0.1-3.8%: the overall figure matches, the per-parameter band does not.
+The most likely reason is the correlations the paper mentions and does not
+quantify (this covariance is diagonal); as a what-if, not an input, putting
+a_E,0-a_E,2 and the other two named correlations in at 0.5-0.9 in either sign
+moves the overall share by only +-2 points, so the 19.2% stands either way, and
+how the paper defines a per-parameter share is not stated.
+
+## What the parameter errors do to the existing experiments
+
+Consider mode, `hughes_2011_residual()` (zero mean, Tables 2-3 uncertainties,
+no correlations), one tracker, the per-point characteristic layer as it
+stands. `viz/run_npl_side_by_side.py`, `results/npl_side_by_side.json`.
+
+**How big, per point** (parameter share of each characteristic's variance, min /
+median / max, and the parameter contribution in quadrature):
+
+| Scene, plan | Share of variance | Contribution |
+|---|---|---|
+| Headline two-cluster, A1 plan, 2 stations | 39 / 41 / 42% | 5.7 - 6.5 um |
+| Long part on the track (anchor frame), A1, 3 stations | 4.2 / 4.4 / 4.6% | 5.9 - 13.1 um |
+| Factory cell, risk-planned 4 stations, per point in the anchor frame | 27 / 41 / 45% | 3.5 - 7.0 um |
+| Same plan, datum-referenced (joint covariance) | 6 / 15 / 41% | 1.2 - 1.5 um |
+
+The last two rows are the same layout, same tracker: reading each point
+alone attributes three to five times the parameter uncertainty that the
+datum-referenced deviation actually suffers, because the common errors cancel
+(next section).
+
+**Headline experiment** (2 added stations on the 24-pose ring): all four
+objectives choose the *same* plan under both models. Under the full model the
+same plans are worse: A0/A1 sum u 44.3 -> 57.5 um, PFR 0.199 -> 0.348; B/C sum u
+46.6 -> 59.3 um, PFR 0.193 -> 0.343 (PFA stays ~0). The ordering of objectives is
+unchanged (B and C ahead of A0 and A1 by about 3%).
+
+**Station-track grid stage** (1.0 m spacing, 3 added stations, exhaustive; the
+GA stages and the 0.5 m grid were not re-run): A1, B and C choose the same plan;
+A0's changes by one station height (+x loop station 2.4 -> 1.0 m). Risk
+1.777 -> 1.818 (+2.3%), sum u 265 -> 271 um. The anchor-frame uncertainties here
+are 27-70 um, so a 6-13 um parameter contribution barely moves them.
+
+**Speed** (200 evaluations each; the closed-form shift is in): per plan through
+`evaluate_plan` (headline) 9.8 -> 14.1 ms (1.4x; objective C 110 -> 117 ms,
+1.06x); the track path is unchanged within timing noise (35.5 -> 34.0 ms; C
+about 140 ms either way); the fast design scorers the cell experiments use
+1.30 -> 1.85 ms (DatumCellScorer, 1.4x) and 1.01 -> 1.62 ms (per point, 1.6x).
+Before the closed-form shift the fast scorers were 5-8 times slower; the
+finite-difference route is kept for parameters with nonzero values.
+
+## Section 5: what the per-point characteristic layer does with this
+
+`tests/test_design_geometric.py::test_common_parameter_errors_cancel_in_the_distance_between_nearby_targets`.
+Two targets 0.3 m apart, measured from the same trackers, have parameter-induced
+errors correlated at 0.999; the parameter-induced variance of their separation
+is 0.14% of the sum of their individual variances (1.6% at 1 m, 22% at 3 m, where
+the correlation is 0.83). The noise part cancels far less (about 20%), because
+it is independent per shot except through the station poses.
+
+So anything defined *relative to other measured points* -- a hole position
+against its datum features, a distance, a step -- benefits from the common
+errors cancelling, and `evaluate_characteristic`, which reads only a point's
+own 3 x 3 covariance (`target_point_covariance(i)`), overstates its parameter
+uncertainty by up to three orders of magnitude for nearby points. It could
+therefore change which plans win for the wrong reason.
+
+Which consumers are affected:
+
+  * the **factory-cell experiments** (`planning.cell.DatumCellScorer`,
+    `PartFrameScorer`) already use the joint covariance and the S-transformation
+    to the datum (`network.design.datum_referenced_functional`); the consider
+    term enters through `design_joint_covariance` and the cancellation happens
+    automatically. No change needed;
+  * the **headline and track experiments** (`planning.objectives.evaluate_plan`
+    and `evaluate_characteristic`) read points one at a time in the anchor
+    frame, so they carry the full parameter variance. That is exactly what the
+    side-by-side above measures;
+  * the wing-box inspection experiment (`planning/inspection*.py`) was not touched.
+
+**Smallest change proposed (not built; it needs your OK).** A
+`RelativeCharacteristic` beside `Characteristic`, holding a target index, the
+indices of its datum targets and a tolerance, whose evaluation takes a joint
+covariance source (`design_joint_covariance`'s output, or a `NetworkSolveResult`
+with a `joint_point_covariance(indices)`), applies `datum_referenced_functional`
+and projects onto the tolerance's constraint directions. About forty lines, no
+change to `evaluate_characteristic` or its tests, and `PartFrameScorer` already
+does the same inline, so it would mostly be that logic moved to where the
+step 4 layer can use it. A per-point characteristic stays correct for a quantity
+that really is defined in the tracker's frame.
+
+## Placeholders
+
+Those GKN's own network test will replace (fill an `NPLErrorParameters` with
+`from_fit` / `from_json`; run `hughes_2011_network_scenario`'s machinery on
+their layout):
+
+  * the parameter values and covariance (`hughes_2011_*` are one API T3 in IFM
+    mode, from 2011);
+  * the layout: every coordinate, the 12 obscured pairs and the station yaws of
+    `network.hughes_network` (TODO(source));
+  * the sensor noise (Table 4 is that T3's a posteriori noise);
+  * the prior on mu (5e-7, the paper's value, traceable to the laser wavelength).
+
+Those that need another source:
+
+  * mu itself (printed "1.000": read as 1 + mu, mu ~ 0);
+  * the correlations the paper names but does not quantify (the covariances here
+    are diagonal; the reconstruction suggests gamma-b_y about -0.8, a_E0-b_z about
+    +0.6, a_E2-a_E0 about -0.8, but that is this layout, not a source);
+  * the 0.312 arcsec distance row of Table 4 (CLAUDE.md §4a; open question for NPL);
+  * what `hughes_2011_residual` should be for a factory-compensated tracker
+    between characterisations (drift is not in it);
+  * the tracker's elevation limits (-60 to +77 degrees), not enforced by the
+    visibility layer;
+  * everything in `systematic_std_m` (refraction, thermal drift, nest
+    repeatability, gravity, fixturing), which stays a placeholder floor.
