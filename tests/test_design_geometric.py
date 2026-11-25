@@ -176,3 +176,35 @@ def test_instrument_ids_set_which_stations_share_parameter_errors():
     shared = design_covariances_for_poses(targets, poses, tracker, visible).point_covariance_m2
     independent = design_covariances_for_poses(targets, poses, tracker, visible, instrument_ids=[0, 1, 2]).point_covariance_m2
     assert not np.allclose(shared, independent, rtol=1e-3, atol=0.0)
+
+
+# -- section 5: why per-point reading overstates what a relative quantity suffers -----------------------------
+def separation_statistics(separation_m):
+    """Parameter-induced variance of the distance between two targets
+    `separation_m` apart along x, against the sum of their individual
+    parameter-induced variances (single face, Hughes residual covariance)."""
+    targets, poses, visible = scene()
+    targets[1] = targets[0] + np.array([separation_m, 0.0, 0.0])
+    total = design_joint_covariance(targets, poses, tracker_with(HUGHES_RESIDUAL), visible, [0, 1])[0]
+    noise = design_joint_covariance(targets, poses, LaserTracker(), visible, [0, 1])[0]
+    parameter_part = total - noise
+    n = np.array([1.0, 0.0, 0.0])
+    a, b, c = parameter_part[:3, :3], parameter_part[3:, 3:], parameter_part[:3, 3:]
+    individual = n @ a @ n + n @ b @ n
+    return (n @ (a + b - c - c.T) @ n) / individual, (n @ c @ n) / np.sqrt((n @ a @ n) * (n @ b @ n))
+
+
+def test_common_parameter_errors_cancel_in_the_distance_between_nearby_targets():
+    """Two targets 0.3 m apart, measured from the same trackers, have
+    parameter-induced errors that are almost the same (correlation 0.999): the
+    variance of their separation is about a thousandth of the sum of their
+    individual variances. Read one point at a time -- the per-point
+    `evaluate_characteristic` -- the parameter uncertainty is overstated by
+    that factor for anything defined relative to another measured point. The
+    cancellation fades as the targets move apart."""
+    ratio_near, correlation_near = separation_statistics(0.3)
+    ratio_mid, _ = separation_statistics(1.0)
+    ratio_far, correlation_far = separation_statistics(3.0)
+    assert ratio_near < 0.005 and correlation_near > 0.99
+    assert ratio_near < ratio_mid < ratio_far
+    assert ratio_far > 0.1 and correlation_far < 0.9

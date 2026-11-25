@@ -420,3 +420,19 @@ def test_point_shift_of_a_perfect_tracker_is_the_spherical_jacobian_times_the_re
     np.testing.assert_allclose(shift[0][:, INDEX["a_E0_rad"]], d * elevation_direction, rtol=1e-6)
     np.testing.assert_allclose(shift[0][:, INDEX["b_y0_m"]], -np.array([-np.sin(az), np.cos(az), 0.0]), atol=1e-6)
     np.testing.assert_allclose(shift[0][:, INDEX["lambda_m"]], np.array([np.cos(el) * np.cos(az), np.cos(el) * np.sin(az), np.sin(el)]), rtol=1e-6)
+
+
+# -- the systematic floor and the geometric parameters must not be counted twice ------------------------------
+def test_floor_with_a_parameter_covariance_warns_unless_the_caller_says_it_excludes_the_parameters():
+    import warnings
+
+    with pytest.warns(UserWarning, match="counted twice"):
+        LaserTracker(systematic_std_m=4e-6, geometric_params=NPLErrorParameters.hughes_2011_residual())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        LaserTracker(systematic_std_m=4e-6, geometric_params=NPLErrorParameters.hughes_2011_residual(),
+                     floor_excludes_geometric_parameters=True)                        # said so: silent
+        LaserTracker(systematic_std_m=4e-6)                                           # a floor alone: silent
+        LaserTracker(geometric_params=NPLErrorParameters.hughes_2011_residual())      # parameters alone: silent
+        LaserTracker(systematic_std_m=4e-6, geometric_params=NPLErrorParameters.zero())  # no covariance: silent
+    assert LaserTracker().systematic_std_m == 0.0                                     # the default is unchanged

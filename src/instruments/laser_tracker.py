@@ -41,6 +41,7 @@ axes are exactly range/azimuth/elevation), and the distinction between
 this sensor-noise-only model and the larger, environment-inclusive scatter
 Hughes et al. actually observed.
 """
+import warnings
 from dataclasses import dataclass, replace
 from typing import Optional
 
@@ -83,10 +84,18 @@ class LaserTracker:
     sigma_phi_rad : elevation_rad standard deviation (encoder noise).
     systematic_std_m : an additional, ISOTROPIC standard uncertainty
         (default 0.0 -- off unless a caller opts in) representing effects
-        this model otherwise omits entirely: calibration-parameter
-        uncertainty in the NPL 14-parameter geometric model (CLAUDE.md
-        §4d), thermal drift, atmospheric refraction, SMR/nest
-        repeatability, gravity sag and fixturing. None of these shrink
+        this model otherwise omits entirely: thermal drift, atmospheric
+        refraction, SMR/nest repeatability, gravity sag and fixturing.
+        **It does not stand in for the uncertainty of the NPL geometric
+        parameters any more**: that is modelled properly, with its
+        correlation across targets and stations, when `geometric_params`
+        carries a covariance (below). Keeping the old reading of this floor
+        alongside a parameter set would count it twice, so a nonzero floor
+        with a parameter covariance warns unless the caller sets
+        `floor_excludes_geometric_parameters=True` to say the floor was
+        chosen to cover only the effects listed here (CLAUDE.md §4c: the
+        atmospheric and nest terms are what take the shielded 23 um to the
+        unshielded 40 um). The floor's default is unchanged. None of these shrink
         when a station is moved to a better spot -- they are *irreducible
         by placement*, unlike sigma_d/theta/phi's beam-geometry-dependent
         contribution above. Folding them into one isotropic number is a
@@ -120,6 +129,10 @@ class LaserTracker:
         `covariance_local` below, which has no network to propagate it
         through; with a nonzero parameter set `covariance_local` therefore
         refuses rather than quietly ignoring it.
+    floor_excludes_geometric_parameters : set True to say that `systematic_std_m`
+        covers only what the geometric model does not (see that field), so
+        using both is deliberate. No effect on any result; it silences the
+        double-counting warning in `__post_init__`.
     """
 
     sigma_d_m: float = DEFAULT_SIGMA_D_M
@@ -127,6 +140,16 @@ class LaserTracker:
     sigma_phi_rad: float = DEFAULT_SIGMA_PHI_ARCSEC * ARCSEC_TO_RAD
     systematic_std_m: float = 0.0
     geometric_params: Optional[NPLErrorParameters] = None
+    floor_excludes_geometric_parameters: bool = False
+
+    def __post_init__(self):
+        if (self.systematic_std_m > 0.0 and self.geometric_params is not None and self.geometric_params.covariance.any()
+                and not self.floor_excludes_geometric_parameters):
+            warnings.warn(
+                "systematic_std_m > 0 together with a geometric-parameter covariance: the floor used to stand in for "
+                "the parameters' uncertainty, which is now modelled, so it may be counted twice. Set "
+                "floor_excludes_geometric_parameters=True if the floor covers only refraction, thermal drift, nest "
+                "repeatability, gravity and fixturing.", UserWarning, stacklevel=3)
 
     def covariance_local(self, point_local_m: np.ndarray) -> np.ndarray:
         """3x3 Cartesian covariance of a measured point, in the instrument's
