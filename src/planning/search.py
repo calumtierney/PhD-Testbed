@@ -43,7 +43,7 @@ from scipy.optimize import differential_evolution
 
 from geometry.pose import InstrumentPose
 from geometry.station_track import StationTrack
-from planning.candidates import TrackPose, levelled_orientation, look_at_orientation
+from planning.candidates import TrackPose, levelled_orientation, look_at_orientation, track_centreline_aim_point
 from planning.objectives import (
     ObjectiveFn,
     PlanEvaluation,
@@ -498,17 +498,23 @@ class TrackStationCost:
     PENALTY`, exactly as an unobservable plan does (and `evaluate_plan`'s own
     visibility disqualification still applies on top).
 
-    Orientation is `levelled` by default (a real tracker is levelled; yaw
-    cannot change any covariance, tests/test_station_track.py) or `look_at`.
-    A plain frozen dataclass with no closures, so `workers=-1` can pickle it.
+    Orientation is `levelled` by default (a real tracker is levelled; with the
+    sensor-noise model yaw cannot change any covariance, tests/test_station_track.py,
+    but with geometric parameters it can -- see `planning.candidates.
+    levelled_orientation`) or `look_at`. `aim_point_m` None (levelled only) faces each
+    station at the nearest point on the part's centreline, the rule
+    `planning.candidates.track_candidate_poses` uses, so a position is the same pose
+    here as in the grid. A plain frozen dataclass with no closures, so `workers=-1`
+    can pickle it.
     """
 
     scenario: PlanningScenario
     objective_fn: ObjectiveFn
     track: StationTrack
     n_stations: int
-    aim_point_m: np.ndarray
+    aim_point_m: Optional[np.ndarray]
     orientation_mode: str = "levelled"
+    aim_height_m: float = 1.25  # used only for the centreline rule (aim_point_m None); TrackPose default
 
     def station_poses(self, flat_params: np.ndarray) -> List[TrackPose]:
         make_orientation = levelled_orientation if self.orientation_mode == "levelled" else look_at_orientation
@@ -517,9 +523,14 @@ class TrackStationCost:
             s = float(s_raw) % self.track.perimeter_m
             x, y = self.track.position_xy_m(s)
             position = np.array([x, y, float(height)])
+            aim = self.aim_point_m
+            if aim is None:
+                if self.orientation_mode != "levelled":
+                    raise ValueError("aim_point_m None is only defined for levelled stations; 'look_at' needs an aim point")
+                aim = track_centreline_aim_point(self.track, x, y, self.aim_height_m)
             poses.append(
                 TrackPose(
-                    position_m=position, orientation=make_orientation(position, self.aim_point_m),
+                    position_m=position, orientation=make_orientation(position, aim),
                     s_m=s, height_m=float(height), segment=self.track.segment(s),
                 )
             )
@@ -578,12 +589,17 @@ def track_genetic_algorithm_station_placement(
     `seed_stations` is a list of arrangements, each `[(s_m, height_m), ...]`
     of exactly `n_stations` entries (e.g. another objective's winning plan,
     from `[(p.s_m, p.height_m) for p in result.best.station_poses]`).
-    `aim_point_m` None aims at the scene's target centroid; it changes
-    nothing when levelled (yaw invariance) and sets the tilt for "look_at".
+    `aim_point_m` None: levelled stations face the nearest point on the part's
+    centreline, the same rule as the grid's `track_candidate_poses`; "look_at"
+    stations aim at the scene's target centroid, which sets their tilt. With the
+    sensor-noise model the levelled choice changes nothing (yaw invariance); with
+    geometric parameters it does, by a few tenths of a percent, which is why the
+    grid and the GA must agree on it (`planning.candidates.levelled_orientation`).
     """
-    if aim_point_m is None:
+    if aim_point_m is None and orientation_mode == "look_at":
         aim_point_m = scenario.target_points_m.mean(axis=0)
-    aim_point_m = np.asarray(aim_point_m, dtype=float)
+    if aim_point_m is not None:
+        aim_point_m = np.asarray(aim_point_m, dtype=float)
     if orientation_mode not in ("levelled", "look_at"):
         raise ValueError(f"orientation_mode must be 'levelled' or 'look_at', got {orientation_mode!r}")
 

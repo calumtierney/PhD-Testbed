@@ -220,3 +220,25 @@ def test_a_tracker_compensated_with_nonzero_values_differs_from_the_zero_mean_on
     nonzero = design_covariances_for_poses(targets, poses, tracker_with(uncompensated), visible).point_covariance_m2
     assert np.abs(nonzero - zero_mean).max() < 5e-3 * np.abs(zero_mean).max()
     assert not np.array_equal(nonzero, zero_mean)
+
+
+# -- yaw: a free variable only once the instrument's own errors are modelled -------------------------
+def test_yaw_matters_only_with_geometric_parameters():
+    """Rotating every station about the vertical leaves the sensor-noise covariance unchanged (the
+    azimuth encoder has the same noise at every angle) but not the consider term: the encoder
+    harmonics and axis tilts are fixed in the instrument's frame, so they point somewhere else in the
+    world. A few tenths of a percent to a few percent, not a different answer: but a planner that
+    compares plans must give identical positions identical yaw."""
+    targets, poses, visible = scene()
+    turned = [InstrumentPose(p.position_m, yaw(0.9) @ p.orientation) for p in poses]
+    noise = LaserTracker()
+    full = tracker_with(HUGHES_RESIDUAL)
+
+    a = design_covariances_for_poses(targets, poses, noise, visible).point_covariance_m2
+    b = design_covariances_for_poses(targets, turned, noise, visible).point_covariance_m2
+    np.testing.assert_allclose(a, b, rtol=1e-9, atol=0.0)
+
+    c = design_covariances_for_poses(targets, poses, full, visible).point_covariance_m2
+    d = design_covariances_for_poses(targets, turned, full, visible).point_covariance_m2
+    relative = np.abs(c - d).max() / np.abs(c).max()
+    assert 1e-4 < relative < 0.5

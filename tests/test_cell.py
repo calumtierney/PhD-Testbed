@@ -1,10 +1,12 @@
 """Tests for planning.cell: the factory cell with a reference network."""
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
 import pytest
 
+from instruments.laser_tracker import LaserTracker
 from planning.cell import (
     CellLayoutScorer, CellRiskModel, MaxUncertaintyObjective, RiskObjective, TraceObjective, build_risk_curve,
     ers_nests, factory_cell_scenario, layout_poses, measurement_time_minutes, process_knowledge_for,
@@ -54,15 +56,21 @@ def test_scorer_reproduces_the_full_network_solve_and_the_scalar_visibility(bare
     assert np.array_equal(scorer.visible(poses), station_visibility_matrix(bare, poses))
 
 
-def test_the_reference_network_lets_row_stations_tie_in_and_cuts_uncertainty(cell, bare):
+@pytest.mark.parametrize("model, factor", [("noise-only", 2.5), ("default", 2.2)])
+def test_the_reference_network_lets_row_stations_tie_in_and_cuts_uncertainty(cell, bare, model, factor):
     """Physical gate: without the network two row stations cannot be tied to the anchor at all;
-    with it they can, and the same four loop stations see every characteristic 3-4 times better."""
+    with it they can, and the same four loop stations see every characteristic 3-4 times better
+    with sensor noise alone. The default planning tracker adds parameter errors the network does not
+    reduce (they are shared by every station), so the gain there is smaller: 2.5-3.1 times measured,
+    asserted at 2.2."""
+    if model == "noise-only":
+        cell, bare = replace(cell, tracker=LaserTracker()), replace(bare, tracker=LaserTracker())
     assert not CellLayoutScorer(bare).score(layout_poses(ROWS_2, bare, TRACK)).feasible
     rows = CellLayoutScorer(cell).score(layout_poses(ROWS_2, cell, TRACK))
     assert rows.feasible and np.all(rows.u_m < 15e-6)
     before = CellLayoutScorer(bare).score(layout_poses(LOOPS_4, bare, TRACK))
     after = CellLayoutScorer(cell).score(layout_poses(LOOPS_4, cell, TRACK))
-    assert np.all(after.u_m < before.u_m / 2.5)  # more shared targets: better-determined station poses
+    assert np.all(after.u_m < before.u_m / factor)  # more shared targets: better-determined station poses
     assert after.n_shots > before.n_shots
 
 

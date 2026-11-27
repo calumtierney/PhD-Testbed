@@ -205,8 +205,12 @@ complete:
   Hughes et al. 2011: the forward model, two-face physics, the consider and estimate modes of the
   network layers, and the paper's network test and variance split reproduced
   (`instruments.npl_model`, `network.hughes_network`, `viz.make_two_face_figure`,
-  `viz.run_network_test_reproduction`, `viz.run_npl_side_by_side`). Not the default anywhere:
-  `LaserTracker(geometric_params=...)` switches it on.
+  `viz.run_network_test_reproduction`, `viz.run_npl_side_by_side`). The planning scenarios now default to it
+  (`instruments.laser_tracker.default_planning_tracker()`: consider mode, `hughes_2011_residual()`);
+  `LaserTracker()` stays the step-1 sensor-noise instrument. Saved results and the paper's numbers
+  predate that change and were computed noise-only (see "The planning default" in the document).
+  Also here: the tracker's mechanical elevation range in the visibility layer (opt-in) and
+  `RelativeCharacteristic`, a deviation judged against a fitted datum frame.
 - **planning from a QIF file** (`docs/qif_integration.md`) — an input route, not a
   step: `python -m viz.plan_from_qif file.qif` reads a QIF (ISO 23952) document
   (`interchange.qif`), sizes a cell round the part or assembly and plans it

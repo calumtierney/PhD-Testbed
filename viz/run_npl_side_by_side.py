@@ -6,8 +6,10 @@ The full model here is *consider mode* with `hughes_2011_residual()`: one
 tracker, compensated, its remaining parameter errors (Tables 2-3
 uncertainties, no correlations) shared by every station. The characteristic
 layer is the per-point one as it stands (`characteristics.characteristic`):
-each characteristic reads only its own point's 3 x 3 covariance. Nothing is
-adopted as a default; this reports.
+each characteristic reads only its own point's 3 x 3 covariance. Written when
+the full model was not yet the default; the "noise-only" arm now sets
+`LaserTracker()` explicitly (`noise_only`) because the scenario builders' own
+default is `instruments.laser_tracker.default_planning_tracker()`, the full model.
 
   A  how much of each characteristic's uncertainty the parameters add, per
      point, on the existing scenes (and, for the factory cell, what the
@@ -57,6 +59,13 @@ def with_model(scenario):
     return replace(scenario, tracker=LaserTracker(geometric_params=RESIDUAL))
 
 
+def noise_only(scenario):
+    """The step-1 instrument, set explicitly: the scenario builders' own default is now the full
+    model (`instruments.laser_tracker.default_planning_tracker`), so the noise-only arm of this
+    comparison must not rely on it."""
+    return replace(scenario, tracker=LaserTracker())
+
+
 def station_positions(evaluation):
     return np.array([p.position_m for p in evaluation.station_poses])
 
@@ -103,7 +112,7 @@ def main():
     results = {"model": "consider mode, hughes_2011_residual(), one tracker, per-point characteristic layer"}
 
     # -- B: the headline experiment --------------------------------------------------------------
-    scenario_noise = default_two_cluster_scenario()
+    scenario_noise = noise_only(default_two_cluster_scenario())
     scenario_full = with_model(scenario_noise)
     print("headline: noise-only ...", flush=True)
     start = time.time()
@@ -124,7 +133,7 @@ def main():
 
     # -- C: the station-track experiment, grid stage ---------------------------------------------------
     track = long_part_track()
-    track_noise = long_part_two_cluster_scenario(track=track)
+    track_noise = noise_only(long_part_two_cluster_scenario(track=track))
     track_full = with_model(track_noise)
     coarse = track_candidate_poses(track, 1.0, LONG_PART_GRID_HEIGHTS_M)
     print("track grid: noise-only ...", flush=True)
@@ -150,7 +159,7 @@ def main():
     contribution["long_part_on_track (anchor frame), A1 plan, 3 added stations"] = per_point_contribution(
         [evaluate_plan(plan_t.station_poses, track_noise).per_characteristic_uncertainty_m[c.name] for c in track_noise.characteristics],
         [evaluate_plan(plan_t.station_poses, track_full).per_characteristic_uncertainty_m[c.name] for c in track_full.characteristics])
-    cell_noise = factory_cell_scenario(track=track)
+    cell_noise = noise_only(factory_cell_scenario(track=track))
     cell_full = with_model(cell_noise)
     cell_layouts = json.loads((RESULTS_PATH.parent / "cell_results_datum.json").read_text())["layouts"]
     for key in ("C|3", "C|4"):

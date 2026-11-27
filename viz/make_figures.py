@@ -467,7 +467,11 @@ def make_panel8_mixed_tolerance():
       comparison (A0, A1, B=C each get their own panel) rather than the
       two-way A0=A1-vs-B=C layout the other figures use.
     """
-    scenario = mixed_tolerance_two_cluster_scenario()
+    # The step-1 sensor-noise instrument, set explicitly (as the other panels do): these panels show A0 and
+    # A1 separating under sensor noise alone. Under the planning default (NPL parameters in consider mode)
+    # they pick the same stations on both grids, so the panel8c title would be false;
+    # docs/step1b_npl_geometric_model.md records that outcome.
+    scenario = mixed_tolerance_two_cluster_scenario(tracker=LaserTracker())
 
     print("Running mixed-tolerance headline experiment, full 24-candidate grid ...")
     t0 = time.time()

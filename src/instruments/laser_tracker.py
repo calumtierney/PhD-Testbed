@@ -230,3 +230,37 @@ def reallocatable_fraction(tracker: LaserTracker, point_local_m: np.ndarray) -> 
     if total_variance == 0.0:
         return 1.0
     return geometric_variance / total_variance
+
+
+def default_planning_tracker() -> LaserTracker:
+    """The instrument the planning scenarios assume when none is passed: the
+    step-1 sensor noise plus the NPL geometric model's *residual* parameter
+    errors, in consider mode (`geometric_params=NPLErrorParameters.
+    hughes_2011_residual()`, `docs/step1b_npl_geometric_model.md`).
+
+    Why this and not `LaserTracker()`. `LaserTracker()` is the step-1 model:
+    sensor noise only, which is what the CLAUDE.md §4b gate tests and what the
+    experiments before the NPL model were run with. It leaves out that a real
+    tracker's mechanism has errors of its own (axis offsets and tilts, encoder
+    harmonics, a range offset) which are not independent between shots: every
+    shot a tracker takes shares them. The residual set, with its Tables 2-3
+    uncertainties as a covariance and zero mean, is the usual first treatment of
+    those errors after the tracker's own compensation; the geometric
+    parameters then enter the network covariance as a shared consider term
+    (`network.design`, `network.solve`).
+
+    Both are still available: pass `tracker=LaserTracker()` to a scenario
+    builder for the step-1 noise-only instrument (what every result saved before
+    this default changed was computed with), or `LaserTracker(geometric_params=
+    ...)` for a measured parameter set.
+
+    `systematic_std_m` is left at 0: that floor used to stand in for exactly the
+    errors now modelled, and a nonzero value with a parameter covariance warns
+    (see `LaserTracker`).
+
+    TODO(source): `hughes_2011_residual()` is one API T3 in IFM mode from 2011,
+    not a factory-compensated Leica or FARO between characterisations; GKN's own
+    tracker and its network test will replace it (see the placeholder list in
+    `docs/step1b_npl_geometric_model.md`).
+    """
+    return LaserTracker(geometric_params=NPLErrorParameters.hughes_2011_residual())

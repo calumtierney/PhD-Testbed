@@ -154,12 +154,20 @@ def levelled_orientation(position_m: np.ndarray, aim_point_m: np.ndarray) -> np.
     encoders have different noise (0.485 vs 0.694 arcsec): a tilted frame
     swaps the roles of the two and so rotates the larger lateral error.
 
-    **Yaw itself has no effect on any covariance this codebase computes.** The
+    **With the sensor-noise model, yaw has no effect on any covariance.** The
     azimuth encoder covers 360 degrees with the same noise at every angle, so
     turning the whole instrument about the vertical leaves the global-frame
     covariance of every target unchanged (tests/test_station_track.py checks
-    this to rounding error). The choice of aim point here therefore only fixes
-    which way the local x axis points on a figure; it cannot change a result.
+    this to rounding error). The choice of aim point then only fixes which way
+    the local x axis points on a figure; it cannot change a result.
+
+    **With the NPL geometric parameters it does.** Their errors are fixed in
+    the instrument's frame (the azimuth encoder's harmonics, the transit-axis
+    and beam tilts), so rotating the instrument rotates where they point; the
+    effect is a few tenths of a percent on the cell scenes
+    (tests/test_station_track_scenario.py). Yaw is then a free variable the
+    planners do not search, so every generator of levelled poses must use the
+    same rule for it (`track_centreline_aim_point`).
 
     When `aim_point_m` is at the station's own height this is identical to
     `look_at_orientation`. If the aim is directly above or below the station
@@ -197,6 +205,21 @@ def track_s_values(track: StationTrack, spacing_m: float) -> np.ndarray:
     return np.arange(n) * (track.perimeter_m / n)
 
 
+def track_centreline_aim_point(track: StationTrack, x_m: float, y_m: float, aim_height_m: float = 1.25) -> np.ndarray:
+    """The point a station at track position (x_m, y_m) faces by default: the nearest
+    point on the part's centreline (x clamped to the part's extent, y = the part's centre,
+    z = `aim_height_m`; a placeholder, TODO(source): mid-height of the real part).
+
+    One definition, used by `track_candidate_poses` (the grid) and by
+    `planning.search.TrackStationCost` (the GA) when no aim point is given, so the same
+    (s, height) is the same pose in both. That used to be cosmetic: with the sensor-noise
+    model a levelled station's yaw cannot change any covariance. With the NPL geometric
+    parameters it can (the azimuth-encoder harmonics and the axis tilts are fixed in the
+    instrument's frame), by a few tenths of a percent -- enough to make a seeded GA look
+    worse than the grid it was seeded from if the two disagree on yaw."""
+    return np.array([np.clip(x_m, track.part_x_min_m, track.part_x_max_m), track.part_centre_y_m, aim_height_m])
+
+
 def track_candidate_poses(
     track: StationTrack,
     spacing_m: float,
@@ -220,7 +243,8 @@ def track_candidate_poses(
     (x clamped to the part's extent, y = the part's centre, z =
     `aim_height_m`; a placeholder, TODO(source): mid-height of the real part).
     It sets only the local x direction on a figure when levelled, and has no
-    effect on any result (yaw invariance); it does matter for "look_at".
+    effect on any sensor-noise-only result (yaw invariance; with geometric
+    parameters see `levelled_orientation`); it does matter for "look_at".
     """
     if orientation_mode not in ("levelled", "look_at"):
         raise ValueError(f"orientation_mode must be 'levelled' or 'look_at', got {orientation_mode!r}")
@@ -233,7 +257,7 @@ def track_candidate_poses(
         for height in station_heights_m:
             position = np.array([x, y, height])
             if aim_point_m is None:
-                aim = np.array([np.clip(x, track.part_x_min_m, track.part_x_max_m), track.part_centre_y_m, aim_height_m])
+                aim = track_centreline_aim_point(track, x, y, aim_height_m)
             else:
                 aim = np.asarray(aim_point_m, dtype=float)
             poses.append(

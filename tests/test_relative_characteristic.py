@@ -69,7 +69,7 @@ def test_profile_characteristic_reproduces_the_datum_cell_and_part_frame_scorers
     """With a placement floor the scorers add it, in quadrature, on top of the
     datum-referenced variance; the characteristic layer does not (the floor is a property
     of the tracker, applied where the planner chooses to), so the test adds it back."""
-    bare = replace(bare, tracker=replace(bare.tracker, systematic_std_m=floor_m))
+    bare = replace(bare, tracker=LaserTracker(systematic_std_m=floor_m))  # noise-only, so the floor is not counted twice
     poses = layout_poses(LOOPS_4, bare, TRACK)
     joint, subset, datum = cell_joint(bare, poses)
     old = DatumCellScorer(bare).score(poses)

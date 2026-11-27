@@ -82,7 +82,7 @@ from geometry.mesh import TriangleMesh
 from geometry.pose import InstrumentPose
 from geometry.station_track import StationTrack
 from geometry.visibility import VisibilityLimits
-from instruments.laser_tracker import LaserTracker
+from instruments.laser_tracker import LaserTracker, default_planning_tracker
 from interchange.qif import QifCharacteristic, QifDocument
 from planning.cell import (
     CellRiskModel, MaxUncertaintyObjective, PartFrameScorer, RiskObjective, TraceObjective, WeightedUncertaintyObjective,
@@ -459,7 +459,7 @@ def build_qif_cell(
     anchor_xy = track.position_xy_m(track.tip_minus_x_s_m)
     anchor = np.array([anchor_xy[0], anchor_xy[1], float(np.mean(rules.station_height_bounds_m))])
     scenario = PlanningScenario(
-        target_points_m=points, tracker=tracker if tracker is not None else LaserTracker(),
+        target_points_m=points, tracker=tracker if tracker is not None else default_planning_tracker(),
         characteristics=characteristics, assignments=assignments, decision_rules=decision_rules,
         anchor_pose=InstrumentPose(position_m=anchor, orientation=levelled_orientation(anchor, points.mean(axis=0))),
         target_normals_m=normals, obstacles=obstacle,

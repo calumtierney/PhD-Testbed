@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 
 from geometry.pose import InstrumentPose
+from instruments.laser_tracker import LaserTracker
 from geometry.visibility import VisibilityLimits, VisibilityReason, check_target_visibility
 from planning.candidates import levelled_orientation, track_candidate_poses
 from planning.experiment import (
@@ -84,7 +85,10 @@ def test_marginal_prior_swap_works_on_the_new_scene():
 
 # -- gate: single-station uncertainty grows with range, faster across the beam than along it
 def test_single_station_uncertainty_rises_with_range_faster_across_the_beam_than_along_it():
-    scenario = long_part_two_cluster_scenario()
+    # The single-shot sensor-noise covariance (`covariance_global`), so the step-1 instrument set
+    # explicitly: the default planning tracker carries geometric parameters, which enter through the
+    # network layers and which the single-shot covariance refuses rather than ignore.
+    scenario = long_part_two_cluster_scenario(tracker=LaserTracker())
     target = scenario.target_points_m[1]  # a +y-face target at x = 4.0 m
     lateral, radial, ranges = [], [], []
     for x in (4.0, 8.0, 12.0, 15.0):  # a row station sliding away along the part
@@ -228,6 +232,25 @@ def test_track_cost_takes_s_modulo_the_perimeter_and_blocked_s_is_infeasible():
     assert poses_a[0].segment == "-y row" and poses_a[0].height_m == 1.0
 
 
+def test_grid_and_ga_agree_on_the_pose_at_a_track_position():
+    """The same (s, height) must be the same pose whether it comes from the grid's
+    `track_candidate_poses` or the GA's `TrackStationCost` (levelled, no explicit aim). With the
+    sensor-noise model a levelled station's yaw cannot change a covariance, so this was cosmetic;
+    with the NPL geometric parameters it changes one by a few tenths of a percent
+    (`test_yaw_matters_only_with_geometric_parameters`), enough to make a seeded GA look worse than
+    the grid winner it started from."""
+    scenario = long_part_two_cluster_scenario()
+    grid_poses = track_candidate_poses(TRACK, 1.0, [1.0, 2.4])
+    chosen = grid_poses[5::31][:4]
+    flat = np.array([[p.s_m, p.height_m] for p in chosen]).ravel()
+    cost = TrackStationCost(scenario, objective_a0_trace_covariance, TRACK, len(chosen), None)
+    for from_grid, from_ga in zip(chosen, cost.station_poses(flat)):
+        np.testing.assert_allclose(from_ga.position_m, from_grid.position_m, atol=1e-12)
+        np.testing.assert_allclose(from_ga.orientation, from_grid.orientation, atol=1e-12)
+    with pytest.raises(ValueError, match="look_at"):
+        TrackStationCost(scenario, objective_a0_trace_covariance, TRACK, 1, None, "look_at").station_poses(np.array([5.0, 1.0]))
+
+
 def test_track_ga_seeded_with_the_grid_winner_is_never_worse_and_stays_on_the_track():
     """Plumbing check, in the spirit of the ring's `test_ga_search_is_at_least_
     as_good_as_a_coarse_grid_search`: a GA over (s, height) that starts from
@@ -245,7 +268,11 @@ def test_track_ga_seeded_with_the_grid_winner_is_never_worse_and_stays_on_the_tr
         seed_stations=[winner],
     )
     assert ga.best is not None
-    assert ga.best_objective_value <= grid.best_objective_value * (1 + 1e-9)
+    # Not 1e-9: the objective comes from a dense network solve whose finite-difference Jacobian makes it
+    # noisy at about 1e-7 relative when the positions change at the 1e-13 m level (measured: median 1.1e-7
+    # noise-only, 1.9e-7 with the NPL parameters, on the factory-cell LOOPS_4 plan), and the GA rebuilds the
+    # seeded positions through differential evolution's [0, 1] scaling, which changes them at that level.
+    assert ga.best_objective_value <= grid.best_objective_value * (1 + 1e-6)
     assert all(p.segment in ("-y row", "+x loop", "+y row", "-x loop") for p in ga.best.station_poses)
     assert all(0.8 <= p.height_m <= 3.0 for p in ga.best.station_poses)
     with pytest.raises(ValueError):

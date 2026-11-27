@@ -512,7 +512,11 @@ def test_mixed_tolerance_scenario_can_separate_a0_from_a1():
     ranking to lose to) they do separate, which is what this test checks:
     a concrete, reproducible scene and resolution where A0 != A1 is no
     longer just a theoretical possibility."""
-    scenario = mixed_tolerance_two_cluster_scenario()
+    # The step-1 noise-only instrument, set explicitly: this separation is a property of the scene
+    # under sensor noise alone. Under the default planning tracker (NPL parameters in consider
+    # mode) the parameter error adds nearly the same variance in every direction a tolerance
+    # constrains, and A0 and A1 land on the same plan here (docs/step1b_npl_geometric_model.md).
+    scenario = mixed_tolerance_two_cluster_scenario(tracker=LaserTracker())
     result = run_headline_experiment(
         scenario, azimuths_deg=[0, 90, 180, 270], elevations_deg=[0, 30], n_stations=2
     )
@@ -552,14 +556,19 @@ def test_headline_experiment_reports_required_fields():
 
 
 def test_headline_experiment_respects_max_uncertainty_constraint():
+    # Noise-only instrument, set explicitly. With the default planning tracker (NPL parameters in
+    # consider mode) the same cap -- 10% below the unconstrained choice -- has no feasible plan on this
+    # small candidate set (B's loosest 11.9 um against 9.9 um noise-only, and placement barely moves
+    # the parameter part): `plan_b` is None, a different but equally valid outcome.
+    scenario = default_two_cluster_scenario(tracker=LaserTracker())
     result_unconstrained = run_headline_experiment(
-        azimuths_deg=[0, 90, 180, 270], elevations_deg=[0, 30], n_stations=2
+        scenario, azimuths_deg=[0, 90, 180, 270], elevations_deg=[0, 30], n_stations=2
     )
     loosest_uncertainty_m = max(result_unconstrained.plan_b.per_characteristic_uncertainty_m.values())
     cap = loosest_uncertainty_m * 0.9  # tighter than what B picked unconstrained
 
     result_constrained = run_headline_experiment(
-        azimuths_deg=[0, 90, 180, 270], elevations_deg=[0, 30], n_stations=2, max_uncertainty_m=cap
+        scenario, azimuths_deg=[0, 90, 180, 270], elevations_deg=[0, 30], n_stations=2, max_uncertainty_m=cap
     )
     assert max(result_constrained.plan_b.per_characteristic_uncertainty_m.values()) <= cap + 1e-9
 

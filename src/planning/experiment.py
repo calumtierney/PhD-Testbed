@@ -28,7 +28,7 @@ from geometry.mesh import box_mesh
 from geometry.pose import InstrumentPose
 from geometry.station_track import StationTrack
 from geometry.visibility import VisibilityLimits
-from instruments.laser_tracker import LaserTracker
+from instruments.laser_tracker import LaserTracker, default_planning_tracker
 from planning.candidates import hemisphere_candidate_poses, levelled_orientation
 from planning.objectives import (
     ObjectiveFn,
@@ -129,8 +129,12 @@ def default_two_cluster_scenario(
     to make between them. Without that separation there would be nothing
     for the objectives to disagree about.
 
-    `tracker` defaults to a pure-sensor-noise `LaserTracker()`
-    (`systematic_std_m=0`); pass one with a nonzero `systematic_std_m` to
+    `tracker` defaults to `instruments.laser_tracker.default_planning_tracker()`:
+    sensor noise plus the NPL geometric model's residual parameter errors in
+    consider mode (`systematic_std_m=0`). Results saved before that default was
+    made (everything in `results/` unless its documentation says otherwise) used
+    the step-1 noise-only `LaserTracker()`; pass that to reproduce them. Pass a
+    tracker with a nonzero `systematic_std_m` (and no `geometric_params`) to
     see how an irreducible-by-placement uncertainty floor changes the
     comparison (CLAUDE.md referee note M6; `docs/step6_headline_experiment.md`'s
     "Uncertainty budget" section runs this).
@@ -185,7 +189,7 @@ def default_two_cluster_scenario(
 
     return PlanningScenario(
         target_points_m=target_points_m,
-        tracker=tracker if tracker is not None else LaserTracker(),
+        tracker=tracker if tracker is not None else default_planning_tracker(),
         characteristics=characteristics,
         assignments=assignments,
         decision_rules=decision_rules,
@@ -340,7 +344,7 @@ def mixed_tolerance_two_cluster_scenario(
 
     return PlanningScenario(
         target_points_m=target_points_m,
-        tracker=tracker if tracker is not None else LaserTracker(),
+        tracker=tracker if tracker is not None else default_planning_tracker(),
         characteristics=characteristics,
         assignments=assignments,
         decision_rules=decision_rules,
@@ -513,7 +517,7 @@ def wing_four_point_scenario(
 
     return PlanningScenario(
         target_points_m=target_points_m,
-        tracker=tracker if tracker is not None else LaserTracker(),
+        tracker=tracker if tracker is not None else default_planning_tracker(),
         characteristics=characteristics,
         assignments=assignments,
         decision_rules=decision_rules,
@@ -665,7 +669,7 @@ def long_part_two_cluster_scenario(
     part = box_mesh(np.array([0.0, -half_width, part_bottom_m]), np.array([part_length_m, half_width, part_top_m]))
     return PlanningScenario(
         target_points_m=target_points_m,
-        tracker=tracker if tracker is not None else LaserTracker(),
+        tracker=tracker if tracker is not None else default_planning_tracker(),
         characteristics=characteristics,
         assignments=assignments,
         decision_rules=decision_rules,

@@ -5,9 +5,11 @@ physics (gates 1-4); the consider term in the fast design covariance and in the
 dense solve; estimate mode with priors and a rank test; the Hughes et al.
 network test reproduced on a reconstructed layout (gate 5) and the paper's
 variance split (gate 6); the noise-only/full-model side-by-side on the existing
-experiments. **Not adopted as a default anywhere**: with `geometric_params`
-unset every result is what it was. Which default is yours to decide; the numbers
-for that decision are in "Side by side" below.
+experiments. **Now the planning default** (see "The planning default" at the end):
+`LaserTracker()` is still the step-1 sensor-noise instrument, but a scenario
+builder given no tracker uses `default_planning_tracker()` -- consider mode with
+`hughes_2011_residual()`. The "Side by side" numbers below were measured against
+the old noise-only default.
 
 Code: `src/instruments/npl_model.py` (the model), `src/network/design.py` and
 `src/network/solve.py` (consider and estimate modes), `src/network/hughes_network.py`
@@ -400,3 +402,93 @@ On the track scenes the limit changes nothing: the stations are low and the targ
 metres away. On the wing it does: a station high above the part (above 6 m: 6686 -> 6192
 pairs) is looking down more steeply than -60 degrees at the targets under it. So switching it
 on would change the wing experiment's feasible set and nothing else measured here.
+
+## The planning default
+
+`instruments.laser_tracker.default_planning_tracker()` is sensor noise plus the
+NPL geometric model's residual parameter errors in consider mode
+(`NPLErrorParameters.hughes_2011_residual()`, `systematic_std_m = 0`). Every scenario
+builder that takes `tracker=None` uses it: `default_two_cluster_scenario`,
+`three_cluster_scenario`, `mixed_tolerance_two_cluster_scenario`,
+`wing_four_point_scenario`, `long_part_two_cluster_scenario` (and so `factory_cell_scenario`),
+and `planning.qif_cell.build_qif_cell`. `LaserTracker()` is unchanged and is what to
+pass for the step-1 instrument; an explicit tracker is always honoured.
+
+Not switched, on purpose:
+
+  * the wing-box **inspection** experiment (`planning/inspection.py`,
+    `build_inspection_scenario`): a separate experiment with its own scenario class
+    and results, not among the scenes the side-by-side measured (a test pins it
+    noise-only so a later change is deliberate);
+  * the floor sweeps (`viz/run_conditions_sweep.py`, the `systematic_std_m` cases of
+    `viz/run_cell_sensitivity.py`, `make_figures`' 0 and 10 um panels): they pass
+    `LaserTracker(systematic_std_m=...)` explicitly, which is what that floor stood in for;
+  * the side-by-side runner's noise-only arm, which now sets `LaserTracker()` explicitly
+    (it used to rely on the default);
+  * `make_figures`' mixed-tolerance panels, pinned to `LaserTracker()`: they show A0 and
+    A1 separating, which they do not under the new default (below), so the panel8c title
+    would be false. `make_figures` still leaves `git diff results/` empty.
+
+### What the switch exposed
+
+  1. **Yaw is no longer free.** With sensor noise alone a levelled station's yaw changes no
+     covariance (the azimuth encoder is the same at every angle). The NPL parameters are fixed
+     in the instrument's frame (encoder harmonics, axis tilts), so rotating a station about the
+     vertical moves the uncertainties by 0.2-0.5% on the factory-cell scene
+     (`tests/test_design_geometric.py::test_yaw_matters_only_with_geometric_parameters`).
+     The planners do not search yaw, so every generator of levelled poses has to use the same
+     rule. The grid (`track_candidate_poses`) faced each station at the nearest point on the
+     part's centreline; the GA (`TrackStationCost`) at the scene centroid, which made a GA seeded
+     with the grid's winner look 0.26% worse than the winner. Both now use
+     `planning.candidates.track_centreline_aim_point` when no aim point is given (levelled
+     only; `look_at` keeps the centroid), pinned by a test. Other callers that pass an explicit
+     centroid aim (`planning.cell.layout_poses`, `planning.process_evidence`, the figure scripts)
+     are unchanged and consistent among themselves. **Open question:** treat yaw as a search
+     variable, or fix a convention? A convention is what is built; a third searched variable
+     changes the optimiser, which CLAUDE.md §3 says to hold constant.
+  2. **Mixed tolerances stop separating A0 from A1** on the reduced 8-candidate grid
+     (`test_mixed_tolerance_scenario_can_separate_a0_from_a1`, now pinned noise-only). At the
+     full 24-candidate grid A0 and A1 already agreed under both models; B and C agree under both.
+     The parameter error adds almost the same variance in every direction a tolerance
+     constrains, which narrows what a tolerance-aware objective can see. It is one scene and one
+     grid, not a general claim.
+  3. **The reference network helps less.** The same four loop stations see every characteristic
+     3-4 times better with the 28 reference nests under sensor noise; 2.5-3.1 times under the
+     default, because the parameter errors are shared by every station and the network does not
+     reduce them. It still cuts uncertainty by more than half.
+  4. **A tight uncertainty cap becomes infeasible.** The headline scene's cap at 0.9 of B's
+     unconstrained loosest characteristic (9.9 um noise-only, 11.9 um default) has a feasible plan
+     noise-only and none under the default on the 8-candidate set.
+  5. **The single-shot covariance refuses.** `LaserTracker.covariance_global` raises for a
+     tracker with parameters (it has no network to propagate them through); plotting and
+     figure code that calls it needs an explicit noise-only tracker.
+  6. **Objective noise.** Unrelated to the model: the dense network solve's finite-difference
+     Jacobian makes `evaluate_plan`'s objective noisy at about 1e-7 relative when positions change
+     at the 1e-13 m level (median 1.1e-7 noise-only, 1.9e-7 default). A comparison tighter than
+     that, such as "GA never worse than the grid it was seeded from", needs a tolerance above it;
+     the seeded-GA test now uses 1e-6, not 1e-9.
+
+### Saved results predate the switch
+
+Everything already in `results/` was computed with the noise-only `LaserTracker()`, and so
+were the numbers in `docs/` and `docs/paper/`. Nothing was regenerated. Re-running a runner that
+takes the default tracker now gives full-model numbers, and some of those runners **read saved
+noise-only results** (layouts, plans) and re-evaluate them, which would mix the two models:
+`viz/make_paper_figures.py`, `viz/make_station_track_experiment_figures.py`,
+`viz/make_three_cluster_figure.py` (each draws saved results against a default scenario) and
+`viz/run_npl_side_by_side.py` (handled: its noise-only arm is explicit).
+
+Runners and figure scripts whose scenario now defaults to the full model:
+`make_cluster_weight_explainer`, `make_marginal_shape_figure`, `make_paper_figures`,
+`make_station_track_experiment_figures`, `make_three_cluster_figure`, `plan_from_qif`,
+`run_cell_experiment`, `run_cell_sensitivity` (its default case), `run_station_track_experiment`,
+`run_station_track_iso_risk`, `run_station_track_process_evidence`,
+`run_station_track_station_count`, and `run_headline_experiment()` / `run_wing_experiment()`
+called without a scenario. Regenerating the paper's results under the full model is a re-run of
+those, in an order that does not mix saved and fresh layouts (hours for the searches), and a
+rewrite of the numbers in `docs/paper/`; to reproduce the earlier numbers, pass
+`tracker=LaserTracker()`.
+
+`RelativeCharacteristic` is built but not wired into the headline or track objectives, which
+still read points one at a time in the anchor frame; under the new default their parameter
+share is the per-point one (41% of variance on the headline scene, 4% on the track).
