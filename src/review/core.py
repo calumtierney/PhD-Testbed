@@ -359,7 +359,7 @@ def compare_plans(reviews: Sequence[PlanReview], reference: int = 0) -> Dict[str
     statements: List[str] = []
     if nothing is not None and feasible_rows and min(r["expected_wrong_decisions"] for r in feasible_rows) > nothing:
         statements.append(
-            f"every feasible plan's expected wrong decisions exceed the {nothing:.3g} of measuring nothing: under these process statistics "
+            f"Every feasible plan's expected wrong decisions exceed the {nothing:.3g} of measuring nothing: under these process statistics "
             "the model prices measurement as creating false rejections faster than it prevents false acceptances "
             "(planning.process_evidence explains why, and the statistics here may be placeholders); read the plans against each other, "
             "not against the nothing-measured line")
@@ -369,7 +369,7 @@ def compare_plans(reviews: Sequence[PlanReview], reference: int = 0) -> Dict[str
         "tracker_label": ref.provenance["tracker_label"], "settings": ref.provenance["settings"],
         "provenance": ref.provenance, "risk_if_nothing_is_measured": nothing,
         "rows": rows, "characteristics": by_characteristic, "ranking_by_expected_wrong_decisions": ranking,
-        "caveat": ("an algorithm plan is the best a differential-evolution search found, not provably the best; a plan with "
+        "caveat": ("An algorithm plan is the best a differential-evolution search found, not provably the best; a plan with "
                    "lower risk is not thereby better on anything this model does not contain"),
     }
 

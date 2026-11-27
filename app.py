@@ -11,7 +11,7 @@ codebase otherwise builds, worth deciding on deliberately rather than
 growing by default -- this file is that deliberate, scoped addition, not
 an attempt to reproduce every `viz.make_figures` panel interactively.
 
-Two tabs:
+Three tabs:
 
 1. **Tracker error ellipsoid** (step 1) -- move range/azimuth/elevation/
    systematic-term sliders, watch the per-point covariance ellipsoid and
@@ -24,6 +24,10 @@ Two tabs:
    characteristic's PFA/PFR update live. Same call
    `viz.make_figures.make_panel5_risk` makes once per cluster; here any
    process, not just the two fixed clusters.
+3. **Plan review** -- compare measurement plans (an engineer's, the algorithms') on the
+   whole chain, in decision terms, and sign one off. A thin layer over `src/review`
+   (`viz/plan_review_tab.py`); every review is logged outside the repository. See
+   `docs/plan_review.md`.
 """
 import numpy as np
 import streamlit as st
@@ -32,6 +36,7 @@ from geometry.pose import InstrumentPose
 from geometry.scene import Scene
 from instruments.laser_tracker import LaserTracker
 from risk.jcgm106 import ClusterAssignment, DecisionRule, FeatureCluster, ProcessPrior, evaluate_conformity_risk
+from viz.plan_review_tab import render as render_plan_review
 from visualization.plotting import plot_risk_vs_uncertainty, plot_scene
 
 st.set_page_config(page_title="LVM Testbed Explorer", layout="wide")
@@ -42,7 +47,7 @@ st.caption(
     "(`python -m viz.make_figures`) this complements."
 )
 
-tab_tracker, tab_risk = st.tabs(["Tracker error ellipsoid (step 1)", "Conformity risk (step 5)"])
+tab_tracker, tab_risk, tab_review = st.tabs(["Tracker error ellipsoid (step 1)", "Conformity risk (step 5)", "Plan review"])
 
 with tab_tracker:
     st.markdown(
@@ -132,3 +137,6 @@ with tab_risk:
         "uncertainty; push it down near AS13006's 1.33 floor (or below) and risk "
         "should respond sharply to uncertainty across the whole range."
     )
+
+with tab_review:
+    render_plan_review()

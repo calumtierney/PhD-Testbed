@@ -221,6 +221,15 @@ complete:
   sample file (`scenes/qif/`), which is a small sheet-metal part: no large-volume QIF
   file has been tried yet.
 
+- **plan review** (`docs/plan_review.md`) — an input and output route, not a step: score a measurement plan
+  someone made (an engineer's, an algorithm's; a versioned JSON plan file, `interchange.plan_file`) on the same chain
+  as the planners, search the algorithm counterparts (same optimiser, settings and seed), and compare them in
+  decision terms: uncertainty, TUR, PFA/PFR, unmeasured characteristics priced at their prior, an infeasible plan
+  reported with its reasons and never repaired. `streamlit run app.py` (the "Plan review" tab) or
+  `python -m viz.review_plans <scene> <plan files>`; `src/review/` is the pure-Python core. The instrument model
+  is a required choice with no default. Every review is logged (append-only JSON Lines, outside the repository,
+  scene names left out by default). Runs offline; no customer data in the repository; no licence file added.
+
 **Visualization** (`src/visualization`, not one of the six steps — see
 its module docstring): matplotlib plotting for scenes, per-point error
 ellipsoids, visibility results and network-solve outcomes, so a

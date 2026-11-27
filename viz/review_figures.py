@@ -81,14 +81,24 @@ def plan_view_figure(scene, reviews: Sequence[PlanReview], max_columns: int = 3)
             ax.scatter(points[idx, 0], points[idx, 1], marker=CLUSTER_MARKERS[j % len(CLUSTER_MARKERS)], s=28, color=INK,
                        label=f"characteristics, cluster {j + 1}", zorder=3)
         off_drawing = []
+        drawn = []  # stations inside the drawing, grouped where they stand within 0.75 m of each other in plan (a label each would overprint)
         for st in review.stations:
             x, y, z = st["position_cell_m"]
             if not (x_limits[0] <= x <= x_limits[1] and y_limits[0] <= y <= y_limits[1]):
                 off_drawing.append(f"S{st['index']} at ({x:.0f}, {y:.0f}, {z:.1f}) m")
                 continue
-            marker = ax.scatter([x], [y], marker="*", s=230, color=SERIES_COLOURS[index % MAX_SERIES], edgecolors=INK, linewidths=0.8, zorder=5,
-                                label="tracker station (numbered)")
-            ax.annotate(f"S{st['index']}\n{z:.1f} m", (x, y), textcoords="offset points", xytext=(8, 6), fontsize=7.5, color=INK, zorder=6)
+            for group in drawn:
+                if np.hypot(x - group[0][1], y - group[0][2]) < 0.75:
+                    group.append((st["index"], x, y, z))
+                    break
+            else:
+                drawn.append([(st["index"], x, y, z)])
+            ax.scatter([x], [y], marker="*", s=230, color=SERIES_COLOURS[index % MAX_SERIES], edgecolors=INK, linewidths=0.8, zorder=5,
+                       label="tracker station (numbered)")
+        for group in drawn:
+            names = ", ".join(f"S{i}" for i, _, _, _ in group)
+            heights = " | ".join(f"{z:.1f}" for _, _, _, z in group)
+            ax.annotate(f"{names}\n{heights} m", (group[0][1], group[0][2]), textcoords="offset points", xytext=(8, 6), fontsize=7.5, color=INK, zorder=6)
         ax.set_xlim(x_limits)
         ax.set_ylim(y_limits)
         ax.set_aspect("equal")
