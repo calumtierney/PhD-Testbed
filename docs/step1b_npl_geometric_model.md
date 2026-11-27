@@ -300,16 +300,43 @@ Which consumers are affected:
     side-by-side above measures;
   * the wing-box inspection experiment (`planning/inspection*.py`) was not touched.
 
-**Smallest change proposed (not built; it needs your OK).** A
-`RelativeCharacteristic` beside `Characteristic`, holding a target index, the
-indices of its datum targets and a tolerance, whose evaluation takes a joint
-covariance source (`design_joint_covariance`'s output, or a `NetworkSolveResult`
-with a `joint_point_covariance(indices)`), applies `datum_referenced_functional`
-and projects onto the tolerance's constraint directions. About forty lines, no
-change to `evaluate_characteristic` or its tests, and `PartFrameScorer` already
-does the same inline, so it would mostly be that logic moved to where the
-step 4 layer can use it. A per-point characteristic stays correct for a quantity
-that really is defined in the tracker's frame.
+`RelativeCharacteristic` has since been built (below).
+
+**Built: `RelativeCharacteristic`** (`characteristics.characteristic`,
+`tests/test_relative_characteristic.py`). It sits beside `Characteristic`, holding a
+target index, the indices of its datum targets and a tolerance.
+`evaluate_relative_characteristic(characteristic, covariance_source, points_m, subset=None)`
+takes a joint covariance source -- `design_joint_covariance`'s output over `subset`, or a
+`NetworkSolveResult`, which now has `joint_point_covariance(indices)` -- applies
+`network.design.datum_referenced_functional` (the S-transformation to the datum frame fitted
+to the datum targets) and projects onto the tolerance's constraint directions. It returns the
+3 x 3 datum-referenced covariance (the authoritative object), the projection, the
+RSS summary `evaluate_characteristic` reports and the worst-direction standard deviation
+`PartFrameScorer` reports. `evaluate_characteristic` and its tests are untouched; a per-point
+characteristic stays correct for a quantity that really is defined in the tracker's frame.
+
+What the tests show:
+
+  * for a profile tolerance it reproduces `DatumCellScorer` and `PartFrameScorer` to 1e-9 (with
+    and without a placement floor, which the scorers add on top and the layer does not);
+  * five points inside a 0.3 m cluster, three trackers, Hughes residual covariance: the
+    parameter-induced variance relative to the datum is under a tenth of the same quantity in
+    the anchor frame (the sensor noise does not cancel nearly as much);
+  * the same evaluation from a block-diagonal covariance (the per-point blocks
+    `evaluate_characteristic` works from) overstates the relative uncertainty by more than
+    1.5x: the cancellation lives in the off-diagonal blocks, so it needs the joint covariance;
+  * a network solve and the fast design covariance agree; two tolerances on one point still
+    give different uncertainties; a parallelism datum's establishment variance is added as in
+    `evaluate_characteristic`;
+  * too few or collinear datum targets, or an unobserved point or datum target, raise
+    `ValueError` rather than returning a number: a deviation from a frame that was never
+    realised is undefined, not zero.
+
+**Not wired in.** The headline and track experiments still call `evaluate_characteristic`
+(anchor frame); they have not been switched to `RelativeCharacteristic`, so their parameter
+share is still the per-point one measured above. Doing that changes what those experiments
+mean (which datum targets define the part frame in the headline scene is a modelling choice,
+and the headline scene has none), so it is a separate decision.
 
 ## Placeholders
 
@@ -333,7 +360,43 @@ Those that need another source:
   * the 0.312 arcsec distance row of Table 4 (CLAUDE.md §4a; open question for NPL);
   * what `hughes_2011_residual` should be for a factory-compensated tracker
     between characterisations (drift is not in it);
-  * the tracker's elevation limits (-60 to +77 degrees), not enforced by the
-    visibility layer;
+  * the elevation limits of the instrument that will actually be used
+    (`geometry.visibility.API_T3_MIN_ELEVATION_RAD`/`MAX`, -60 to +77 degrees, are the API
+    T3's; GKN's tracker has its own);
   * everything in `systematic_std_m` (refraction, thermal drift, nest
     repeatability, gravity, fixturing), which stays a placeholder floor.
+
+## Elevation limits in the visibility layer
+
+A laser tracker's head tilts through a limited arc (Hughes et al. 2011 §8, API T3: -60 to +77
+degrees above the instrument's horizontal plane) and azimuth is a full circle, so a tracker
+cannot look straight up at a ceiling target or steeply down at the floor under it.
+`geometry.visibility.VisibilityLimits` takes optional `min_elevation_rad` and
+`max_elevation_rad` (default `None`: unconstrained, which reproduces every earlier result),
+and `check_target_visibility` / `visibility_matrix` take the station's orientation
+(`instrument_orientation`, `station_orientations`). A target outside the range reports
+`VisibilityReason.ELEVATION_OUT_OF_RANGE`.
+
+Elevation is measured in the **instrument's own frame** (above its local x-y plane, the
+convention of `geometry.spherical`), so the answer depends on the pose's orientation: for a
+levelled tracker the local z is world up. With no orientation given the check assumes a
+levelled tracker. The planning call sites (`planning.objectives`, the cell scorers) pass each
+pose's own orientation. `levelled_orientation` and the track candidates are levelled;
+`hemisphere_candidate_poses` (the headline ring and the wing experiment's ring) are
+`look_at` poses, tilted to point at the part, in which the limit would be measured from the
+boresight and so never bind. The limit only means what it says on levelled poses.
+`API_T3_MIN_ELEVATION_RAD` / `API_T3_MAX_ELEVATION_RAD` are named constants to pass in
+explicitly: nothing enables them silently, and GKN's tracker's range is `TODO(source)`.
+
+Does it bind? Measured, levelled stations:
+
+| Scene | Candidates | Visible pairs without -> with the limit |
+|---|---|---|
+| Factory cell (28 reference nests + part), track, 0.8-3.0 m | 228 | 6220 -> 6220 |
+| Long part alone, same candidates | 228 | 1846 -> 1846 |
+| Wing, random stations in the search bounds (1-10 m high) | 2000 | 10083 -> 9499 (-5.8%) |
+
+On the track scenes the limit changes nothing: the stations are low and the targets are
+metres away. On the wing it does: a station high above the part (above 6 m: 6686 -> 6192
+pairs) is looking down more steeply than -60 degrees at the targets under it. So switching it
+on would change the wing experiment's feasible set and nothing else measured here.
