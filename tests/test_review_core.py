@@ -402,3 +402,22 @@ def test_the_comparison_says_so_when_every_plan_is_worse_than_measuring_nothing(
     assert reviews[0].totals["expected_wrong_decisions"] > comparison["risk_if_nothing_is_measured"]
     assert comparison["statements"] and "measuring nothing" in comparison["statements"][0]
     assert "NOTE:" in format_comparison(comparison)
+
+
+def test_a_scene_built_from_uploaded_bytes_is_the_scene_built_from_the_file(qif):
+    from review.scene import qif_scopes
+    cell, scene, _ = qif
+    from_bytes = ReviewScene.from_qif_bytes(SAMPLE.read_bytes(), "upload")
+    assert from_bytes.scene_hash() == ReviewScene.from_qif_cell(build_qif_cell(read_qif(SAMPLE)), "x").scene_hash()
+    assert from_bytes.placement_assumed and from_bytes.part_to_cell is not None
+    assert qif_scopes(SAMPLE.read_bytes())
+    with pytest.raises(ValueError):
+        ReviewScene.from_qif_bytes(b'<QIFDocument versionQIF="3.0.0"/>', "empty")
+
+
+def test_an_stl_held_in_memory_loads_like_the_file():
+    from geometry.mesh import load_stl, load_stl_bytes
+    wall = Path(__file__).resolve().parent.parent / "scenes" / "wall.stl"
+    a, b = load_stl(wall), load_stl_bytes(wall.read_bytes())
+    np.testing.assert_array_equal(a.vertices_m, b.vertices_m)
+    np.testing.assert_array_equal(a.faces, b.faces)

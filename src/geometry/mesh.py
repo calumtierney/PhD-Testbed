@@ -128,9 +128,11 @@ def load_stl(path) -> TriangleMesh:
     uint32 stored at byte 80. If that check passes, it's binary; if not,
     it's parsed as ASCII text.
     """
-    path = Path(path)
-    data = path.read_bytes()
+    return load_stl_bytes(Path(path).read_bytes())
 
+
+def load_stl_bytes(data: bytes) -> TriangleMesh:
+    """`load_stl` for an STL held in memory (an upload), binary or ASCII, decided the same way."""
     if len(data) >= 84:
         declared_count = struct.unpack_from("<I", data, 80)[0]
         expected_binary_size = 84 + 50 * declared_count

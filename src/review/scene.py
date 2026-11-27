@@ -28,13 +28,15 @@ from typing import Dict, Optional, Tuple
 
 import numpy as np
 
+from geometry.mesh import TriangleMesh, load_stl_bytes
 from geometry.station_track import StationTrack
+from interchange.qif import read_qif
 from planning.cell import (
     CellRiskModel, factory_cell_scenario, part_datum_indices, process_knowledge_for,
 )
 from planning.experiment import long_part_track
 from planning.objectives import PlanningScenario
-from planning.qif_cell import QifCell
+from planning.qif_cell import QifCell, build_qif_cell
 from review.provenance import digest
 from risk.decision import ProcessKnowledge
 
@@ -95,6 +97,23 @@ class ReviewScene:
         )
 
     @classmethod
+    def from_qif_bytes(cls, qif: bytes, label: str, stl: Optional[bytes] = None, stl_metres_per_unit: Optional[float] = None,
+                       scope_id: Optional[str] = None, up_axis: str = "z", alignment: str = "auto", placement: Optional[np.ndarray] = None
+                       ) -> "ReviewScene":
+        """A scene from a QIF document held in memory (an upload) and, optionally, the part's STL (in the file's coordinates, scaled
+        by `stl_metres_per_unit`, default the QIF file's own unit) to block sight lines. Nothing is written to disk.
+        `placement` (4x4, file to cell) is *assumed* by `planning.qif_cell.default_placement` when not given, and the scene says so.
+        Raises what `read_qif` and `build_qif_cell` raise (e.g. a document with nothing the chain can plan)."""
+        doc = read_qif(qif)
+        obstacle = None
+        if stl is not None:
+            mesh = load_stl_bytes(stl)
+            scale = stl_metres_per_unit if stl_metres_per_unit is not None else doc.metres_per_unit
+            obstacle = TriangleMesh(mesh.vertices_m * scale, mesh.faces)
+        cell = build_qif_cell(doc, scope_id=scope_id, up_axis=up_axis, obstacle_part_frame=obstacle, alignment=alignment, placement=placement)
+        return cls.from_qif_cell(cell, label)
+
+    @classmethod
     def from_factory_cell(cls, track: Optional[StationTrack] = None, label: str = "built-in factory cell (synthetic)") -> "ReviewScene":
         track = long_part_track() if track is None else track
         scenario = factory_cell_scenario(track=track)
@@ -136,6 +155,15 @@ class ReviewScene:
     @property
     def n_characteristics(self) -> int:
         return len(self.characteristic_names)
+
+    def part_extent_xy_m(self) -> Tuple[np.ndarray, np.ndarray]:
+        """Plan-view extent of the part, `(low, high)` as (x, y): the located features (and the obstacle mesh, if one was given)
+        of a QIF scene, the footprint of the built-in cell's part."""
+        if self.qif_cell is not None:
+            return np.array(self.qif_cell.envelope_min_m[:2]), np.array(self.qif_cell.envelope_max_m[:2])
+        t = self.track
+        half = t.part_width_m / 2.0
+        return np.array([t.part_x_min_m, t.part_centre_y_m - half]), np.array([t.part_x_max_m, t.part_centre_y_m + half])
 
     def tolerance_limits_m(self) -> np.ndarray:
         """(n_characteristics, 2): lower and upper tolerance limit of each, from its decision rule."""
@@ -203,3 +231,8 @@ class ReviewScene:
             "has_file_frame": self.part_to_cell is not None, "notes": list(self.notes),
             "clusters": [dict(c) for c in self.cluster_summaries],
         }
+
+
+def qif_scopes(qif: bytes) -> Dict[str, str]:
+    """The parts and assemblies a QIF document offers as scopes (`id -> label`), for choosing which to review against."""
+    return dict(read_qif(qif).scope_names())
