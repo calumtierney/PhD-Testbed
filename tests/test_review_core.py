@@ -391,3 +391,14 @@ def test_an_infeasible_given_plan_has_no_iso_risk_target_and_is_not_repaired(fac
     assert not result.given.feasible and result.given.n_stations == 2
     assert any("iso-risk: the given plan is infeasible" in m for m in result.not_found)
     assert not any(c.kind == "iso_risk" for c in result.counterparts)
+
+
+def test_the_comparison_says_so_when_every_plan_is_worse_than_measuring_nothing(factory):
+    """Under placeholder priors measuring a marginal process creates false rejections faster than it prevents false accepts
+    (planning.process_evidence): the nothing-measured line then beats every plan, and the output must say why rather than leave it
+    as a puzzle."""
+    _, reviews = review_plans(factory, [demo_plan(factory, 4)], NOISE)
+    comparison = compare_plans(reviews)
+    assert reviews[0].totals["expected_wrong_decisions"] > comparison["risk_if_nothing_is_measured"]
+    assert comparison["statements"] and "measuring nothing" in comparison["statements"][0]
+    assert "NOTE:" in format_comparison(comparison)

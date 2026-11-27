@@ -356,7 +356,15 @@ def compare_plans(reviews: Sequence[PlanReview], reference: int = 0) -> Dict[str
     nothing = next((r.totals["risk_if_nothing_is_measured"] for r in reviews if r.totals), None)
     feasible_rows = [row for row in rows if row["feasible"]]
     ranking = [row["label"] for row in sorted(feasible_rows, key=lambda row: row["expected_wrong_decisions"])]
+    statements: List[str] = []
+    if nothing is not None and feasible_rows and min(r["expected_wrong_decisions"] for r in feasible_rows) > nothing:
+        statements.append(
+            f"every feasible plan's expected wrong decisions exceed the {nothing:.3g} of measuring nothing: under these process statistics "
+            "the model prices measurement as creating false rejections faster than it prevents false acceptances "
+            "(planning.process_evidence explains why, and the statistics here may be placeholders); read the plans against each other, "
+            "not against the nothing-measured line")
     return {
+        "statements": statements,
         "context_id": ref.context_id, "reference": ref.plan["name"], "reference_label": f"{reference + 1}",
         "tracker_label": ref.provenance["tracker_label"], "settings": ref.provenance["settings"],
         "provenance": ref.provenance, "risk_if_nothing_is_measured": nothing,
@@ -419,6 +427,8 @@ def format_comparison(comparison: Dict[str, Any]) -> str:
                     mark = "" if plan_entry["measured"] else "*"
                     cells.append(f"{_fmt(plan_entry['u_um'], '.1f'):>8} {format(plan_entry['risk'], '.3e') + mark:>10}")
             lines.append(f"{name[:26]:<26} {entry['tolerance_half_um']:>8.0f}  " + "  ".join(cells))
+    for statement in comparison["statements"]:
+        lines += ["", "NOTE: " + statement]
     lines += ["", f"Ranking by expected wrong decisions (feasible plans): {' < '.join('#' + x for x in comparison['ranking_by_expected_wrong_decisions']) or 'none feasible'}",
               comparison["caveat"]]
     return "\n".join(lines)
