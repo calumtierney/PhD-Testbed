@@ -267,3 +267,34 @@ def test_part_frame_scorer_matches_datum_cell_scorer_on_the_long_part():
             np.testing.assert_allclose(b.u_m, a.u_m, rtol=1e-9)
             np.testing.assert_allclose(b.trace_m2, a.trace_m2, rtol=1e-9)
     assert n_feasible >= 3
+
+
+def test_elevation_limits_reach_the_scorers_and_the_scalar_path_alike(bare):
+    """The vectorised scorer and the pair-by-pair `evaluate_plan` path must both apply the
+    tracker's mechanical elevation range, in each station's own frame -- including a station
+    that is not levelled."""
+    from dataclasses import replace
+
+    from geometry.pose import InstrumentPose
+    from geometry.visibility import VisibilityLimits
+
+    narrow = replace(
+        bare,
+        visibility_limits=VisibilityLimits(
+            max_range_m=bare.visibility_limits.max_range_m,
+            max_incidence_angle_rad=bare.visibility_limits.max_incidence_angle_rad,
+            min_elevation_rad=np.deg2rad(-3.0), max_elevation_rad=np.deg2rad(3.0),
+        ),
+    )
+    poses = layout_poses(LOOPS_4, narrow, TRACK)
+    # lay the last station on its side so its local z axis is horizontal: a different frame to the rest
+    sideways = np.array([[0.0, 0.0, 1.0], [0.0, 1.0, 0.0], [-1.0, 0.0, 0.0]])
+    poses[-1] = InstrumentPose(position_m=poses[-1].position_m, orientation=sideways)
+
+    scorer = CellLayoutScorer(narrow)
+    scalar = station_visibility_matrix(narrow, poses)
+    assert np.array_equal(scorer.visible(poses), scalar)
+    unrestricted = station_visibility_matrix(bare, poses)
+    assert np.all(scalar <= unrestricted) and scalar.sum() < unrestricted.sum()  # the band really binds
+    # and a levelled station at 1.25 m can only keep targets within +-3 degrees of its horizon
+    assert scalar[1].sum() < unrestricted[1].sum()

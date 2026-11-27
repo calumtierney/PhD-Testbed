@@ -247,6 +247,7 @@ def _visibility_matrix(
                 scenario.visibility_limits,
                 target_normal_m=normal_m,
                 obstacles=scenario.obstacles,
+                instrument_orientation=pose.orientation,  # read only if the limits carry elevation limits
             ).is_visible
     return matrix
 

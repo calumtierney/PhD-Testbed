@@ -168,8 +168,11 @@ class CellLayoutScorer:
         """(1 + n_stations, n_targets) visibility, anchor first: the vectorised
         form of the check `planning.objectives` applies pair by pair."""
         s = self.scenario
-        positions = np.array([s.anchor_pose.position_m] + [p.position_m for p in station_poses])
-        return visibility_matrix(positions, s.target_points_m, s.visibility_limits, s.target_normals_m, s.obstacles, 0.0)
+        poses = [s.anchor_pose] + list(station_poses)
+        positions = np.array([p.position_m for p in poses])
+        orientations = np.array([p.orientation for p in poses])  # read only if the limits carry elevation limits
+        return visibility_matrix(positions, s.target_points_m, s.visibility_limits, s.target_normals_m, s.obstacles, 0.0,
+                                 station_orientations=orientations)
 
     def score(self, station_poses: Sequence[InstrumentPose]) -> LayoutScore:
         s = self.scenario
@@ -235,7 +238,9 @@ class DatumCellScorer:
     def visible(self, station_poses: Sequence[InstrumentPose]) -> np.ndarray:
         s = self.scenario
         positions = np.array([p.position_m for p in station_poses])
-        return visibility_matrix(positions, s.target_points_m, s.visibility_limits, s.target_normals_m, s.obstacles, 0.0)
+        orientations = np.array([p.orientation for p in station_poses])
+        return visibility_matrix(positions, s.target_points_m, s.visibility_limits, s.target_normals_m, s.obstacles, 0.0,
+                                 station_orientations=orientations)
 
     def score(self, station_poses: Sequence[InstrumentPose]) -> LayoutScore:
         s = self.scenario
@@ -326,8 +331,9 @@ class PartFrameScorer:
     def visible(self, station_poses: Sequence[InstrumentPose]) -> np.ndarray:
         s = self.scenario
         positions = np.array([p.position_m for p in station_poses])
+        orientations = np.array([p.orientation for p in station_poses])
         return visibility_matrix(positions, s.target_points_m, s.visibility_limits, s.target_normals_m, s.obstacles,
-                                 self.occlusion_target_offset_m)
+                                 self.occlusion_target_offset_m, station_orientations=orientations)
 
     def score(self, station_poses: Sequence[InstrumentPose]) -> LayoutScore:
         s = self.scenario

@@ -6,34 +6,47 @@ Build step 2 (CLAUDE.md §5), the second link in the chain (§2):
 
 This module answers "can it be measured at all", strictly before the
 question step 1 answers ("how precisely"). A target can fail visibility
-for three independent geometric reasons, checked in this order:
+for four independent geometric reasons, checked in this order:
 
   1. **Range** -- the target is further from the instrument than its
      maximum working range.
-  2. **Incidence** -- the beam meets the target's own surface too close
+  2. **Elevation** (optional) -- the beam points outside the tracker's
+     mechanical elevation range. A laser tracker's head tilts about a
+     horizontal axis through a limited arc (Hughes et al. 2011 §8: -60
+     to +77 degrees for the API T3), so it cannot look straight up at a
+     ceiling target or steeply down at the floor beneath it. Azimuth is
+     a full 360 degrees and never limits anything. Elevation is measured
+     in the *instrument's own frame* (above its local x-y plane, the same
+     convention as `geometry.spherical`), so it needs the station's
+     orientation; a levelled tracker's local z is world up. Off by
+     default (`VisibilityLimits.min_elevation_rad`/`max_elevation_rad`
+     None) so every result computed before this check existed is
+     unchanged.
+  3. **Incidence** -- the beam meets the target's own surface too close
      to edge-on. A laser tracker's return signal comes from light
      reflecting/scattering off (or through, for a retroreflector) the
      target; hit a surface at a shallow enough angle and the return is
      unreliable or absent, regardless of range. This needs to know which
      way the target's surface faces -- its normal -- which is why
      `Scene.target_normals_m` exists.
-  3. **Occlusion** -- something in the scene physically blocks the
+  4. **Occlusion** -- something in the scene physically blocks the
      straight-line path from the instrument to the target (a wall, a
      fixture, another part of the structure being measured).
 
-Range and incidence are cheap, O(1)-per-target checks; occlusion is the
-expensive one; O(n_triangles) per target, since it means testing the
-sightline against every triangle in the obstacle mesh (see
-`geometry.mesh`). Checking range and incidence first, and only ray
-casting for targets that still might be visible, means an out-of-range or
+Range, elevation and incidence are cheap, O(1)-per-target checks;
+occlusion is the expensive one; O(n_triangles) per target, since it means
+testing the sightline against every triangle in the obstacle mesh (see
+`geometry.mesh`). Checking the cheap three first, and only ray casting
+for targets that still might be visible, means an out-of-range or
 grazing target never pays for a mesh test it can't possibly need. This is
 purely a performance ordering, not a physical one -- CLAUDE.md §2 lists
 occlusion first because it's conceptually the most obviously "geometric"
-of the three, but the physics doesn't require checking them in any
-particular order, since all three are independent yes/no conditions.
+of them, but the physics doesn't require checking them in any particular
+order, since all are independent yes/no conditions.
 """
 from dataclasses import dataclass
 from enum import Enum
+from typing import Optional
 
 import numpy as np
 
@@ -46,6 +59,7 @@ class VisibilityReason(Enum):
 
     VISIBLE = "visible"
     OUT_OF_RANGE = "out_of_range"
+    ELEVATION_OUT_OF_RANGE = "elevation_out_of_range"
     INCIDENCE_TOO_STEEP = "incidence_too_steep"
     OCCLUDED = "occluded"
 
@@ -64,10 +78,48 @@ class VisibilityLimits:
         normal, at which the instrument can still get a usable
         measurement. 0 rad is straight-on (beam parallel to the normal);
         pi/2 rad is a beam grazing along the surface.
+    min_elevation_rad, max_elevation_rad : float or None
+        The instrument's mechanical elevation range, measured above the
+        instrument's local x-y plane (so a levelled tracker's horizon is 0
+        and straight up is +pi/2). A target whose beam elevation lies outside
+        [min, max] is unmeasurable. None (the default) means that side is
+        unconstrained, and None on both reproduces the behaviour from before
+        this check existed. See `API_T3_MIN_ELEVATION_RAD` for the values.
     """
 
     max_range_m: float
     max_incidence_angle_rad: float
+    min_elevation_rad: Optional[float] = None
+    max_elevation_rad: Optional[float] = None
+
+    def __post_init__(self):
+        for name in ("min_elevation_rad", "max_elevation_rad"):
+            value = getattr(self, name)
+            if value is not None and not -np.pi / 2 <= value <= np.pi / 2:
+                raise ValueError(f"{name} must lie in [-pi/2, pi/2] rad (an elevation), got {value!r}")
+        if (
+            self.min_elevation_rad is not None
+            and self.max_elevation_rad is not None
+            and self.min_elevation_rad >= self.max_elevation_rad
+        ):
+            raise ValueError(
+                f"min_elevation_rad ({self.min_elevation_rad!r}) must be below max_elevation_rad "
+                f"({self.max_elevation_rad!r})"
+            )
+
+    @property
+    def has_elevation_limits(self) -> bool:
+        return self.min_elevation_rad is not None or self.max_elevation_rad is not None
+
+
+# Mechanical elevation range of the instrument in the Hughes et al. 2011
+# network test (API T3): -60 to +77 degrees (CLAUDE.md §4f, "Network ...
+# elevations no higher than 57 degrees (mechanical range -60 to +77)").
+# TODO(source): GKN's own tracker (Leica AT-series or similar) has its own
+# range; replace these when the instrument is known. Passed explicitly to
+# `VisibilityLimits`, never applied silently.
+API_T3_MIN_ELEVATION_RAD = float(np.deg2rad(-60.0))
+API_T3_MAX_ELEVATION_RAD = float(np.deg2rad(77.0))
 
 
 @dataclass(frozen=True)
@@ -87,8 +139,14 @@ def check_target_visibility(
     limits: VisibilityLimits,
     target_normal_m: np.ndarray = None,
     obstacles=None,
+    instrument_orientation: np.ndarray = None,
 ) -> VisibilityResult:
     """Visibility of a single target from a single instrument position.
+
+    `instrument_orientation` ((3, 3), `v_global = orientation @ v_local`, as
+    `geometry.pose.InstrumentPose.orientation`) is used only by the elevation
+    check, and only when `limits` carries elevation limits. None means the
+    identity: the instrument's local z is world up, i.e. a levelled tracker.
 
     `target_normal_m` (outward unit surface normal) is required to run
     the incidence check; if it's None, that check is skipped entirely
@@ -103,6 +161,15 @@ def check_target_visibility(
     range_m = np.linalg.norm(beam_m)
     if range_m > limits.max_range_m:
         return VisibilityResult(VisibilityReason.OUT_OF_RANGE)
+
+    if limits.has_elevation_limits and range_m > 0.0:
+        orientation = np.eye(3) if instrument_orientation is None else np.asarray(instrument_orientation, dtype=float)
+        local_z_m = float(orientation[:, 2] @ beam_m)  # beam component along the instrument's vertical axis
+        elevation_rad = np.arcsin(np.clip(local_z_m / range_m, -1.0, 1.0))
+        if limits.min_elevation_rad is not None and elevation_rad < limits.min_elevation_rad:
+            return VisibilityResult(VisibilityReason.ELEVATION_OUT_OF_RANGE)
+        if limits.max_elevation_rad is not None and elevation_rad > limits.max_elevation_rad:
+            return VisibilityResult(VisibilityReason.ELEVATION_OUT_OF_RANGE)
 
     if target_normal_m is not None:
         # Angle between the surface normal (pointing away from the
@@ -149,6 +216,7 @@ def scene_visibility(scene: Scene, limits: VisibilityLimits) -> list:
                 limits,
                 target_normal_m=normal_m,
                 obstacles=scene.obstacles,
+                instrument_orientation=scene.instrument_pose.orientation,
             )
         )
     return results
@@ -161,11 +229,12 @@ def visibility_matrix(
     target_normals_m: np.ndarray = None,
     obstacles=None,
     occlusion_target_offset_m: float = 0.0,
+    station_orientations: np.ndarray = None,
 ) -> np.ndarray:
     """Which stations can measure which targets, as an (S, N) boolean matrix.
 
-    The same three checks as `check_target_visibility` -- range, incidence,
-    occlusion -- applied to every station-target pair at once with array
+    The same checks as `check_target_visibility` -- range, elevation,
+    incidence, occlusion -- applied to every station-target pair at once with array
     operations (the occlusion test is the same Moller-Trumbore segment/
     triangle test as `geometry.mesh.segment_intersects_mesh`, batched over
     all targets and all triangles per station). Exists because planning a
@@ -181,6 +250,10 @@ def visibility_matrix(
     ray against the part's own skin. Default 0.0 reproduces the scalar
     function exactly; callers whose obstacle mesh is a faceted stand-in
     for the surface the points lie on should pass a small positive offset.
+
+    `station_orientations` ((S, 3, 3), one `InstrumentPose.orientation` per
+    station) is read only when `limits` has elevation limits; None means every
+    station is levelled with local z = world up.
     """
     stations = np.atleast_2d(np.asarray(station_positions_m, dtype=float))
     targets = np.atleast_2d(np.asarray(target_points_m, dtype=float))
@@ -189,6 +262,23 @@ def visibility_matrix(
     beams = targets[None, :, :] - stations[:, None, :]  # (S, N, 3), station -> target
     range_m = np.linalg.norm(beams, axis=2)
     visible = range_m <= limits.max_range_m
+
+    if limits.has_elevation_limits:
+        if station_orientations is None:
+            up_axes = np.tile(np.array([0.0, 0.0, 1.0]), (n_stations, 1))
+        else:
+            orientations = np.asarray(station_orientations, dtype=float).reshape(n_stations, 3, 3)
+            up_axes = orientations[:, :, 2]  # each station's local z axis, in the global frame
+        with np.errstate(invalid="ignore", divide="ignore"):
+            sin_elevation = np.einsum("snk,sk->sn", beams, up_axes) / range_m
+        elevation = np.arcsin(np.clip(sin_elevation, -1.0, 1.0))
+        # A zero-range pair has no defined elevation: NaN, and the scalar check
+        # skips the elevation test there, so match it rather than fail the pair.
+        defined = range_m > 0.0
+        if limits.min_elevation_rad is not None:
+            visible &= ~defined | (elevation >= limits.min_elevation_rad)
+        if limits.max_elevation_rad is not None:
+            visible &= ~defined | (elevation <= limits.max_elevation_rad)
 
     if target_normals_m is not None:
         normals = np.atleast_2d(np.asarray(target_normals_m, dtype=float))
