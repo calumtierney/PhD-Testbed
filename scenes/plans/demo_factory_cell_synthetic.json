@@ -1,0 +1,71 @@
+{
+ "schema_version": 1,
+ "name": "synthetic: 4 evenly spaced at 1.25 m",
+ "author_role": "synthetic",
+ "source": "SYNTHETIC demonstration: 4 stations evenly spaced in arc length round the track at 1.25 m, s = (k + 0.5) x perimeter / 4; a rule that does not look at the part. Not an engineer's plan.",
+ "created": "2026-11-27T13:58:44Z",
+ "frame": "cell",
+ "units": "m",
+ "stations": [
+  {
+   "position_m": [
+    7.087942194439155,
+    -4.25,
+    1.25
+   ],
+   "instrument_id": 0,
+   "faces": [
+    "front"
+   ],
+   "track": {
+    "s_m": 7.087942194439155,
+    "height_m": 1.25
+   }
+  },
+  {
+   "position_m": [
+    19.230040156458085,
+    -0.4114125359685524,
+    1.25
+   ],
+   "instrument_id": 0,
+   "faces": [
+    "front"
+   ],
+   "track": {
+    "s_m": 21.263826583317467,
+    "height_m": 1.25
+   }
+  },
+  {
+   "position_m": [
+    7.9120578055608455,
+    4.25,
+    1.25
+   ],
+   "instrument_id": 0,
+   "faces": [
+    "front"
+   ],
+   "track": {
+    "s_m": 35.439710972195776,
+    "height_m": 1.25
+   }
+  },
+  {
+   "position_m": [
+    -4.230040156458084,
+    0.4114125359685528,
+    1.25
+   ],
+   "instrument_id": 0,
+   "faces": [
+    "front"
+   ],
+   "track": {
+    "s_m": 49.615595361074085,
+    "height_m": 1.25
+   }
+  }
+ ]
+}
