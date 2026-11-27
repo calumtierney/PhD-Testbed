@@ -77,12 +77,13 @@ different projections of one physical ellipsoid -- CLAUDE.md §3's
 and `tests/test_characteristics.py` for the gate this reasoning predicts.
 """
 from dataclasses import dataclass
-from typing import List, Optional, Union
+from typing import List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
 from characteristics.datum import Datum
 from characteristics.tolerances import ParallelismTolerance, PositionTolerance, ProfileTolerance
+from network.design import datum_referenced_functional
 
 Tolerance = Union[PositionTolerance, ProfileTolerance, ParallelismTolerance]
 
@@ -203,3 +204,150 @@ def evaluate_characteristic(
             )
         )
     return results
+
+
+# -- characteristics judged relative to a datum frame ------------------------------------------
+# `evaluate_characteristic` above projects a point's covariance *as the network reports it*, in
+# the frame of the network's anchor station. That is the right object when the tolerance is
+# stated in the tracker's own frame. It is the wrong one for a deviation from nominal, which is
+# stated in the *part's* frame: the part frame is realised by best-fitting measured datum
+# targets to their nominal positions, and an error that moves the datum targets and the
+# toleranced point together (a shared station pose, or -- with the NPL geometric model -- a
+# tracker parameter error shared by every shot it takes) moves the fitted frame with it and
+# cancels in the deviation. `RelativeCharacteristic` is that definition. It needs the
+# *joint* covariance of the point and its datum targets, cross-covariances included; the
+# per-point 3 x 3 blocks `evaluate_characteristic` uses cannot express the cancellation.
+
+
+@dataclass(frozen=True)
+class RelativeCharacteristic:
+    """One toleranced thing whose deviation is measured against a datum frame fitted to
+    measured datum targets.
+
+    Attributes
+    ----------
+    name : a human-readable identifier.
+    target_index : the toleranced point, an index into the target list the nominal points
+        (`evaluate_relative_characteristic`'s `points_m`) are given in.
+    datum_indices : the targets whose measured positions are best-fitted (rigid motion,
+        unweighted least squares, `network.design.datum_referenced_functional`) to their
+        nominal positions to realise the part frame. At least three, not collinear. May
+        include `target_index` itself: a best fit through all the measured points.
+    tolerance, datum : exactly as `Characteristic`. `datum` here is the *tolerance's*
+        reference direction (a parallelism callout's datum plane); it is separate from the
+        datum *targets* that realise the part frame.
+    """
+
+    name: str
+    target_index: int
+    datum_indices: Tuple[int, ...]
+    tolerance: Tolerance
+    datum: Optional[Datum] = None
+
+
+@dataclass(frozen=True)
+class RelativeCharacteristicUncertainty:
+    """The uncertainty of one `RelativeCharacteristic`.
+
+    Attributes
+    ----------
+    target_index, datum_indices : as on the characteristic.
+    constraint_directions : (k, 3) -- the unit direction(s) the tolerance constrains.
+    datum_referenced_covariance_m2 : (3, 3) -- the covariance of the point's position
+        relative to the fitted datum frame, before projection. The authoritative object
+        (CLAUDE.md §3); the next two are projections and summaries of it.
+    projected_covariance_m2 : (k, k) -- that covariance projected onto
+        `constraint_directions`, with any `additional_variance_m2` the tolerance carries
+        added across the diagonal exactly as `evaluate_characteristic` does.
+    uncertainty_m : sqrt(trace(projected_covariance_m2)) -- the RSS summary
+        `evaluate_characteristic` reports, so the two are directly comparable.
+    worst_direction_std_m : sqrt of the largest eigenvalue of `projected_covariance_m2`
+        -- the uncertainty in the worst-measured direction within the constrained
+        subspace. For a one-direction tolerance it equals `uncertainty_m`; for a hole
+        position it is what `planning.cell.PartFrameScorer` reports.
+    """
+
+    target_index: int
+    datum_indices: Tuple[int, ...]
+    constraint_directions: np.ndarray
+    datum_referenced_covariance_m2: np.ndarray
+    projected_covariance_m2: np.ndarray
+    uncertainty_m: float
+    worst_direction_std_m: float
+
+
+def evaluate_relative_characteristic(
+    characteristic: RelativeCharacteristic,
+    covariance_source,
+    points_m: np.ndarray,
+    subset: Optional[Sequence[int]] = None,
+) -> RelativeCharacteristicUncertainty:
+    """Uncertainty of a characteristic's point relative to the datum frame fitted to its
+    datum targets, projected onto the directions its tolerance constrains.
+
+    `points_m` (N, 3) are the *nominal* positions of the N targets, indexed as the
+    characteristic's `target_index` and `datum_indices` are. They set the lever arms of the
+    datum fit (a datum frame fitted to a tight cluster pins rotation poorly; a spread-out
+    one pins it well), so a first-order covariance is evaluated at the plan's own geometry.
+
+    `covariance_source` is one of:
+      * an object with `.joint_point_covariance(indices)`, as `network.solve.
+        NetworkSolveResult` has -- the characteristic asks it for the point and its datum
+        targets and nothing else;
+      * a (3m, 3m) joint covariance, as `network.design.design_joint_covariance` returns,
+        over the targets `subset` (m of them, in that order; default: all N, in order).
+        This is what the planning scorers use.
+
+    Raises `ValueError` if the datum targets cannot fix six degrees of freedom (fewer than
+    three, or collinear), or if the point or a datum target has no covariance (an
+    unobserved target's rows are NaN in a design covariance): a deviation from a frame that
+    was never realised is undefined, not zero.
+    """
+    points_m = np.asarray(points_m, dtype=float)
+    needed = list(dict.fromkeys([characteristic.target_index, *characteristic.datum_indices]))
+    if hasattr(covariance_source, "joint_point_covariance"):
+        covariance = np.asarray(covariance_source.joint_point_covariance(needed), dtype=float)
+    else:
+        covariance_all = np.asarray(covariance_source, dtype=float)
+        members = list(range(len(points_m))) if subset is None else [int(i) for i in subset]
+        if covariance_all.shape != (3 * len(members), 3 * len(members)):
+            raise ValueError(
+                f"covariance has shape {covariance_all.shape} but {len(members)} targets need "
+                f"{(3 * len(members), 3 * len(members))}"
+            )
+        missing = [i for i in needed if i not in members]
+        if missing:
+            raise ValueError(f"targets {missing} are not in the covariance's subset")
+        rows = np.concatenate([[3 * members.index(i) + c for c in range(3)] for i in needed])
+        covariance = covariance_all[np.ix_(rows, rows)]
+    if not np.all(np.isfinite(covariance)):
+        raise ValueError(
+            f"{characteristic.name!r}: the point or one of its datum targets was not observed, "
+            "so its deviation from the datum frame is undefined"
+        )
+
+    place = {t: k for k, t in enumerate(needed)}
+    functional = datum_referenced_functional(
+        points_m[needed], place[characteristic.target_index], [place[i] for i in characteristic.datum_indices]
+    )
+    if functional is None:
+        raise ValueError(
+            f"{characteristic.name!r}: datum targets {list(characteristic.datum_indices)} cannot fix six "
+            "degrees of freedom (need at least three, not collinear)"
+        )
+    datum_referenced_m2 = functional @ covariance @ functional.T  # (3, 3)
+
+    directions = characteristic.tolerance.constraint_directions(characteristic.datum)
+    projected_m2 = directions @ datum_referenced_m2 @ directions.T
+    additional_variance_m2 = characteristic.tolerance.additional_variance_m2(characteristic.datum)
+    if additional_variance_m2 > 0.0:
+        projected_m2 = projected_m2 + (additional_variance_m2 / directions.shape[0]) * np.eye(directions.shape[0])
+    return RelativeCharacteristicUncertainty(
+        target_index=characteristic.target_index,
+        datum_indices=tuple(characteristic.datum_indices),
+        constraint_directions=directions,
+        datum_referenced_covariance_m2=datum_referenced_m2,
+        projected_covariance_m2=projected_m2,
+        uncertainty_m=float(np.sqrt(np.trace(projected_m2))),
+        worst_direction_std_m=float(np.sqrt(max(np.linalg.eigvalsh(projected_m2).max(), 0.0))),
+    )

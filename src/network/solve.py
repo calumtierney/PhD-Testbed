@@ -188,6 +188,18 @@ class NetworkSolveResult:
         i = 3 * target_index
         return self.target_covariance_m2[i : i + 3, i : i + 3]
 
+    def joint_point_covariance(self, indices: Sequence[int]) -> np.ndarray:
+        """(3m, 3m) joint covariance of the m targets `indices`, in that order,
+        cross-covariances included. What a quantity defined *relative to other
+        points* needs (`characteristics.characteristic.
+        evaluate_relative_characteristic`): the per-target blocks of
+        `target_point_covariance` cannot express that errors shared by several
+        targets cancel in their difference. Note the tracker's per-point
+        `systematic_std_m` term, if any, is on each target's own diagonal block
+        here, as in `target_covariance_m2`."""
+        rows = np.concatenate([[3 * int(i) + c for c in range(3)] for i in indices])
+        return self.target_covariance_m2[np.ix_(rows, rows)]
+
 
 def simulate_observations(
     true_target_points_m: np.ndarray,
