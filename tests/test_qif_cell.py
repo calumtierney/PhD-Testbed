@@ -224,3 +224,18 @@ def test_plan_reports_every_layout_the_same_way(sheet_metal_cell):
     np.testing.assert_allclose(back, station["position_cell_m"], atol=1e-9)
     worst = min(a1["tur"].values())
     assert a1["worst_tur"] == pytest.approx(worst)
+
+
+def test_describe_layout_is_what_plan_qif_cell_reports_for_the_same_stations(sheet_metal_cell):
+    """`describe_layout` was the `describe()` closure inside `plan_qif_cell`; lifted to module level it must give the
+    same record for the same stations, so anything built on it (the plan review) agrees with the planner."""
+    from planning.qif_cell import describe_layout
+
+    plan = plan_qif_cell(sheet_metal_cell, station_counts=(2,), objectives=("A1",), rule="simple",
+                         de=dict(maxiter=4, popsize=5, tol=1e-8, workers=1))
+    entry = plan["plans"]["A1|2"]
+    stations = [(s["s_m"], s["height_m"], s["segment"]) for s in entry["stations"]]
+    again = describe_layout(sheet_metal_cell, stations, sheet_metal_cell.scorer(), sheet_metal_cell.risk_model("simple"))
+    for key in ("stations", "u_um", "tur", "worst_tur", "risk", "total_risk", "n_shots", "time_min"):
+        assert again[key] == entry[key], key
+    assert again["objective_values"] == {}  # none asked for

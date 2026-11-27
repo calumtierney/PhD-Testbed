@@ -336,11 +336,23 @@ class PartFrameScorer:
                                  self.occlusion_target_offset_m, station_orientations=orientations)
 
     def score(self, station_poses: Sequence[InstrumentPose]) -> LayoutScore:
+        if len(station_poses) == 0:
+            nan = np.full(len(self.scenario.characteristics), np.nan)
+            return LayoutScore(False, 1.0, nan, nan, 0, 0)
+        return self.score_visibility(station_poses, self.visible(station_poses))
+
+    def score_visibility(self, station_poses: Sequence[InstrumentPose], visible: np.ndarray,
+                         instrument_ids: Optional[Sequence[int]] = None, faces: Optional[Sequence[Sequence[str]]] = None) -> LayoutScore:
+        """`score` for an explicit `visible` (stations x targets) pattern: what each
+        station is taken to *measure*, which a plan that names its targets
+        (`review`) can restrict to less than what the station can see. `instrument_ids`
+        and `faces` as in `network.design.design_joint_covariance` (None: one tracker,
+        front face only, exactly what `score` does)."""
         s = self.scenario
         nan = np.full(len(s.characteristics), np.nan)
         if len(station_poses) == 0:
             return LayoutScore(False, 1.0, nan, nan, 0, 0)
-        visible = self.visible(station_poses)
+        visible = np.asarray(visible, dtype=bool)
         n_shots = int(visible.sum())
         counts = visible.sum(axis=1)
         n_thin = sum(1 for i in range(1, visible.shape[0]) if counts[i] < MIN_TARGETS_PER_NON_ANCHOR_STATION)
@@ -354,7 +366,8 @@ class PartFrameScorer:
             return LayoutScore(False, deficit, nan, nan, n_shots, len(station_poses))
         subset = list(dict.fromkeys([t for t in char_targets if seen[t]] + datum))
         place = {t: k for k, t in enumerate(subset)}
-        joint, _, connected = design_joint_covariance(s.target_points_m, list(station_poses), s.tracker, visible, subset, 0)
+        joint, _, connected = design_joint_covariance(s.target_points_m, list(station_poses), s.tracker, visible, subset, 0,
+                                                      instrument_ids=instrument_ids, faces=faces)
         if not connected:
             return LayoutScore(False, 1.0, nan, nan, n_shots, len(station_poses))
         points = s.target_points_m[subset]

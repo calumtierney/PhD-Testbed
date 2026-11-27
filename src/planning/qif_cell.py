@@ -485,6 +485,43 @@ class WorstRatioObjective:
 DEFAULT_DE = dict(maxiter=60, popsize=15, tol=1e-8, workers=1)
 
 
+def describe_layout(cell: QifCell, stations: Sequence[Sequence], scorer: PartFrameScorer, model: CellRiskModel,
+                    objective_fns: Optional[Dict[str, object]] = None) -> dict:
+    """What a layout of the cell's track stations delivers, as `plan_qif_cell` reports it.
+
+    `stations` are `(s_m, height_m, segment)` tuples (levelled stations on the
+    track, facing the centroid of the scene's targets: `planning.cell.layout_poses`).
+    Returns the stations (cell and file coordinates), each characteristic's
+    uncertainty (um), test uncertainty ratio (tolerance half-width / 2u) and risk,
+    the worst ratio, total risk (expected wrong decisions, from `model`'s risk
+    curves), shot count, the time estimates of `measurement_time_minutes` and the
+    value of each of `objective_fns` (name -> callable on the `LayoutScore`).
+    The layout must be feasible for `scorer`: an infeasible one has no
+    uncertainties to report (NaN everywhere) and is the caller's to filter out.
+    """
+    scenario, track = cell.scenario, cell.track
+    half = np.array([p.tolerance_half_width_m for p in cell.planned])
+    cell_to_part = np.linalg.inv(cell.part_to_cell)
+    poses = layout_poses(stations, scenario, track)
+    score = scorer.score(poses)
+    per_risk = model.per_characteristic(score.u_m)
+    tur = half / (2.0 * score.u_m)
+    return {
+        "stations": [{"s_m": float(s[0]), "height_m": float(s[1]), "segment": s[2],
+                      "position_cell_m": p.position_m.tolist(),
+                      "position_file_m": _apply(cell_to_part, p.position_m[None, :])[0].tolist()}
+                     for s, p in zip(stations, poses)],
+        "u_um": {p.name: float(u * 1e6) for p, u in zip(cell.planned, score.u_m)},
+        "tur": {p.name: float(t) for p, t in zip(cell.planned, tur)},
+        "worst_tur": float(np.min(tur)),
+        "risk": {p.name: float(r) for p, r in zip(cell.planned, per_risk)},
+        "total_risk": float(per_risk.sum()),
+        "n_shots": score.n_shots,
+        "time_min": measurement_time_minutes(len(stations), score.n_shots),
+        "objective_values": {name: float(fn(score)) for name, fn in (objective_fns or {}).items()},
+    }
+
+
 def plan_qif_cell(cell: QifCell, station_counts: Sequence[int] = (2, 3, 4), objectives: Sequence[str] = ("A1", "risk"),
                   rule: str = "simple", seed: int = 0, de: Optional[dict] = None) -> dict:
     """Search the best station layout on the cell's track for each station
@@ -507,7 +544,7 @@ def plan_qif_cell(cell: QifCell, station_counts: Sequence[int] = (2, 3, 4), obje
     estimate of `planning.cell.measurement_time_minutes`.
     """
     settings = dict(DEFAULT_DE if de is None else de)
-    scenario, track = cell.scenario, cell.track
+    track = cell.track
     half = np.array([p.tolerance_half_width_m for p in cell.planned])
     model = cell.risk_model(rule)
     available = {"A0": TraceObjective(), "A1": WeightedUncertaintyObjective(np.ones(len(half))),
@@ -516,29 +553,12 @@ def plan_qif_cell(cell: QifCell, station_counts: Sequence[int] = (2, 3, 4), obje
     if unknown:
         raise ValueError(f"unknown objectives {unknown}; choose from {sorted(available)}")
     scorer = cell.scorer()
-    cell_to_part = np.linalg.inv(cell.part_to_cell)
     out = {"cell": cell.summary(), "rule": rule, "de": {**settings, "seed": seed}, "objectives": list(objectives),
            "risk_if_nothing_is_measured": model.unmeasured_total(), "plans": {}}
+    objective_fns = {name: available[name] for name in objectives}
 
     def describe(stations) -> dict:
-        poses = layout_poses(stations, scenario, track)
-        score = scorer.score(poses)
-        per_risk = model.per_characteristic(score.u_m)
-        tur = half / (2.0 * score.u_m)
-        return {
-            "stations": [{"s_m": float(s[0]), "height_m": float(s[1]), "segment": s[2],
-                          "position_cell_m": p.position_m.tolist(),
-                          "position_file_m": _apply(cell_to_part, p.position_m[None, :])[0].tolist()}
-                         for s, p in zip(stations, poses)],
-            "u_um": {p.name: float(u * 1e6) for p, u in zip(cell.planned, score.u_m)},
-            "tur": {p.name: float(t) for p, t in zip(cell.planned, tur)},
-            "worst_tur": float(np.min(tur)),
-            "risk": {p.name: float(r) for p, r in zip(cell.planned, per_risk)},
-            "total_risk": float(per_risk.sum()),
-            "n_shots": score.n_shots,
-            "time_min": measurement_time_minutes(len(stations), score.n_shots),
-            "objective_values": {name: float(available[name](score)) for name in objectives},
-        }
+        return describe_layout(cell, stations, scorer, model, objective_fns)
 
     for k in station_counts:
         found = {}
