@@ -284,7 +284,6 @@ def _characteristics_and_totals(context: ReviewContext, u_m: np.ndarray) -> Tupl
         "expected_false_rejects": float(np.sum(pfrs)), "expected_wrong_decisions_exact": total_exact,
         "risk_model_vs_exact_relative_gap": float(abs(total_curve - total_exact) / total_exact) if total_exact > 0 else 0.0,
         "escape_probability": _escape_probability(pfa_arr),
-        "risk_if_nothing_is_measured": context.risk_model.unmeasured_total(),
         "n_characteristics": len(rows), "n_measured": int(sum(r["measured"] for r in rows)),
         "n_unmeasured": int(sum(not r["measured"] for r in rows)), "risk_from_unmeasured": unmeasured_cost,
         "worst_tur": float(min(r["tur"] for r in rows if r["measured"])) if measured_u.size else None,
@@ -353,21 +352,12 @@ def compare_plans(reviews: Sequence[PlanReview], reference: int = 0) -> Dict[str
                 entry.append(item)
             by_characteristic[name] = {"tolerance_half_um": next(r for r in reviews if r.feasible).characteristics[k]["tolerance_half_um"],
                                        "plans": entry}
-    nothing = next((r.totals["risk_if_nothing_is_measured"] for r in reviews if r.totals), None)
     feasible_rows = [row for row in rows if row["feasible"]]
     ranking = [row["label"] for row in sorted(feasible_rows, key=lambda row: row["expected_wrong_decisions"])]
-    statements: List[str] = []
-    if nothing is not None and feasible_rows and min(r["expected_wrong_decisions"] for r in feasible_rows) > nothing:
-        statements.append(
-            f"Every feasible plan's expected wrong decisions exceed the {nothing:.3g} of measuring nothing: under these process statistics "
-            "the model prices measurement as creating false rejections faster than it prevents false acceptances "
-            "(planning.process_evidence explains why, and the statistics here may be placeholders); read the plans against each other, "
-            "not against the nothing-measured line")
     return {
-        "statements": statements,
         "context_id": ref.context_id, "reference": ref.plan["name"], "reference_label": f"{reference + 1}",
         "tracker_label": ref.provenance["tracker_label"], "settings": ref.provenance["settings"],
-        "provenance": ref.provenance, "risk_if_nothing_is_measured": nothing,
+        "provenance": ref.provenance,
         "rows": rows, "characteristics": by_characteristic, "ranking_by_expected_wrong_decisions": ranking,
         "caveat": ("An algorithm plan is the best a differential-evolution search found, not provably the best; a plan with "
                    "lower risk is not thereby better on anything this model does not contain"),
@@ -393,7 +383,6 @@ def format_comparison(comparison: Dict[str, Any]) -> str:
     if prov["process_priors_include_placeholder"]:
         lines.append("  PLACEHOLDER process statistics in use: risk figures are illustrative only")
     lines.append(f"  time             : {prov['time_basis']}")
-    lines.append(f"  risk if nothing is measured: {_fmt(comparison['risk_if_nothing_is_measured'], '.4g')} expected wrong decisions")
     lines.append(f"  commit {prov['git']['commit'][:10]}{' (uncommitted changes)' if prov['git']['dirty'] else ''}; "
                  f"scene {prov['scene']['scene_hash'][:10]}; context {comparison['context_id'][:10]}")
     lines.append("")
@@ -427,8 +416,6 @@ def format_comparison(comparison: Dict[str, Any]) -> str:
                     mark = "" if plan_entry["measured"] else "*"
                     cells.append(f"{_fmt(plan_entry['u_um'], '.1f'):>8} {format(plan_entry['risk'], '.3e') + mark:>10}")
             lines.append(f"{name[:26]:<26} {entry['tolerance_half_um']:>8.0f}  " + "  ".join(cells))
-    for statement in comparison["statements"]:
-        lines += ["", "NOTE: " + statement]
     lines += ["", f"Ranking by expected wrong decisions (feasible plans): {' < '.join('#' + x for x in comparison['ranking_by_expected_wrong_decisions']) or 'none feasible'}",
               comparison["caveat"]]
     return "\n".join(lines)

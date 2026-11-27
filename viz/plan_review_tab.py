@@ -237,8 +237,6 @@ def _show_result(result: Dict) -> None:
         st.warning("PLACEHOLDER process statistics are in use: the risk figures are illustrative only.")
     st.caption(f"Reference network: {prov['reference_network']}. Time: {prov['time_basis']}. Commit {prov['git']['commit'][:10]}"
                f"{' (uncommitted changes)' if prov['git']['dirty'] else ''}; scene {prov['scene']['scene_hash'][:10]}; context {comparison['context_id'][:10]}.")
-    for statement in comparison["statements"]:
-        st.info(statement)
     rows = []
     for r in comparison["rows"]:
         rows.append({
@@ -249,8 +247,7 @@ def _show_result(result: Dict) -> None:
             "Worst TUR": "-" if r["worst_tur"] is None else f"{r['worst_tur']:.1f}:1", "Largest u [µm]": _fmt(r["largest_u_um"], ".1f"),
             "Unmeasured": _fmt(r["n_unmeasured"], "d"), "Status": "feasible" if r["feasible"] else "INFEASIBLE - not scored"})
     st.dataframe(rows, hide_index=True, width="stretch")
-    nothing = comparison["risk_if_nothing_is_measured"]
-    st.caption(f"Reference: expected wrong decisions if nothing is measured, {_fmt(nothing, '.4g')}. {comparison['caveat']}.")
+    st.caption(f"{comparison['caveat']}.")
     for r in comparison["rows"]:
         if r["blocking_findings"] or r["warnings"]:
             with st.expander(f"#{r['label']} {r['name']}: {len(r['blocking_findings'])} blocking, {len(r['warnings'])} warning(s)", expanded=bool(r["blocking_findings"])):

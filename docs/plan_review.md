@@ -69,8 +69,8 @@ from different contexts):
     PFA, PFR and their total, and the acceptance interval under the decision rule;
   * characteristics not measured, priced at their process prior as the better of accepting or rejecting them unseen
     (`risk.decision.unmeasured_risk`: equal to `planning.process_evidence`'s price whenever accepting unseen is the better decision);
-  * totals: expected wrong decisions, expected false accepts and rejects, escape probability (1 - prod(1 - PFA), independence
-    assumed, as `planning.inspection` defines it), and the risk if nothing is measured, as a reference line;
+  * totals: expected wrong decisions, expected false accepts and rejects, and escape probability (1 - prod(1 - PFA), independence
+    assumed, as `planning.inspection` defines it);
   * feasibility, with reasons; **an infeasible plan is reported and never repaired** (no station added, no target dropped);
   * provenance: the instrument model and parameter-set hash, the floor, each cluster's prior and whether it is a placeholder, the
     decision rule, whether uncertainties are datum-referenced, the elevation-limit setting, whether the placement was assumed,
@@ -80,9 +80,10 @@ from different contexts):
 the planners minimise (log-log interpolation on a 60-point grid). PFA and PFR are the exact JCGM 106 integrals at the same
 uncertainty; their sum differs from the curve by the interpolation, reported as `risk_model_vs_exact_relative_gap` (a test bounds it).
 
-**Under placeholder priors, every plan can be worse than measuring nothing.** The synthetic cell's marginal-cluster statistics make
-measurement create false rejections faster than it prevents false acceptances (`planning/process_evidence.py` explains why). The
-comparison says so in a note rather than leaving it a puzzle; read plans against each other, not against that line.
+**There is no "risk if nothing is measured" line.** It was in the first design as a reference and was removed: under placeholder
+priors it beats every plan (the synthetic cell's marginal-cluster statistics make measurement create false rejections faster than it
+prevents false acceptances; `planning/process_evidence.py` explains why), so it misleads more than it informs. Read plans against each
+other. A characteristic a plan leaves unmeasured is still priced at its own process prior and reported (`risk_from_unmeasured`).
 
 ### Feasibility findings
 

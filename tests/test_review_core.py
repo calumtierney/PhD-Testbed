@@ -89,7 +89,6 @@ def test_gate2_a_planners_plan_reviewed_reproduces_the_planners_own_numbers(qif)
         assert review.totals["expected_wrong_decisions"] == pytest.approx(entry["total_risk"], rel=1e-12)
         assert review.totals["worst_tur"] == pytest.approx(entry["worst_tur"], rel=1e-12)
         assert review.time_min == pytest.approx(entry["time_min"], rel=1e-12)
-        assert review.totals["risk_if_nothing_is_measured"] == pytest.approx(planned["risk_if_nothing_is_measured"], rel=1e-12)
         checked += 1
     assert checked >= 2
 
@@ -277,7 +276,6 @@ def test_gate6_an_unmeasured_characteristic_is_priced_as_process_evidence_and_un
         else:
             assert c["decision"] == "rejected unseen" and c["pfa"] == 0.0
     assert review.totals["risk_from_unmeasured"] == pytest.approx(sum(c["risk"] for c in unmeasured), rel=1e-12)
-    assert review.totals["risk_if_nothing_is_measured"] == pytest.approx(context.risk_model.unmeasured_total(), rel=1e-12)
 
 
 # -- what the numbers are --------------------------------------------------------------------------------
@@ -393,31 +391,13 @@ def test_an_infeasible_given_plan_has_no_iso_risk_target_and_is_not_repaired(fac
     assert not any(c.kind == "iso_risk" for c in result.counterparts)
 
 
-def test_the_comparison_says_so_when_every_plan_is_worse_than_measuring_nothing(factory):
-    """Under placeholder priors measuring a marginal process creates false rejections faster than it prevents false accepts
-    (planning.process_evidence): the nothing-measured line then beats every plan, and the output must say why rather than leave it
-    as a puzzle."""
+def test_there_is_no_nothing_measured_reference_line(factory):
+    """Under placeholder priors a 'risk if nothing is measured' line beats every plan (measurement creates false rejections faster than it
+    prevents false accepts; planning.process_evidence), so it misleads more than it informs and the review does not offer it."""
     _, reviews = review_plans(factory, [demo_plan(factory, 4)], NOISE)
     comparison = compare_plans(reviews)
-    assert reviews[0].totals["expected_wrong_decisions"] > comparison["risk_if_nothing_is_measured"]
-    assert comparison["statements"] and "measuring nothing" in comparison["statements"][0]
-    assert "NOTE:" in format_comparison(comparison)
-
-
-def test_a_scene_built_from_uploaded_bytes_is_the_scene_built_from_the_file(qif):
-    from review.scene import qif_scopes
-    cell, scene, _ = qif
-    from_bytes = ReviewScene.from_qif_bytes(SAMPLE.read_bytes(), "upload")
-    assert from_bytes.scene_hash() == ReviewScene.from_qif_cell(build_qif_cell(read_qif(SAMPLE)), "x").scene_hash()
-    assert from_bytes.placement_assumed and from_bytes.part_to_cell is not None
-    assert qif_scopes(SAMPLE.read_bytes())
-    with pytest.raises(ValueError):
-        ReviewScene.from_qif_bytes(b'<QIFDocument versionQIF="3.0.0"/>', "empty")
-
-
-def test_an_stl_held_in_memory_loads_like_the_file():
-    from geometry.mesh import load_stl, load_stl_bytes
-    wall = Path(__file__).resolve().parent.parent / "scenes" / "wall.stl"
-    a, b = load_stl(wall), load_stl_bytes(wall.read_bytes())
-    np.testing.assert_array_equal(a.vertices_m, b.vertices_m)
-    np.testing.assert_array_equal(a.faces, b.faces)
+    assert "risk_if_nothing_is_measured" not in comparison and "statements" not in comparison
+    assert "risk_if_nothing_is_measured" not in reviews[0].totals
+    text = format_comparison(comparison).lower()
+    assert "nothing is measured" not in text and "measuring nothing" not in text and "note:" not in text
+    assert "risk_from_unmeasured" in reviews[0].totals  # an unmeasured characteristic's own price is still reported

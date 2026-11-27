@@ -10,7 +10,7 @@ reviewer would sign off. **The schema matters more than the interface.** This re
 
   scene_loaded      payload: the scene's summary (counts, hashes, clusters; notes only if names are logged).
   plan_reviewed     payload: {"review": <the full PlanReview>}.
-  comparison        payload: {"comparison_id", "context_id", "plan_hashes", "rows", "ranking...", "statements",
+  comparison        payload: {"comparison_id", "context_id", "plan_hashes", "rows", "ranking...",
                     "counterparts": [{plan_hash, kind, objective, n_stations}], "search": {...}}. The per-plan
                     reviews are their own `plan_reviewed` records, joined by plan hash.
   sign_off          payload: {"comparison_id", "chosen_plan_hash" (or null: none acceptable), "reason" (free text)}.
@@ -318,7 +318,6 @@ class ReviewLog:
         payload = {
             "comparison_id": comparison_id(comparison), "context_id": comparison["context_id"], "plan_hashes": plan_hashes,
             "rows": rows, "ranking_by_expected_wrong_decisions": comparison["ranking_by_expected_wrong_decisions"],
-            "risk_if_nothing_is_measured": comparison["risk_if_nothing_is_measured"], "statements": comparison["statements"],
             "counterparts": [{"plan_hash": c.review.plan["plan_hash"], "kind": c.kind, "objective": c.objective, "n_stations": c.n_stations}
                              for c in (counterparts or ())],
             "search": search or {}}
