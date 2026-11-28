@@ -47,6 +47,15 @@ def test_gate8_the_plan_review_tab_runs_on_the_demo_scene_without_error(app, tmp
     assert [r["event"] for r in records] == ["scene_loaded", "plan_reviewed", "comparison"]
     assert all(r["reviewer_role"] == "metrologist" for r in records)
 
+    # the explanation: the chain behind the figures, for the highest-risk characteristic of the one plan
+    assert not app.button(key="pr_explain_run").disabled
+    app.button(key="pr_explain_run").click().run()
+    assert not app.exception, [e.value for e in app.exception]
+    explanation = " ".join(c.value for c in app.code)
+    for section in ("HOW THE NUMBERS FOR", "1. INPUTS", "3. ONE CHARACTERISTIC IN FULL", "5. WHAT DRIVES", "24 of 24 checks agree"):
+        assert section in explanation, section
+    assert "<-- PLACEHOLDER" in explanation
+
     # the sign-off writes to the log. Form widgets commit together with the submit button, so set them, then submit once; option 0 is "none of
     # these", option 1 the one plan
     app.selectbox(key="pr_signoff_choice").select_index(1)

@@ -227,7 +227,8 @@ complete:
   decision terms: uncertainty, TUR, PFA/PFR, unmeasured characteristics priced at their prior, an infeasible plan
   reported with its reasons and never repaired. `streamlit run app.py` (the "Plan review" tab) or
   `python -m viz.review_plans <scene> <plan files>`; `src/review/` is the pure-Python core. The instrument model
-  is a required choice with no default. Every review is logged (append-only JSON Lines, outside the repository,
+  is a required choice with no default. `--explain` (or the tab's "Explain the numbers") shows how every figure is obtained,
+  link by link, with independent checks (`review.explain`, `review.verify`). Every review is logged (append-only JSON Lines, outside the repository,
   scene names left out by default). Runs offline; no customer data in the repository; no licence file added.
 
 **Visualization** (`src/visualization`, not one of the six steps — see

@@ -60,3 +60,15 @@ def test_a_bad_plan_file_is_reported_not_guessed(tmp_path, capsys):
                                        "frame": "cell", "units": "mm", "stations": [{"position_m": [0, 0, 1]}]}))
     assert main(["factory", str(wrong_units), "--tracker-model", "noise_only", "--no-log"]) == 2
     assert "only metres" in capsys.readouterr().err
+
+
+def test_explain_prints_the_chain_and_the_checks_and_refuses_a_plan_that_is_not_in_the_table(capsys):
+    assert main(["factory", "--demo", "--tracker-model", "noise_only", "--no-log", "--explain", "--explain-parts", "40000",
+                 "--explain-characteristic", "cluster2_profile_0"]) == 0
+    out = capsys.readouterr().out
+    for text in ("HOW THE NUMBERS FOR", "1. INPUTS", "ONE CHARACTERISTIC IN FULL:  cluster2_profile_0", "5. WHAT DRIVES", "checks agree", "<-- PLACEHOLDER"):
+        assert text in out, text
+    assert main(["factory", "--demo", "--tracker-model", "noise_only", "--no-log", "--explain", "--explain-plan", "5"]) == 2
+    assert "--explain-plan 5" in capsys.readouterr().err
+    assert main(["factory", "--demo", "--tracker-model", "noise_only", "--no-log", "--explain", "--explain-characteristic", "nope"]) == 2
+    assert "not a measured characteristic" in capsys.readouterr().err

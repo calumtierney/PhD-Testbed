@@ -169,9 +169,26 @@ def _unmeasured_split(prior: ProcessKnowledge, lower_m: float, upper_m: float) -
     return 0.0, 1.0 - nonconformance, "rejected unseen"
 
 
-def review_with_context(context: ReviewContext, plan: PlanFile) -> PlanReview:
-    """Review `plan` with `context`'s scorer and risk model. See the module docstring."""
-    scene, scenario, settings = context.scene, context.scenario, context.settings
+@dataclass(frozen=True)
+class MeasurementPattern:
+    """What a plan measures, as the review reads it: where each station stands (cell and file coordinates), its pose, what it can see and
+    what it measures (the visible targets, restricted to those it lists), the instruments and faces, and the findings that reading
+    produced (unknown or unseeable listed targets)."""
+
+    cell_positions: np.ndarray
+    file_positions: Optional[np.ndarray]
+    poses: List[InstrumentPose]
+    visible_full: np.ndarray
+    visible: np.ndarray
+    instrument_ids: Optional[List[int]]     # None: one tracker for every station
+    faces: Optional[List[Tuple[str, ...]]]  # None: front face only everywhere
+    findings: List[Finding]
+
+
+def measurement_pattern(context: ReviewContext, plan: PlanFile) -> MeasurementPattern:
+    """Read a plan against a context: the stations' poses (levelled, facing the scene's target centroid), what each can see, and what each
+    measures. Shared by `review_with_context` and `review.verify`, so what is checked is what was reviewed."""
+    scene, scenario = context.scene, context.scenario
     positions = np.array([s.position_m for s in plan.stations], dtype=float)
     cell_positions = scene.to_cell(positions) if plan.frame == "file" else positions
     file_positions = scene.to_file(cell_positions)
@@ -196,9 +213,18 @@ def review_with_context(context: ReviewContext, plan: PlanFile) -> PlanReview:
         keep[indices] = True
         visible[s] = visible_full[s] & keep
     findings += listed_target_findings(poses, scene, scenario, listed, visible_full)
-
     instrument_ids = None if all(s.instrument_id == 0 for s in plan.stations) else [s.instrument_id for s in plan.stations]
     faces = None if all(s.faces == ("front",) for s in plan.stations) else [tuple(s.faces) for s in plan.stations]
+    return MeasurementPattern(cell_positions, file_positions, poses, visible_full, visible, instrument_ids, faces, findings)
+
+
+def review_with_context(context: ReviewContext, plan: PlanFile) -> PlanReview:
+    """Review `plan` with `context`'s scorer and risk model. See the module docstring."""
+    scene, scenario, settings = context.scene, context.scenario, context.settings
+    pattern = measurement_pattern(context, plan)
+    cell_positions, file_positions, poses = pattern.cell_positions, pattern.file_positions, pattern.poses
+    visible_full, visible, instrument_ids, faces = pattern.visible_full, pattern.visible, pattern.instrument_ids, pattern.faces
+    findings: List[Finding] = list(pattern.findings)
     n_shots = int(visible.sum())
     n_readings = int(sum(int(visible[s].sum()) * len(station.faces) for s, station in enumerate(plan.stations)))
 
@@ -398,6 +424,8 @@ def format_comparison(comparison: Dict[str, Any]) -> str:
         else:
             lines.append(f"{row['label']:>2} {row['name'][:30]:<30} {row['author_role']:<9} {row['n_stations']:>3} {row['n_shots']:>5} {times:>14} "
                          f"{'INFEASIBLE - not scored':>52}")
+    lines.append("  wrong dec. = the expected NUMBER of wrong accept/reject decisions per part inspected, summed over the characteristics (not a probability);")
+    lines.append("  PFA and PFR are its false-accept and false-reject parts. How each figure is obtained: --explain (review/explain.py).")
     for row in comparison["rows"]:
         for reason in row["blocking_findings"]:
             lines.append(f"  [{row['label']}] BLOCKING: {reason}")

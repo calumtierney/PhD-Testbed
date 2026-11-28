@@ -23,6 +23,7 @@ from interchange.qif import QifError
 from review.core import build_context, compare_plans, format_comparison, review_with_context
 from review.counterparts import OBJECTIVES, algorithm_counterparts
 from review.demo import demo_plan
+from review.explain import explain_plan
 from review.export import bundle_json, comparison_bundle
 from review.log import LOG_FILE_NAME, LogError, ReviewLog, resolve_log_dir
 from review.scene import ReviewScene, qif_scopes
@@ -216,7 +217,8 @@ def _run(scene, settings, plans, role, name, log_names, counterpart_cfg) -> Dict
     bundle = comparison_bundle(comparison, reviews, counterparts, search, not_found)
     return {"comparison": comparison, "text": format_comparison(comparison), "bundle_json": bundle_json(bundle), "figures": figures,
             "not_found": list(not_found), "log_path": str(log.path), "n_logged": len(records), "role": role, "name": name, "log_names": log_names,
-            "labels": {row["plan_hash"]: f"#{row['label']} {row['name']}" for row in comparison["rows"]}}
+            "labels": {row["plan_hash"]: f"#{row['label']} {row['name']}" for row in comparison["rows"]},
+            "plans_all": list(plans) + [c.plan for c in counterparts], "reviews_all": reviews, "settings_json": json.dumps(settings.to_dict(), sort_keys=True)}
 
 
 # -- results -----------------------------------------------------------------------------------------------
@@ -224,7 +226,7 @@ def _fmt(value, spec):
     return "-" if value is None else format(value, spec)
 
 
-def _show_result(result: Dict) -> None:
+def _show_result(result: Dict, scene: ReviewScene) -> None:
     comparison = result["comparison"]
     prov = comparison["provenance"]
     st.subheader("Result")
@@ -242,12 +244,14 @@ def _show_result(result: Dict) -> None:
         rows.append({
             "#": r["label"], "Plan": r["name"], "Role": r["author_role"], "Stations": r["n_stations"], "Shots": r["n_shots"],
             "Minutes (per station | per reading)": f"{r['time_per_station_model_min']:.0f} | {r['time_per_observation_model_min']:.0f}",
-            "Wrong decisions": _fmt(r["expected_wrong_decisions"], ".4g"), "PFA": _fmt(r["expected_false_accepts"], ".2e"),
+            "Expected wrong decisions (sum)": _fmt(r["expected_wrong_decisions"], ".4g"), "PFA": _fmt(r["expected_false_accepts"], ".2e"),
             "PFR": _fmt(r["expected_false_rejects"], ".2e"), "Escape probability": _fmt(r["escape_probability"], ".2e"),
             "Worst TUR": "-" if r["worst_tur"] is None else f"{r['worst_tur']:.1f}:1", "Largest u [µm]": _fmt(r["largest_u_um"], ".1f"),
             "Unmeasured": _fmt(r["n_unmeasured"], "d"), "Status": "feasible" if r["feasible"] else "INFEASIBLE - not scored"})
     st.dataframe(rows, hide_index=True, width="stretch")
-    st.caption(f"{comparison['caveat']}.")
+    st.caption("Expected wrong decisions = the expected number of wrong accept/reject decisions per part inspected, summed over the characteristics "
+               "(not a probability); PFA and PFR are its false-accept and false-reject parts. Use \"Explain the numbers\" below to see how each figure "
+               f"is obtained. {comparison['caveat']}.")
     for r in comparison["rows"]:
         if r["blocking_findings"] or r["warnings"]:
             with st.expander(f"#{r['label']} {r['name']}: {len(r['blocking_findings'])} blocking, {len(r['warnings'])} warning(s)", expanded=bool(r["blocking_findings"])):
@@ -274,6 +278,8 @@ def _show_result(result: Dict) -> None:
         st.dataframe(table, hide_index=True, width="stretch")
         st.caption("\\* not measured: priced at its process prior as accepted or rejected unseen.")
 
+    _explain_section(result, scene)
+
     st.markdown("#### Export")
     figures = result["figures"]
     columns = st.columns(5)
@@ -284,6 +290,35 @@ def _show_result(result: Dict) -> None:
     columns[4].download_button("Risk figure (SVG)", figures["risk_by_characteristic.svg"], "risk_by_characteristic.svg", "image/svg+xml", key="pr_dl_risk_svg")
     st.caption(f"Logged {result['n_logged']} records to {result['log_path']}.")
     _signoff(result)
+
+
+def _explain_section(result: Dict, scene: ReviewScene) -> None:
+    st.markdown("#### Explain the numbers")
+    st.caption("How each figure of one plan is obtained: the inputs (and which are placeholders), each link of the chain with its numbers, the outputs, "
+               "what drives the risk, and independent checks that recompute the risk and (optionally) the whole measurement chain a different way.")
+    reviews, plans = result["reviews_all"], result["plans_all"]
+    options = [i for i, r in enumerate(reviews) if r.feasible]
+    if not options:
+        st.info("No plan is feasible, so there is no chain to explain; the reasons are above.")
+        return
+    columns = st.columns(3)
+    plan_index = columns[0].selectbox("Plan", options, format_func=lambda i: f"#{i + 1} {reviews[i].plan['name']}", key="pr_explain_plan")
+    names = [c["name"] for c in reviews[plan_index].characteristics if c["measured"]]
+    choice = columns[1].selectbox("Follow this characteristic through every link", ["(the one with the most risk)"] + names, key="pr_explain_char")
+    trials = int(columns[2].number_input("Whole-chain Monte Carlo trials (0 = skip; about 0.2 s each on the built-in cell)", min_value=0, value=0, step=100,
+                                         key="pr_explain_trials"))
+    if trials:
+        st.warning(f"The whole-chain check simulates {trials} sets of tracker readings and solves the network for each: about {trials * 0.2:.0f} s on the built-in cell, "
+                   "longer for a larger scene.")
+    if st.button("Explain", key="pr_explain_run"):
+        context = _context(scene, scene.scene_hash(), result["settings_json"])
+        bar = st.progress(0.0, text="Working through the chain ...") if trials else None
+        progress = (lambda done, total: bar.progress(done / total, text=f"Whole-chain Monte Carlo: trial {done} of {total}")) if trials else None
+        explanation = explain_plan(context, plans[plan_index], reviews[plan_index], None if choice.startswith("(") else choice, 500_000, trials, 0, progress)
+        st.session_state["pr_explanation"] = explanation.to_text()
+    if "pr_explanation" in st.session_state:
+        st.code(st.session_state["pr_explanation"], language=None)
+        st.download_button("Explanation (text)", st.session_state["pr_explanation"], "explanation.txt", "text/plain", key="pr_dl_explanation")
 
 
 def _signoff(result: Dict) -> None:
@@ -345,4 +380,4 @@ def render() -> None:
         except ValueError as error:
             st.error(f"The review could not run: {error}")
     if "pr_result" in st.session_state:
-        _show_result(st.session_state["pr_result"])
+        _show_result(st.session_state["pr_result"], scene)
