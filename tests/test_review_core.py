@@ -401,3 +401,39 @@ def test_there_is_no_nothing_measured_reference_line(factory):
     text = format_comparison(comparison).lower()
     assert "nothing is measured" not in text and "measuring nothing" not in text and "note:" not in text
     assert "risk_from_unmeasured" in reviews[0].totals  # an unmeasured characteristic's own price is still reported
+
+
+
+def test_the_built_in_cells_marginal_process_is_a_choice_between_a_typical_and_a_stress_case_at_the_same_cpk(factory):
+    """Both are Cpk 1.33 (the standard-process floor). The typical one (default) shares the margin between a +10 um offset and a 10 um spread;
+    the stress one is the experiments' process, the margin lost to a +38 um offset. Only this scene's priors differ."""
+    from planning.experiment import MARGINAL_CLUSTER
+    from review.scene import MARGINAL_PROCESSES
+
+    stress = ReviewScene.from_factory_cell(marginal_process="stress")
+    assert factory.label != stress.label and "STRESS CASE" in stress.label and "+10 um / 10 um" in factory.label
+    assert factory.scene_hash() != stress.scene_hash()
+    limits = factory.tolerance_limits_m()[3]
+    for scene, mean, std in ((factory, 10e-6, 10e-6), (stress, 38e-6, 3e-6)):
+        knowledge = scene.process_knowledge(None)
+        assert [k.components[0].mean_m for k in knowledge[3:]] == [mean] * 3 and [k.components[0].scale_m for k in knowledge[3:]] == [std] * 3
+        assert [k.components[0].mean_m for k in knowledge[:3]] == [0.0] * 3                      # the high-capability cluster is unchanged
+        assert (50e-6 - mean) / (3 * std) == pytest.approx(4.0 / 3.0)                            # Cpk 1.33 either way
+    assert factory.process_knowledge(None)[3].nonconformance(*limits) == pytest.approx(stress.process_knowledge(None)[3].nonconformance(*limits), rel=1e-3)
+    assert MARGINAL_CLUSTER.prior.mean_m == 38e-6 and MARGINAL_CLUSTER.prior.std_m == 3e-6        # the experiments' cluster is untouched
+    assert [c["name"] for c in stress.cluster_summaries] == ["high-capability", "marginal (stress case)"]
+    assert all(c["placeholder"] for c in factory.cluster_summaries)
+    assert set(MARGINAL_PROCESSES) == {"typical", "stress"}
+    with pytest.raises(ValueError, match="marginal_process"):
+        ReviewScene.from_factory_cell(marginal_process="alarming")
+
+
+def test_the_typical_process_gives_a_demo_plan_risk_about_fifty_times_below_the_stress_case(factory):
+    stress = ReviewScene.from_factory_cell(marginal_process="stress")
+    plan = demo_plan(factory, 4)
+    typical_review = review_with_context(build_context(factory, NOISE), plan)
+    stress_review = review_with_context(build_context(stress, NOISE), plan)
+    # the measurement chain is identical: same uncertainties; only the process the parts come from differs
+    assert [c["u_um"] for c in typical_review.characteristics] == [c["u_um"] for c in stress_review.characteristics]
+    ratio = stress_review.totals["expected_wrong_decisions"] / typical_review.totals["expected_wrong_decisions"]
+    assert 30 < ratio < 100 and typical_review.totals["expected_wrong_decisions"] < 0.02

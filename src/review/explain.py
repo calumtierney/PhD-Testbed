@@ -390,11 +390,14 @@ def render_text(e: Explanation, focus: Optional[str] = None) -> str:
     else:
         L += [f"  as it is: risk {dr['risk_now']:.3e}  (u {dr['measured_u_um']:.1f} um; process mean {dr['prior_mean_um']:+.1f} um, scale {dr['prior_scale_um']:.1f} um)", "",
               "  a) a better (or worse) measurement:   " + "   ".join(f"u x{r['u_factor']:g} = {r['u_um']:.1f} um -> {r['risk']:.2e}" for r in dr["vs_u"]),
-              "  b) the process mean moved toward nominal:   " + "   ".join(f"mean {r['mean_um']:+.0f} um -> {r['risk']:.2e}" for r in dr["vs_offset"])]
+              "  b) the process mean moved toward nominal:   " + "   ".join(f"mean {r['mean_um']:+.4g} um -> {r['risk']:.2e}" for r in dr["vs_offset"])]
         if "same_cpk_centred" in dr:
             s = dr["same_cpk_centred"]
             L += ["  c) the SAME capability index, with the margin lost to spread instead of offset:",
-                  f"       centred, mean 0, std {s['std_um']:.1f} um (Cpk {s['cpk']:.2f}) -> risk {s['risk']:.2e}; the offset process is {s['ratio_actual_to_centred']:.0f} times worse at this u"]
+                  f"       centred, mean 0, std {s['std_um']:.1f} um (Cpk {s['cpk']:.2f}) -> risk {s['risk']:.2e}; "
+                  + ("the two are about the same at this u" if 0.95 < s["ratio_actual_to_centred"] < 1.05 else
+                     f"the offset process is {s['ratio_actual_to_centred']:.{0 if s['ratio_actual_to_centred'] >= 10 else 1}f} times "
+                     + ("worse" if s["ratio_actual_to_centred"] > 1 else "better") + " at this u")]
         L.append("")
 
     L += ["6. INDEPENDENT CHECKS  (each recomputes a figure a different way; see review/verify.py)", ""]

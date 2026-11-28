@@ -18,6 +18,11 @@ def factory():
     return ReviewScene.from_factory_cell()
 
 
+@pytest.fixture(scope="module")
+def factory_stress():
+    return ReviewScene.from_factory_cell(marginal_process="stress")
+
+
 @pytest.fixture(scope="module", params=["noise_only", "npl_residual"])
 def explained(request, factory):
     context = build_context(factory, ReviewSettings(request.param))
@@ -93,10 +98,23 @@ def test_the_what_drives_tables_reproduce_the_risk_and_show_the_offset_matters(e
         assert d["vs_offset"][-1]["risk"] == pytest.approx(row["risk_exact"], rel=1e-9) and d["vs_offset"][0]["mean_um"] == 0.0
         risks = [r["risk"] for r in d["vs_u"]]
         assert risks == sorted(risks)  # a worse measurement never helps
+    marginal = e.drivers["cluster2_profile_0"]  # the default ("typical") marginal process: +10 um offset, 10 um spread, Cpk 1.33
+    assert marginal["vs_offset"][0]["risk"] < 0.5 * marginal["risk_now"]            # centring it helps, by a factor of a few
+    assert marginal["same_cpk_centred"]["ratio_actual_to_centred"] > 1.0            # and the same Cpk made up of spread alone is a little safer
+    assert "same_cpk_centred" not in e.drivers["cluster1_profile_0"]                 # already centred: nothing to compare
+
+
+def test_the_stress_case_is_dominated_by_its_offset(factory_stress):
+    context = build_context(factory_stress, ReviewSettings("noise_only"))
+    plan = demo_plan(factory_stress, 4)
+    e = explain_plan(context, plan, n_parts=20_000)
     marginal = e.drivers["cluster2_profile_0"]
+    assert marginal["prior_mean_um"] == pytest.approx(38.0) and marginal["prior_scale_um"] == pytest.approx(3.0)
     assert marginal["vs_offset"][0]["risk"] < 1e-4 * marginal["risk_now"]           # centred, the same measurement is harmless
     assert marginal["same_cpk_centred"]["ratio_actual_to_centred"] > 20              # the same Cpk, with the margin in spread, is far safer
-    assert "same_cpk_centred" not in e.drivers["cluster1_profile_0"]                 # already centred: nothing to compare
+    assert marginal["risk_now"] > 0.1                                                 # about 12% of its parts falsely rejected
+    assert e.outputs["totals"]["expected_wrong_decisions"] > 0.3
+    assert e.focus.startswith("cluster2")
 
 
 def test_outputs_roll_up_to_the_totals_and_shares_sum_to_one(explained):
@@ -104,7 +122,7 @@ def test_outputs_roll_up_to_the_totals_and_shares_sum_to_one(explained):
     rows = e.outputs["rows"]
     assert sum(r["risk"] for r in rows) == pytest.approx(review.totals["expected_wrong_decisions"], rel=1e-12)
     assert sum(r["share_of_total"] for r in rows) == pytest.approx(1.0)
-    assert e.focus == max(rows, key=lambda r: r["risk"])["name"] == "cluster2_profile_2"  # the default focus: where the risk is
+    assert e.focus == max(rows, key=lambda r: r["risk"])["name"] and e.focus.startswith("cluster2")  # the default focus: where the risk is
 
 
 def test_the_independent_checks_run_and_pass(explained):

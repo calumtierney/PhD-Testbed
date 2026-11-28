@@ -118,31 +118,48 @@ A characteristic's risk is large only when many parts sit where a measurement of
 
 **The independent checks** recompute a figure a different way:
 
-| Check | What it shares with the review | Result on the built-in cell, demo plan |
+| Check | What it shares with the review | Result on the built-in cell, demo plan (stress case unless stated) |
 |---|---|---|
 | PFA, PFR in closed form (adaptive quadrature of the one-dimensional integral) | the process prior and u | agrees with `risk.decision` to 1e-6 relative, all six characteristics |
-| PFA, PFR by simulating parts (draw true deviation from the prior, add measurement error, apply the limits, count) | the process prior and u | agrees within 4 standard errors (4 million parts: 0.1168 against 0.1170 for `cluster2_profile_0`) |
+| PFA, PFR by simulating parts (draw true deviation from the prior, add measurement error, apply the limits, count) | the process prior and u | agrees within 4 standard errors (stress case, 4 million parts: 0.1168 against 0.1170 for `cluster2_profile_0`) |
 | u by simulating the *whole measurement chain*: tracker readings with the sensor noise (and, for the NPL model, one draw of the parameter errors per tracker per trial), nonlinear network solve, an explicit best-fit rigid datum frame (SVD), deviation along the tolerance direction | the visibility matrix, the sensor and parameter definitions and the nonlinear solver; **not** the design covariance, the S-transformation or the scorer | sensor noise, 3000 trials: u within 0.98 to 1.01 of the review's (standard error 1.3%), no bias; NPL model, 4500 trials: 0.99 to 1.01 (1.1%) |
 
 So the arithmetic from uncertainty to risk, and the uncertainties themselves under both instrument models, hold up. They are checked
 against the *model's own physics* (the sensor noise of Hughes et al. 2011 and the NPL parameter uncertainties), not against a real
 tracker: nothing here validates the model against hardware.
 
-### Why the demo plan's figure is about 0.4
+### The built-in cell's placeholder process, and why the demo plan once read 0.4
 
-It is three characteristics at about 0.12 to 0.15 each, and three at about 0.0001. Nearly all of it is false rejection of the three in
-the "marginal" cluster, and that is set by the **process prior**, not by the measurement chain:
+The built-in cell's three "marginal" characteristics come from a placeholder process, and which one matters enormously. Both choices are
+Cpk 1.33 (the standard-process floor quoted from GKN) and both are placeholders (`ReviewScene.from_factory_cell(marginal_process=...)`,
+`--marginal-process`, a switch in the tab):
 
-  * that cluster is a placeholder process centred **38 um off nominal** with a 3 um spread, against a tolerance of +-50 um. Cpk is 1.33
-    (the standard-process floor quoted from GKN), but the margin is lost to *offset*, so the process runs 12 um inside the limit;
+| | process mean | std | demo plan, expected wrong decisions (sensor noise / NPL) |
+|---|---|---|---|
+| **typical** (the default) | +10 um | 10 um | **0.0094** / 0.0126 |
+| stress case | +38 um | 3 um | 0.40 / 0.44 |
+
+The stress case is `planning.experiment.MARGINAL_CLUSTER`, which the headline, track and cell experiments and the paper's saved results
+use deliberately (to show that a process near its limit makes measurement uncertainty matter), and **it is untouched**: only the review's
+built-in scene has the choice. In a review the stress case makes every plan look alarming, and it was the demo plan's first reading
+of about 0.4 that prompted the explanation and checks above. Why it is large:
+
+  * the stress process is centred **38 um off nominal** with a 3 um spread, against a tolerance of +-50 um: Cpk 1.33, but the margin is lost
+    to *offset*, so it runs 12 um inside the limit;
   * the demo plan measures each of those characteristics from one station (the other stations meet its surface edge-on or from behind),
     at 4.6 to 5.3 m, with a projected uncertainty u of about 10 um (a single reading's lateral error is about 2.35 to 3.4 um per metre of
     range, and referring the point to the datum frame adds a little);
   * measured values therefore spread by sqrt(3^2 + 9.6^2) = 10.1 um around a mean that sits 12 um from the limit, and about 12% are
     measured outside it: PFR = 1 - Phi(12 / 10.1) = 0.116 against the tool's 0.117.
 
-The risk is extraordinarily sensitive to *where* the process sits. One characteristic, +-50 um, process std 3 um, by process mean and by
-measurement uncertainty (total risk, PFA + PFR):
+With the typical process the same measurement leaves the mean 40 um from the limit and the spread is 10 um: measured values spread by
+sqrt(10^2 + 9.6^2) = 13.9 um, and PFR falls to 0.002 per characteristic. The demo plan's total is then 0.009, almost all of it still
+false rejection of the marginal characteristics (the escape probability, about 4e-5, is the process's own nonconformance rate, which no
+plan changes). The independent checks pass on both priors (typical: PFR 0.001966 closed form against 0.001978 from 4 million simulated
+parts; the uncertainties u do not depend on the process at all).
+
+The risk is extraordinarily sensitive to *where* the process sits. One characteristic, +-50 um, process std 3 um (the stress case's), by
+process mean and by measurement uncertainty (total risk, PFA + PFR):
 
 | process mean | Cpk | u = 3 um | 5 um | 10 um | 15 um |
 |---|---|---|---|---|---|
@@ -154,9 +171,9 @@ measurement uncertainty (total risk, PFA + PFR):
 and a capability index does not say where the margin went: at the same Cpk of 1.33, a process *centred* with a 12.5 um spread
 (`planning.experiment.CENTRED_MARGINAL_CLUSTER`) has a risk of 1.8e-03 at u = 10 um, **about 70 times lower** than the offset one. A
 real aerospace process with its mean 76% of the way to a limit would normally be re-centred, which is the "calibrated machines" point:
-the figure is large because the placeholder asks "what if a process sits near its limit", not because the measurement is poor. With
-real process data for the cluster (the QIF route takes it from earlier inspections in the file) this number would change by orders of
-magnitude in either direction, so it should be read as a statement about the placeholder. `docs/cell_experiment.md` and the
+the stress figure is large because the placeholder asks "what if a process sits near its limit", not because the measurement is poor.
+With real process data for the cluster (the QIF route takes it from earlier inspections in the file) these numbers would change by
+orders of magnitude in either direction, so they should be read as statements about the placeholder. `docs/cell_experiment.md` and the
 `centred_cpk1` and `residual_offset_10um` sensitivity cases of `viz/run_cell_sensitivity.py` study exactly this dependence.
 
 Two smaller points the explanation makes visible: PFA and PFR are weighted equally, though a false rejection (a re-measurement) and a

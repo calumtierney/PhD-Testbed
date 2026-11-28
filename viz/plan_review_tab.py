@@ -39,8 +39,8 @@ NONE_ACCEPTABLE = "__none__"
 
 # -- cached, because they are slow and the same for every rerun ----------------------------------
 @st.cache_resource(show_spinner="Building the built-in cell ...")
-def _factory_scene() -> ReviewScene:
-    return ReviewScene.from_factory_cell()
+def _factory_scene(marginal_process: str) -> ReviewScene:
+    return ReviewScene.from_factory_cell(marginal_process=marginal_process)
 
 
 @st.cache_resource(show_spinner="Reading the QIF file and building the cell ...")
@@ -59,9 +59,13 @@ def _scene_section() -> Optional[ReviewScene]:
     st.subheader("1. Scene")
     source = st.radio("Scene", [FACTORY, UPLOAD], horizontal=True, key="pr_scene_source", label_visibility="collapsed")
     if source == FACTORY:
-        scene = _factory_scene()
+        process = st.radio("Placeholder process for the three 'marginal' characteristics (both Cpk 1.33)", ["typical", "stress"], horizontal=True,
+                           key="pr_marginal_process", format_func=lambda k: {"typical": "typical: mean +10 um, std 10 um",
+                                                                              "stress": "stress case: mean +38 um, std 3 um (margin lost to offset)"}[k])
+        scene = _factory_scene(process)
         st.caption("A synthetic long part on a station track with a reference network. Every dimension, tolerance and process statistic is a "
-                   "placeholder (docs/cell_experiment.md); use it to see how the tool works, not to judge a real plan.")
+                   "placeholder (docs/cell_experiment.md); use it to see how the tool works, not to judge a real plan. The stress case is the "
+                   "experiments' process, 12 um from its limit: it makes every plan look alarming, by design.")
     else:
         qif = st.file_uploader("QIF file (read in memory, never saved)", type=["qif", "xml"], key="pr_qif")
         stl = st.file_uploader("Part shape, STL (optional; in the QIF file's coordinates; blocks sight lines)", type=["stl"], key="pr_stl")

@@ -42,6 +42,9 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     p.add_argument("scene", help="a QIF file, or 'factory' for the built-in synthetic cell")
     p.add_argument("plans", nargs="*", type=Path, help="plan files (JSON)")
+    p.add_argument("--marginal-process", choices=["typical", "stress"], default="typical",
+                   help="built-in cell only: the placeholder process of its 'marginal' characteristics, both at Cpk 1.33: 'typical' (mean +10 um, std 10 um) "
+                        "or 'stress' (mean +38 um, std 3 um: the margin lost to offset, so every plan looks alarming)")
     p.add_argument("--demo", action="store_true", help="add the synthetic demonstration plan (4 stations evenly spaced; NOT an engineer's plan)")
     p.add_argument("--tracker-model", required=True, choices=TRACKER_MODELS, help="the instrument model: required, no default")
     p.add_argument("--rule", choices=DECISION_RULES, default="simple", help="decision rule ('best' takes minutes to tabulate)")
@@ -89,7 +92,7 @@ def main(argv=None) -> int:
         return 2
 
     if args.scene == "factory":
-        scene = ReviewScene.from_factory_cell()
+        scene = ReviewScene.from_factory_cell(marginal_process=args.marginal_process)
     else:
         qif = Path(args.scene)
         stl = args.stl.read_bytes() if args.stl else None

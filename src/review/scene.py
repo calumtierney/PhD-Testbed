@@ -23,7 +23,7 @@ that is neither. How a measurement package names its targets is not known here
 (TODO(source): GKN's target naming); a name that is not recognised, or that two targets
 share, is an error the review reports, never a guess.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Dict, Optional, Tuple
 
 import numpy as np
@@ -34,11 +34,20 @@ from interchange.qif import read_qif
 from planning.cell import (
     CellRiskModel, factory_cell_scenario, part_datum_indices, process_knowledge_for,
 )
-from planning.experiment import long_part_track
+from planning.experiment import MARGINAL_CLUSTER, long_part_track
 from planning.objectives import PlanningScenario
 from planning.qif_cell import QifCell, build_qif_cell
 from review.provenance import digest
 from risk.decision import ProcessKnowledge
+from risk.jcgm106 import ClusterAssignment, FeatureCluster, ProcessPrior
+
+
+MARGINAL_PROCESSES = {
+    "typical": {"cluster_name": "marginal", "prior": ProcessPrior(mean_m=10e-6, std_m=10e-6), "label": "marginal process +10 um / 10 um, Cpk 1.33",
+                "source": "the marginal cluster, mean +10 um and std 10 um (Cpk 1.33): the margin shared between a modest offset and a modest spread"},
+    "stress": {"cluster_name": "marginal (stress case)", "prior": MARGINAL_CLUSTER.prior, "label": "STRESS CASE: marginal process +38 um / 3 um, Cpk 1.33",
+               "source": "STRESS CASE: the experiments' marginal cluster, mean +38 um and std 3 um (Cpk 1.33), the margin lost to offset"},
+}
 
 
 class SceneError(ValueError):
@@ -114,9 +123,27 @@ class ReviewScene:
         return cls.from_qif_cell(cell, label)
 
     @classmethod
-    def from_factory_cell(cls, track: Optional[StationTrack] = None, label: str = "built-in factory cell (synthetic)") -> "ReviewScene":
+    def from_factory_cell(cls, track: Optional[StationTrack] = None, label: Optional[str] = None, marginal_process: str = "typical") -> "ReviewScene":
+        """The built-in synthetic cell. `marginal_process` picks the process the three "marginal" characteristics come from, both at Cpk 1.33
+        (the standard-process floor quoted from GKN) and both placeholders:
+
+          "typical"  mean +10 um, std 10 um: the margin to the limit shared between a modest offset and a modest spread. The default.
+          "stress"   mean +38 um, std 3 um: `planning.experiment.MARGINAL_CLUSTER`, the margin lost almost entirely to offset, so the process runs
+                     12 um inside a +-50 um limit. The experiments use it deliberately, to show that a process near its limit makes measurement
+                     uncertainty matter; in a review it makes every plan look alarming (false rejection of about 12% of its parts).
+
+        Only this scene's priors change: `planning.experiment.MARGINAL_CLUSTER`, which the headline, track and cell experiments and the paper's
+        saved results share, is untouched."""
+        if marginal_process not in MARGINAL_PROCESSES:
+            raise ValueError(f"marginal_process must be one of {sorted(MARGINAL_PROCESSES)}, got {marginal_process!r}")
+        process = MARGINAL_PROCESSES[marginal_process]
         track = long_part_track() if track is None else track
-        scenario = factory_cell_scenario(track=track)
+        base = factory_cell_scenario(track=track)
+        marginal = FeatureCluster(process["cluster_name"], process["prior"])
+        assignments = {name: (ClusterAssignment(name, marginal, a.confidence) if a.cluster.name == MARGINAL_CLUSTER.name else a)
+                       for name, a in base.assignments.items()}
+        scenario = replace(base, assignments=assignments)
+        label = label or f"built-in factory cell (synthetic; {process['label']})"
         n_part = 26  # planning.cell.DatumCellScorer's convention for this scene
         names = [None] * len(scenario.target_points_m)
         for c in scenario.characteristics:
@@ -133,7 +160,8 @@ class ReviewScene:
             summaries.setdefault(cluster.name, {
                 "name": cluster.name, "members": [], "mean_um": cluster.prior.mean_m * 1e6, "std_um": cluster.prior.std_m * 1e6,
                 "n_builds": None, "placeholder": True,
-                "source": "PLACEHOLDER: the built-in factory cell's synthetic process statistics (TODO(source): real data)"})
+                "source": ("PLACEHOLDER: " + (process["source"] if cluster.name == process["cluster_name"] else
+                                              "the built-in factory cell's synthetic process statistics") + " (TODO(source): real data)")})
             summaries[cluster.name]["members"].append(c.name)
         return cls(
             label=label, kind="factory_cell", scenario=scenario, track=track, datum_indices=tuple(part_datum_indices(scenario, n_part)),

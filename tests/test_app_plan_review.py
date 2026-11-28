@@ -30,6 +30,7 @@ def test_gate8_the_plan_review_tab_runs_on_the_demo_scene_without_error(app, tmp
     assert run.disabled  # nothing chosen yet: no instrument model, no role, no plan
     assert log_records(tmp_path) == []
 
+    assert app.radio(key="pr_marginal_process").value == "typical"  # the built-in cell's default marginal process: +10 um / 10 um, Cpk 1.33
     app.checkbox(key="pr_add_demo").check().run()
     assert app.button(key="pr_run").disabled  # a plan alone is not enough: the instrument model has no default
     app.selectbox(key="pr_tracker_model").select("noise_only").run()

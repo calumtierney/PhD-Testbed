@@ -72,3 +72,13 @@ def test_explain_prints_the_chain_and_the_checks_and_refuses_a_plan_that_is_not_
     assert "--explain-plan 5" in capsys.readouterr().err
     assert main(["factory", "--demo", "--tracker-model", "noise_only", "--no-log", "--explain", "--explain-characteristic", "nope"]) == 2
     assert "not a measured characteristic" in capsys.readouterr().err
+
+
+def test_the_marginal_process_option_selects_the_stress_case(capsys):
+    assert main(["factory", "--demo", "--tracker-model", "noise_only", "--no-log", "--marginal-process", "stress"]) == 0
+    stress = capsys.readouterr().out
+    assert main(["factory", "--demo", "--tracker-model", "noise_only", "--no-log"]) == 0
+    typical = capsys.readouterr().out
+    assert "STRESS CASE" in stress and "STRESS CASE" not in typical and "+10 um / 10 um" in typical
+    with pytest.raises(SystemExit):
+        main(["factory", "--demo", "--tracker-model", "noise_only", "--no-log", "--marginal-process", "alarming"])
